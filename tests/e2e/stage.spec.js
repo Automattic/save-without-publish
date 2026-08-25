@@ -1,0 +1,269 @@
+/**
+ * The deliberate path: staging is asked for by someone whose save publishes.
+ *
+ * The forked path (fork.spec.js) proves what happens to an editor who cannot
+ * publish. This file is the other half of the entry rule, running as the
+ * administrator the suite already has: Update publishes like core, and staging
+ * happens exactly when it is requested -- from the editor with unsaved words in
+ * hand, or from the posts list.
+ */
+
+const { test, expect } = require( '@playwright/test' );
+const {
+	createPublishedPost,
+	getPostField,
+	stagedCopyIdFor,
+	createStagedCopyFor,
+	cleanUp,
+	openEditor,
+	appendAndSave,
+	canvasOf,
+	showDocumentPanel,
+	backstopEvents,
+	clearBackstopEvents,
+	grantDirectPublish,
+	revokeDirectPublish,
+} = require( './helpers' );
+
+const PUBLISHED_TEXT = 'The Summer collection launches in June.';
+const STAGED_TEXT = ' It is going to be good.';
+
+test.describe( 'A publisher and a published post', () => {
+	let liveId;
+
+	test.beforeEach( () => {
+		clearBackstopEvents();
+
+		// The block's name is the setup: a publisher is someone a site granted
+		// the direct-publish capability, because no role ships holding it.
+		grantDirectPublish();
+
+		liveId = createPublishedPost(
+			'Meridian Active, Summer collection',
+			PUBLISHED_TEXT
+		);
+	} );
+
+	// Every flow here is one a working editor takes, so the fork underneath the
+	// protocol must never have been what carried it.
+	test.afterEach( () => {
+		const heard = backstopEvents();
+
+		revokeDirectPublish();
+		cleanUp( liveId );
+
+		expect( heard, 'The save was carried by the backstop.' ).toHaveLength(
+			0
+		);
+	} );
+
+	test( 'a plain update publishes, as core does', async ( { page } ) => {
+		await openEditor( page, liveId );
+		await appendAndSave( page, STAGED_TEXT );
+
+		// The save completes on the same post: no navigation, no staged copy.
+		// Core disables the save button once nothing is left to save.
+		await expect(
+			page.getByRole( 'button', { name: 'Save', exact: true } )
+		).toBeDisabled();
+		await expect( page ).toHaveURL( new RegExp( `post=${ liveId }` ) );
+
+		expect( stagedCopyIdFor( liveId ) ).toBe( 0 );
+		expect( getPostField( liveId, 'post_content' ) ).toContain(
+			STAGED_TEXT.trim()
+		);
+	} );
+
+	test( 'staging from the editor carries unsaved words to the copy', async ( {
+		page,
+	} ) => {
+		await openEditor( page, liveId );
+
+		// Type and do not save. The words exist nowhere but the editor.
+		const paragraph = canvasOf( page )
+			.locator( 'p[data-type="core/paragraph"]' )
+			.first();
+		await paragraph.click();
+		await page.keyboard.press( 'End' );
+		await page.keyboard.type( STAGED_TEXT );
+
+		await showDocumentPanel( page );
+		await page.getByRole( 'button', { name: 'Stage changes' } ).click();
+
+		// The editor lands on the staged copy without an unsaved-changes
+		// prompt, and the copy holds the words that were never saved.
+		await page.waitForURL( /post\.php\?post=\d+/ );
+
+		const stagedCopyId = stagedCopyIdFor( liveId );
+		expect( stagedCopyId ).toBeGreaterThan( 0 );
+		await expect( page ).toHaveURL(
+			new RegExp( `post=${ stagedCopyId }` )
+		);
+		expect( getPostField( stagedCopyId, 'post_content' ) ).toContain(
+			STAGED_TEXT.trim()
+		);
+
+		// The published post never saw them.
+		expect( getPostField( liveId, 'post_content' ) ).not.toContain(
+			STAGED_TEXT.trim()
+		);
+	} );
+
+	test( 'a save onto an existing staged copy goes through the staging route', async ( {
+		page,
+	} ) => {
+		// Someone who can publish, saving a post that already has a copy: the
+		// copy claims the save, and that is a designed staging path rather than
+		// a fallback -- so it takes the same deliberate route every other
+		// staging save takes, and the backstop stays quiet.
+		const stagedCopyId = createStagedCopyFor( liveId );
+
+		await openEditor( page, liveId );
+
+		const seen = [];
+		page.on( 'request', ( request ) => {
+			seen.push(
+				`${ request.method() } ${ decodeURIComponent( request.url() ) }`
+			);
+		} );
+
+		await appendAndSave( page, STAGED_TEXT );
+
+		await page.waitForURL( new RegExp( `post=${ stagedCopyId }` ), {
+			timeout: 20_000,
+		} );
+
+		expect(
+			seen.filter( ( request ) =>
+				/^POST .*\/swpub\/v1\/stage\/\d+/.test( request )
+			)
+		).toHaveLength( 1 );
+		expect(
+			seen.filter( ( request ) =>
+				/^(?:PUT|POST) .*\/wp\/v2\/posts\/\d+(?![\d/])/.test( request )
+			)
+		).toHaveLength( 0 );
+
+		expect( getPostField( stagedCopyId, 'post_content' ) ).toContain(
+			STAGED_TEXT.trim()
+		);
+		expect( getPostField( liveId, 'post_content' ) ).not.toContain(
+			STAGED_TEXT.trim()
+		);
+	} );
+
+	test( 'autosaving is locked while a staging request is in flight', async ( {
+		page,
+	} ) => {
+		await openEditor( page, liveId );
+
+		const paragraph = canvasOf( page )
+			.locator( 'p[data-type="core/paragraph"]' )
+			.first();
+		await paragraph.click();
+		await page.keyboard.press( 'End' );
+		await page.keyboard.type( STAGED_TEXT );
+
+		const autosaves = [];
+		page.on( 'request', ( request ) => {
+			autosaves.push( decodeURIComponent( request.url() ) );
+		} );
+
+		// Hold the staging request open so the in-flight window is something a
+		// test can stand inside. An autosave landing here would write the same
+		// words to the published post through an endpoint staging does not
+		// contain, and race the staging write for them.
+		let release;
+		const held = new Promise( ( resolve ) => {
+			release = resolve;
+		} );
+
+		await page.route(
+			( url ) =>
+				decodeURIComponent( url.toString() ).includes(
+					'/swpub/v1/stage/'
+				),
+			async ( route ) => {
+				await held;
+				await route.continue();
+			}
+		);
+
+		await showDocumentPanel( page );
+		await page.getByRole( 'button', { name: 'Stage changes' } ).click();
+
+		await expect
+			.poll( () =>
+				page.evaluate( () =>
+					window.wp.data
+						.select( 'core/editor' )
+						.isPostAutosavingLocked()
+				)
+			)
+			.toBe( true );
+
+		// Nothing was autosaved to the published post while the request was
+		// held open, which is what the lock is for.
+		expect(
+			autosaves.filter( ( request ) =>
+				request.includes( `/wp/v2/posts/${ liveId }/autosaves` )
+			)
+		).toHaveLength( 0 );
+
+		release();
+
+		await expect
+			.poll( () => stagedCopyIdFor( liveId ), { timeout: 20_000 } )
+			.toBeGreaterThan( 0 );
+
+		await page.waitForURL(
+			new RegExp( `post=${ stagedCopyIdFor( liveId ) }` ),
+			{ timeout: 20_000 }
+		);
+	} );
+
+	test( 'staging from the posts list lands on a copy of the right post', async ( {
+		page,
+	} ) => {
+		await page.goto( '/wp-admin/edit.php' );
+
+		const row = page.locator( `#post-${ liveId }` );
+		await row.hover();
+		await row.getByRole( 'link', { name: 'Stage changes' } ).click();
+
+		const stagedCopyId = stagedCopyIdFor( liveId );
+		expect( stagedCopyId ).toBeGreaterThan( 0 );
+		await expect( page ).toHaveURL(
+			new RegExp( `post=${ stagedCopyId }` )
+		);
+
+		// Nothing was typed, so the copy reads as the published post does.
+		expect( getPostField( stagedCopyId, 'post_content' ) ).toContain(
+			'launches in June'
+		);
+		expect( getPostField( liveId, 'post_content' ) ).toContain(
+			'launches in June'
+		);
+	} );
+
+	test( 'once a copy exists, the row offers the copy and not a second staging', async ( {
+		page,
+	} ) => {
+		await page.goto( '/wp-admin/edit.php' );
+		const row = page.locator( `#post-${ liveId }` );
+		await row.hover();
+		await row.getByRole( 'link', { name: 'Stage changes' } ).click();
+		await page.waitForURL( /post\.php\?post=\d+/ );
+
+		await page.goto( '/wp-admin/edit.php' );
+		const again = page.locator( `#post-${ liveId }` );
+		await again.hover();
+
+		await expect(
+			again.getByRole( 'link', { name: 'Edit staged changes' } )
+		).toBeVisible();
+		await expect(
+			again.getByRole( 'link', { name: 'Stage changes' } )
+		).toHaveCount( 0 );
+	} );
+} );

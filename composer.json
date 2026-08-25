@@ -1,0 +1,28 @@
+{
+	"name": "automattic/save-without-publish",
+	"description": "Edit a published post as a private staged copy. The live post keeps serving until you publish the change.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=8.2"
+	},
+	"require-dev": {
+		"automattic/vipwpcs": "^3.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+		"phpunit/phpunit": "^9.6",
+		"wp-phpunit/wp-phpunit": "^6.8",
+		"yoast/phpunit-polyfills": "^2.0"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	},
+	"scripts": {
+		"phpcs": "phpcs",
+		"phpcbf": "phpcbf",
+		"test": "phpunit",
+		"test:partial-failure": "phpunit --group partial-failure",
+		"test:concurrency": "phpunit --group concurrency"
+	}
+}

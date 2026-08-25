@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<ruleset name="Save without Publish">
+	<description>VIP coding standards are a gate on every change, not a cleanup pass (R25).</description>
+
+	<file>.</file>
+
+	<exclude-pattern>/vendor/</exclude-pattern>
+	<exclude-pattern>/node_modules/</exclude-pattern>
+	<exclude-pattern>/build/</exclude-pattern>
+	<exclude-pattern>/docs/</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<rule ref="WordPress-VIP-Go"/>
+
+	<config name="minimum_wp_version" value="6.8"/>
+	<config name="testVersion" value="8.2-"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="save-without-publish"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="SaveWithoutPublish"/>
+				<element value="swpub"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Tests legitimately reset core globals such as $wp_rest_server. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound">
+		<exclude-pattern>/tests/</exclude-pattern>
+	</rule>
+
+	<!--
+	Tests fire core hooks such as display_post_states and post_row_actions to
+	exercise the filters attached to them. The sniff reads that as a plugin
+	inventing an unprefixed hook, which is the opposite of what it is doing.
+	-->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound">
+		<exclude-pattern>/tests/</exclude-pattern>
+	</rule>
+</ruleset>

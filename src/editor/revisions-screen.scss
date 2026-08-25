@@ -1,0 +1,55 @@
+/**
+ * What core's revisions view does not need when the post is a staged copy.
+ *
+ * Every rule here is scoped twice, and both halves are load-bearing:
+ *
+ * - `body.swpub-staged` is the server's answer to "is this a staged copy",
+ *   printed by `Admin_Surfaces::body_class()` from the post's own status. A
+ *   query argument would be a second answer to the same question, and the one a
+ *   URL could be wrong about.
+ * - `:has(.editor-revisions-header)` is revisions mode, which is the only mode
+ *   these rules describe. Without it they would reach the staged copy's ordinary
+ *   editor and take its Summary panel, which is where this plugin does most of
+ *   its talking.
+ *
+ * Nothing here is hidden from the published post, or from any post that is not
+ * a staged copy. Core's revisions view is untouched everywhere else.
+ */
+
+body.swpub-staged:has(.editor-revisions-header) {
+
+	/**
+	 * The timeline slider.
+	 *
+	 * It scrubs a history, and a staged copy's history is two points: the
+	 * content as published, and the change as staged. A slider with two stops
+	 * is a control that looks like it does more than it does, so the sidebar's
+	 * own list is left to say the same thing without the promise.
+	 */
+	.editor-revisions-header__slider {
+		display: none;
+	}
+
+	/**
+	 * The sidebar, and the control that opens it.
+	 *
+	 * In this context it lists the two revisions the timeline already showed,
+	 * under a heading that names neither of them usefully: "Revision", for a
+	 * screen whose whole subject is one staged change. Hidden together, because
+	 * a toggle for a region that is not there is worse than either.
+	 */
+	.interface-interface-skeleton__sidebar {
+		display: none;
+	}
+
+	/*
+	 * The toggle is core's complementary-area button, matched as the only
+	 * direct child of the settings group that expands something. By attribute
+	 * rather than by label, which is translated, and by direct child so the
+	 * Options menu's own toggle -- a dropdown, one level deeper -- is left
+	 * alone.
+	 */
+	.editor-header__settings > button[aria-expanded] {
+		display: none;
+	}
+}

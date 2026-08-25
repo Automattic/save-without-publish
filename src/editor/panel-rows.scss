@@ -1,0 +1,96 @@
+/**
+ * Undoes what core's extensibility slot adds on top of core's own rows.
+ *
+ * `PluginPostStatusInfo` wraps every fill in a `PanelRow`, which predates the
+ * Summary panel's row layout and brings its own top margin, its own minimum
+ * height, and no gap between label and control. Left alone, a fill sits eight
+ * pixels lower than the rows above it and its value starts eight pixels to
+ * their left -- close enough to read as a mistake rather than as a difference.
+ *
+ * These declarations are the whole stylesheet on purpose. Everything else about
+ * these rows -- the label column width, the alignment, the control's type ramp
+ * -- comes from core's own `.editor-post-panel__row` classes, so they follow
+ * core when core changes.
+ */
+
+.components-panel__row.swpub-staged-row,
+.components-panel__row.swpub-stage-row,
+.components-panel__row.swpub-status-row,
+.components-panel__row.swpub-published-row {
+	// Core's rows are spaced by their container's gap, not by their own margin.
+	margin-top: 0;
+
+	// PanelRow asks for a button's height (36px); the rows above are 32px.
+	min-height: 0;
+
+	// The gap `HStack` gives core's rows, which `PanelRow` does not.
+	gap: 8px;
+}
+
+/**
+ * The two rows that belong at the top, in the order they answer in.
+ *
+ * Core renders every fill after its own rows, so both of these arrive last,
+ * under Format. Status is the row core prints first, because it is the first
+ * thing an editor looks for, and this one replaces exactly that row -- so it
+ * belongs where that row was rather than at the end of a list it is not part
+ * of. "Published post" follows it, because it finishes the sentence Status
+ * starts: this is staged, and here is what it is staged against.
+ *
+ * Two values rather than one shared value, so the order between them is this
+ * stylesheet's and not a side effect of which fill happens to register first.
+ *
+ * `order` is what a flex column offers for this, and using it is why the
+ * failure is mild: if core ever lays these rows out with something that has no
+ * `order`, both declarations stop applying and the rows sit at the bottom,
+ * which is where they sit today. Rows in the wrong place, never rows that are
+ * gone.
+ */
+.components-panel__row.swpub-status-row {
+	order: -2;
+}
+
+.components-panel__row.swpub-published-row {
+	order: -1;
+}
+
+/**
+ * The discard control, which is a button rather than a row.
+ *
+ * Shaped like the control it stands in front of: core's own trash button fills
+ * the width of the panel and centres its label, and this one sits in the same
+ * place doing the same job.
+ */
+.components-panel__row.swpub-discard-row {
+	margin-top: 0;
+
+	.components-button {
+		flex-grow: 1;
+		justify-content: center;
+	}
+}
+
+/**
+ * Core's Status row, superseded by ours.
+ *
+ * Scoped to the fill's presence, and that scoping is load-bearing rather than
+ * tidy (R53). This stylesheet is enqueued independently of the script, so on a
+ * page load where the bundle failed the rule below matches nothing and core's
+ * own row stays exactly where it was. An unscoped hide would delete it on the
+ * one page load where it is the only thing left.
+ */
+.editor-post-summary:has(.swpub-status-row)
+	.editor-post-panel__row:has(.editor-post-status) {
+	display: none;
+}
+
+/**
+ * Core's trash button, superseded by the discard control.
+ *
+ * Same scoping, for the same reason, with a sharper edge: the control that comes
+ * back when this rule does not match destroys staged work, and it is worse to
+ * hide it than to show it twice.
+ */
+.editor-post-summary:has(.swpub-discard-row) .editor-post-trash {
+	display: none;
+}
