@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# No permissions by default. The job that needs to write says so itself, and it
+# is the one job that never runs npm.
+permissions: {}
+
+jobs:
+  build:
+    name: Build the plugin zip
+    runs-on: ubuntu-latest
+    # Deliberately no `permissions:` block. `npm ci` runs install scripts from
+    # ~2000 dev packages, so this job holds no token they could reach.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check the tag matches the plugin header version
+        run: |
+          header="$(sed -n 's/^ \* Version: *//p' save-without-publish.php | tr -d '[:space:]')"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$header" != "$tag" ]; then
+            echo "Tag $GITHUB_REF_NAME says $tag, plugin header says $header." >&2
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Copy only what the plugin loads at runtime. An allowlist cannot leak a
+      # dev file the way a .distignore denylist can when someone forgets a line.
+      - name: Assemble the plugin directory
+        run: |
+          mkdir -p dist/save-without-publish
+          cp -R save-without-publish.php includes build readme.md LICENSE dist/save-without-publish/
+
+      - name: Zip
+        run: cd dist && zip -rq "../save-without-publish-${GITHUB_REF_NAME}.zip" save-without-publish
+
+      - name: Hand the zip to the publish job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plugin-zip
+          path: save-without-publish-*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Attach the zip to a release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Collect the zip
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: plugin-zip
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "save-without-publish-${GITHUB_REF_NAME}.zip" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
