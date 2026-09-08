@@ -43,13 +43,14 @@ body.swpub-staged:has(.editor-revisions-header) {
 	}
 
 	/*
-	 * The toggle is core's complementary-area button, matched as the only
-	 * direct child of the settings group that expands something. By attribute
-	 * rather than by label, which is translated, and by direct child so the
-	 * Options menu's own toggle -- a dropdown, one level deeper -- is left
-	 * alone.
+	 * The toggle is core's complementary-area button, matched as the direct
+	 * child of the settings group that expands something without announcing a
+	 * popup. By attribute rather than by label, which is translated. The
+	 * Options menu's own toggle expands too, and newer editors render it as a
+	 * sibling rather than one level deeper, so the popup it announces is what
+	 * tells the two apart -- and it is the one control here that stays.
 	 */
-	.editor-header__settings > button[aria-expanded] {
+	.editor-header__settings > button[aria-expanded]:not([aria-haspopup]) {
 		display: none;
 	}
 }
