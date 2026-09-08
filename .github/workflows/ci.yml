@@ -3,6 +3,11 @@ name: CI
 on:
   push:
   pull_request:
+  # Pushes and pull requests test against the latest WordPress release, so a
+  # red run points at the plugin change. This weekly run tests trunk instead,
+  # so a core change that will break the plugin shows up before it ships.
+  schedule:
+    - cron: '0 6 * * 1'
 
 # Nothing here writes; the default token scope is wider than these jobs need.
 permissions:
@@ -68,8 +73,61 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-progress
 
+      - name: Pin WordPress to the latest release
+        if: github.event_name != 'schedule'
+        run: echo '{"core":null}' > .wp-env.override.json
+
       - name: Start WordPress
         run: npx wp-env start
 
       - name: Run PHPUnit
         run: npm run test:php
+
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    # The suite takes about seven minutes on one worker on a fast machine, and
+    # retries and a shared runner stretch that. Anything past this is a wedged
+    # wp-env or browser, not a slow test.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      # The specs drive build/index.js, not src/. The `build` job compiles on a
+      # different runner and discards the result, so this job builds its own.
+      - name: Build
+        run: npm run build
+
+      - name: Pin WordPress to the latest release
+        if: github.event_name != 'schedule'
+        run: echo '{"core":null}' > .wp-env.override.json
+
+      - name: Start WordPress
+        run: npx wp-env start
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        run: npm run test:e2e
+
+      # Screenshots and traces are only written for failures, and the HTML
+      # report is what makes them readable without a local checkout.
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-artifacts
+          path: |
+            artifacts/test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

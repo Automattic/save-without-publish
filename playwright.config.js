@@ -23,7 +23,11 @@ module.exports = defineConfig( {
 	fullyParallel: false,
 	forbidOnly: !! process.env.CI,
 	retries: process.env.CI ? 1 : 0,
-	reporter: process.env.CI ? 'github' : 'list',
+	// In CI the github reporter annotates the run, and the HTML report is what
+	// gets uploaded alongside the traces when the run fails.
+	reporter: process.env.CI
+		? [ [ 'github' ], [ 'html', { open: 'never' } ] ]
+		: 'list',
 	timeout: 60_000,
 	expect: { timeout: 10_000 },
 
