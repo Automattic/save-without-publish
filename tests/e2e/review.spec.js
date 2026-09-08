@@ -274,9 +274,15 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		await expect(
 			page.locator( '.interface-interface-skeleton__sidebar' )
 		).toBeHidden();
+		// By name rather than by the stylesheet's selector: the header's
+		// Options menu is a second expanding button in the same group in newer
+		// editors, and it is the one control here that must stay.
 		await expect(
-			page.locator( '.editor-header__settings > button[aria-expanded]' )
+			page.getByRole( 'button', { name: 'Settings', exact: true } )
 		).toBeHidden();
+		await expect(
+			page.getByRole( 'button', { name: 'Options', exact: true } )
+		).toBeVisible();
 
 		// None of which may reach the copy's ordinary editor, where the Summary
 		// panel is how this plugin says almost everything it says.

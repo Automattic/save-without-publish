@@ -84,18 +84,12 @@ test.describe( 'Publishing a staged change', () => {
 			timeout: 20_000,
 		} );
 
-		expect( getPostField( liveId, 'post_content' ) ).toContain(
-			STAGED_TEXT
-		);
-		expect( getPostField( liveId, 'post_status' ) ).toBe( 'publish' );
-		expect( getPostField( liveId, 'post_name' ) ).toBe( originalSlug );
-		expect( getPostField( liveId, 'post_date_gmt' ) ).toBe( publishDate );
-
-		expect( postExists( stagedCopyId ) ).toBe( false );
-		expect( stagedCopyIdFor( liveId ) ).toBe( 0 );
-
 		// Said afterwards, where the merge landed, rather than asked for
 		// beforehand as a dialog naming the same facts every time.
+		//
+		// Read first, and in one pass: a snackbar dismisses itself after ten
+		// seconds, and the WP-CLI checks below each shell out through wp-env,
+		// which on a shared runner adds up to longer than that.
 		const snackbar = page
 			.locator( '.components-snackbar' )
 			.filter( { hasText: 'Your staged changes are published' } );
@@ -105,10 +99,26 @@ test.describe( 'Publishing a staged change', () => {
 		// And it offers what core offers after any save: the post type's own
 		// view label, the permalink, and a new tab, which is what gives the
 		// control its arrow.
-		const view = snackbar.getByRole( 'link' ).first();
+		const view = await snackbar
+			.getByRole( 'link' )
+			.first()
+			.evaluate( ( link ) => ( {
+				target: link.getAttribute( 'target' ),
+				href: link.getAttribute( 'href' ),
+			} ) );
 
-		await expect( view ).toHaveAttribute( 'target', '_blank' );
-		expect( await view.getAttribute( 'href' ) ).not.toContain( 'wp-admin' );
+		expect( view.target ).toBe( '_blank' );
+		expect( view.href ).not.toContain( 'wp-admin' );
+
+		expect( getPostField( liveId, 'post_content' ) ).toContain(
+			STAGED_TEXT
+		);
+		expect( getPostField( liveId, 'post_status' ) ).toBe( 'publish' );
+		expect( getPostField( liveId, 'post_name' ) ).toBe( originalSlug );
+		expect( getPostField( liveId, 'post_date_gmt' ) ).toBe( publishDate );
+
+		expect( postExists( stagedCopyId ) ).toBe( false );
+		expect( stagedCopyIdFor( liveId ) ).toBe( 0 );
 	} );
 
 	test( 'the pre-merge content is restorable from core revisions', async ( {

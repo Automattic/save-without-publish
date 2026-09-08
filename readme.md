@@ -445,6 +445,8 @@ PHPUnit covers what a browser cannot reach: capability mapping, containment, ide
 
 End-to-end tests need `npm run env:start` first, and `npx playwright install chromium` once.
 
+CI runs both suites on every push and pull request against the latest WordPress release, so a red run points at the plugin change rather than at core. A weekly scheduled run tests trunk, which `.wp-env.json` tracks locally, so a core change that will break the plugin is seen before it ships. Failed Playwright runs upload their screenshots, traces, and HTML report as a workflow artifact.
+
 ### What the editor still has no API for
 
 Three of the editor's surfaces are reached by matching a CSS class or renaming a string, because the block editor offers nothing else. Each has an upstream home, and none of them is work this plugin can do for itself:

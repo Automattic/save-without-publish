@@ -109,16 +109,21 @@ test.describe( 'A publisher and a published post', () => {
 		);
 	} );
 
-	test( 'a save onto an existing staged copy goes through the staging route', async ( {
+	test( 'a save onto a post with a staged copy is refused, not published', async ( {
 		page,
 	} ) => {
-		// Someone who can publish, saving a post that already has a copy: the
-		// copy claims the save, and that is a designed staging path rather than
-		// a fallback -- so it takes the same deliberate route every other
-		// staging save takes, and the backstop stays quiet.
+		// Someone who can publish, saving a post that already has a copy. The
+		// copy owns the title, content, and excerpt now: the canvas is
+		// read-only, and the title -- which core offers no read-only path for
+		// -- is refused before anything is sent. Nothing reaches either post on
+		// either route, and the fork underneath never carried it.
 		const stagedCopyId = createStagedCopyFor( liveId );
 
 		await openEditor( page, liveId );
+
+		await expect(
+			canvasOf( page ).locator( 'p[data-type="core/paragraph"]' ).first()
+		).toHaveClass( /is-editing-disabled/ );
 
 		const seen = [];
 		page.on( 'request', ( request ) => {
@@ -127,29 +132,45 @@ test.describe( 'A publisher and a published post', () => {
 			);
 		} );
 
-		await appendAndSave( page, STAGED_TEXT );
-
-		await page.waitForURL( new RegExp( `post=${ stagedCopyId }` ), {
-			timeout: 20_000,
+		const title = canvasOf( page ).getByRole( 'textbox', {
+			name: 'Add title',
 		} );
+		await title.click();
+		await page.keyboard.press( 'End' );
+		await page.keyboard.type( ', autumn' );
+		await page.keyboard.press( 'ControlOrMeta+s' );
+
+		// The refusal says where those fields can be edited, and carries the
+		// way there.
+		const refusal = page.locator( '.components-notice' ).filter( {
+			hasText: 'Not saved. This post already has staged changes',
+		} );
+
+		await expect(
+			refusal.locator( '.components-notice__content' )
+		).toBeVisible();
+		await expect(
+			refusal.getByRole( 'link', { name: 'Edit staged changes' } )
+		).toBeVisible();
 
 		expect(
 			seen.filter( ( request ) =>
 				/^POST .*\/swpub\/v1\/stage\/\d+/.test( request )
 			)
-		).toHaveLength( 1 );
+		).toHaveLength( 0 );
 		expect(
 			seen.filter( ( request ) =>
 				/^(?:PUT|POST) .*\/wp\/v2\/posts\/\d+(?![\d/])/.test( request )
 			)
 		).toHaveLength( 0 );
 
-		expect( getPostField( stagedCopyId, 'post_content' ) ).toContain(
-			STAGED_TEXT.trim()
+		expect( getPostField( liveId, 'post_title' ) ).not.toContain(
+			'autumn'
 		);
-		expect( getPostField( liveId, 'post_content' ) ).not.toContain(
-			STAGED_TEXT.trim()
+		expect( getPostField( stagedCopyId, 'post_title' ) ).not.toContain(
+			'autumn'
 		);
+		expect( stagedCopyIdFor( liveId ) ).toBe( stagedCopyId );
 	} );
 
 	test( 'autosaving is locked while a staging request is in flight', async ( {
