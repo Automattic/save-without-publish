@@ -216,10 +216,11 @@ test.describe( 'Forking a published post', () => {
 
 		await expect( review ).toBeVisible();
 
-		// The range, not a single revision: review.spec.js is where that is
-		// pinned to the baseline and the newest staged save.
+		// The editor's revisions view on the staged copy, not the classic
+		// compare screen: review.spec.js is where the revision it names is
+		// pinned to the newest staged save.
 		expect( await review.getAttribute( 'href' ) ).toMatch(
-			/revision\.php\?from=\d+&to=\d+/
+			/post\.php\?post=\d+&action=edit&revision=\d+/
 		);
 	} );
 
@@ -382,7 +383,7 @@ test.describe( 'Forking a published post', () => {
 		await expect( paragraph ).toContainText( STAGED_TEXT.trim() );
 	} );
 
-	test( 'a second save continues the same staged copy', async ( {
+	test( 'a second edit continues on the staged copy, not a second copy', async ( {
 		page,
 	} ) => {
 		await openEditor( page, liveId );
@@ -393,14 +394,49 @@ test.describe( 'Forking a published post', () => {
 			timeout: 20_000,
 		} );
 
+		// Back on the published post, the copy owns the content now: the canvas
+		// is read-only, and the notice says so before the first keystroke
+		// rather than after a save that would have replaced the staged words.
 		await openEditor( page, liveId );
-		await appendAndSave( page, ' Second pass.' );
+
+		const locked = page
+			.locator( '.components-notice' )
+			.filter( { hasText: 'locked here until those changes' } );
+
+		await expect(
+			locked.locator( '.components-notice__content' )
+		).toBeVisible();
+		await expect(
+			canvasOf( page ).locator( 'p[data-type="core/paragraph"]' ).first()
+		).toHaveClass( /is-editing-disabled/ );
+
+		// The notice carries the way over to the copy, where the second pass
+		// is made.
+		await locked
+			.getByRole( 'link', { name: 'Edit staged changes' } )
+			.click();
 		await page.waitForURL( new RegExp( `post=${ stagedCopyId }` ), {
 			timeout: 20_000,
 		} );
+		await canvasOf( page )
+			.locator( 'p[data-type="core/paragraph"]' )
+			.first()
+			.waitFor();
 
-		// Still one staged copy, not a second one.
+		await appendAndSave( page, ' Second pass.' );
+
+		await expect
+			.poll( () => getPostField( stagedCopyId, 'post_content' ), {
+				timeout: 20_000,
+			} )
+			.toContain( 'Second pass.' );
+
+		// Still one staged copy, not a second one, and the published post saw
+		// neither pass.
 		expect( stagedCopyIdFor( liveId ) ).toBe( stagedCopyId );
+		expect( getPostField( liveId, 'post_content' ) ).not.toContain(
+			STAGED_TEXT.trim()
+		);
 		expect( getPostField( liveId, 'post_content' ) ).not.toContain(
 			'Second pass.'
 		);
