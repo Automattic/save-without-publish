@@ -1,21 +1,24 @@
 /**
  * Renaming core's header buttons, so the primary button says what it will do.
  *
- * Three surfaces, three wrong words, all on the primary button. On a staged
- * copy core says "Publish", which publishes the change rather than this post,
- * and "Save draft", which a staged copy is not: it is an unpublished change to
- * a published post. On a published post with nothing staged against it,
- * someone whose save stages is offered "Submit for Review" -- a state this
- * plugin does not have and a word its vocabulary rules out -- when what the
- * click actually does is stage the change. And on a published post that
- * already has a staged copy, the same "Submit for Review" or "Stage changes"
- * promises the one thing that save cannot do: the copy owns the title,
- * content, and excerpt now, and a write to any of them is refused
- * (`swpub_live_locked`). That third case reads "Save" instead, honestly: a
- * write that changes none of those three fields -- a category, a featured
+ * Several wrong words, all on the primary button. On a staged copy core says
+ * "Publish", which publishes the change rather than this post, and "Save
+ * draft", which a staged copy is not: it is an unpublished change to a
+ * published post. On a published post with nothing staged against it, someone
+ * whose save stages is offered "Submit for Review" -- a state this plugin does
+ * not have and a word its vocabulary rules out -- when what the click
+ * actually does is stage the change; unless the save carries nothing a staged
+ * copy could hold anyway, a category on its own, in which case the click
+ * publishes it exactly as core's own save would (KTD-42, VIPPROD-1171). And on
+ * a published post that already has a staged copy, the same "Submit for
+ * Review" or "Stage changes" promises the one thing that save cannot do: the
+ * copy owns the title, content, and excerpt now, and a write to any of them
+ * is refused (`swpub_live_locked`). That case reads "Save" instead, honestly:
+ * a write that changes none of those three fields -- a category, a featured
  * image -- still applies to the published post exactly as core, so "Save" is
- * never a lie there, and where it would be the fields are locked (KTD-42) so
- * the click has nothing left to refuse.
+ * never a lie there, and where it would be the fields are locked at the
+ * keystroke (`existing-staged-copy.js`) so the click has nothing left to
+ * refuse.
  *
  * "Move to trash" is renamed for a fourth reason, and it is the reason the
  * rename survives even though a control of our own now sits in front of it: a
@@ -39,6 +42,7 @@ import { __ } from '@wordpress/i18n';
 
 import { verify } from './canary';
 import { context } from './context';
+import { STAGED_FIELDS, dirtyFields } from './edits';
 import { publishButtonSelector, publishLabel } from './publish-changes';
 
 /**
@@ -142,6 +146,16 @@ function relabelPublish( label ) {
 			characterData: true,
 		} );
 
+		// The data store is watched too, and separately: ticking a category
+		// checkbox changes what the next save carries without mutating
+		// anything under `.editor-header`, so the observer above would never
+		// fire for it on its own.
+		const data = window.wp && window.wp.data;
+
+		if ( data && data.subscribe ) {
+			data.subscribe( apply );
+		}
+
 		apply();
 	}
 
@@ -205,23 +219,32 @@ function verifyTrashLabel() {
 /**
  * What the primary button on a published post has to read.
  *
- * Three answers, matching the write path exactly rather than a rule of its own
- * (KTD-42, VIPPROD-1171): once a staged copy exists, every write to the title,
- * content, or excerpt is refused, whoever makes it, so those fields read "Save"
- * -- true, because a write that touches none of them still applies -- and are
- * locked at the keystroke (`existing-staged-copy.js`) so the click never meets
- * the refusal. With nothing staged yet, someone who cannot publish directly
- * still sees "Stage changes": correct for the field a fresh save carries, which
- * is the case this label exists for.
+ * Matches the write path exactly rather than a rule of its own (KTD-42,
+ * VIPPROD-1171). Once a staged copy exists, every write to the title,
+ * content, or excerpt is refused, whoever makes it, so those fields read
+ * "Save" -- true, because a write that touches none of them still applies --
+ * and are locked at the keystroke (`existing-staged-copy.js`) so the click
+ * never meets the refusal.
+ *
+ * With nothing staged yet, someone who cannot publish directly sees "Stage
+ * changes" by default, but not always: a save carrying only fields a staged
+ * copy cannot hold -- a category on its own -- goes to the published post
+ * exactly as core's own save would, the same rule `shouldStage()` in
+ * `fork-navigation.js` applies at the moment of the save. Read `dirty` as
+ * "assume the worst" when it is null (nothing here can answer yet, or the
+ * editor genuinely has not touched anything): "Stage changes" is still the
+ * right first word for the entry point this button is.
  *
  * `null` means core's own label is already right and nothing here should touch
  * it -- true for a direct publisher with no copy in the way, where core's
  * "Save" (or "Update") is the same word this plugin would have chosen.
  *
- * @param {Object} ctx The staging context.
+ * @param {Object}        ctx   The staging context.
+ * @param {string[]|null} dirty The fields currently edited on this post, from
+ *                              `dirtyFields()`.
  * @return {string|null} The label to force, or null to leave core alone.
  */
-function primaryLabel( ctx ) {
+function primaryLabel( ctx, dirty ) {
 	if ( ctx.stagedCopyId ) {
 		return __( 'Save', 'save-without-publish' );
 	}
@@ -230,7 +253,14 @@ function primaryLabel( ctx ) {
 		return null;
 	}
 
-	return __( 'Stage changes', 'save-without-publish' );
+	const staysOnPublished =
+		Array.isArray( dirty ) &&
+		dirty.length > 0 &&
+		! dirty.some( ( field ) => STAGED_FIELDS.includes( field ) );
+
+	return staysOnPublished
+		? __( 'Save', 'save-without-publish' )
+		: __( 'Stage changes', 'save-without-publish' );
 }
 
 /**
@@ -259,5 +289,5 @@ export function registerRelabel() {
 		return;
 	}
 
-	relabelPublish( () => primaryLabel( ctx ) );
+	relabelPublish( () => primaryLabel( ctx, dirtyFields( ctx.liveId ) ) );
 }

@@ -305,6 +305,11 @@ test.describe( 'Forking a published post', () => {
 		await openEditor( page, liveId );
 		await chooseCategory( page, CATEGORY );
 
+		// A category is not one of the fields a staged copy can hold, so the
+		// label already says what this save actually does (VIPPROD-1171):
+		// "Save", not "Stage changes".
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
 		/*
 		 * The primary button, not the keyboard shortcut, because they do not
 		 * send the same thing. Core's button dispatches editPost( { status } )
@@ -338,6 +343,11 @@ test.describe( 'Forking a published post', () => {
 		await page.keyboard.type( STAGED_TEXT );
 
 		await chooseCategory( page, CATEGORY );
+
+		// Content is dirty alongside the category, so the label still reads
+		// "Stage changes" -- it does not read the mix as safely unstageable
+		// just because one of the two fields is.
+		await expect( publishButton( page ) ).toHaveText( 'Stage changes' );
 
 		await page.keyboard.press( 'ControlOrMeta+s' );
 
