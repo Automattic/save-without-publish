@@ -571,6 +571,11 @@ test.describe( 'The published post, for someone whose save stages', () => {
 
 		await page.keyboard.press( 'ControlOrMeta+s' );
 
+		// Long enough for a request that was going to happen to have happened.
+		// Asserting "nothing was sent" the instant after the keypress would
+		// pass before anything could have been.
+		await page.waitForTimeout( 1000 );
+
 		expect( seen ).toHaveLength( 0 );
 		await expect(
 			page
@@ -596,11 +601,31 @@ test.describe( 'The published post, for someone whose save stages', () => {
 		await expect( publishButton( page ) ).toBeEnabled();
 		await expect( publishButton( page ) ).toHaveText( 'Save' );
 
+		const saved = page.waitForResponse(
+			( response ) =>
+				/^(?:PUT|POST)$/.test( response.request().method() ) &&
+				/\/wp\/v2\/posts\/\d+(?![\d/])/.test(
+					decodeURIComponent( response.url() )
+				)
+		);
 		await publishButton( page ).click();
+		expect( ( await saved ).ok() ).toBe( true );
 
+		// The category reached the published post, the post is still
+		// published, and the copy is still standing.
 		await expect
-			.poll( () => getPostField( liveId, 'post_status' ) )
-			.toBe( 'publish' );
+			.poll( () =>
+				wp( [
+					'post',
+					'term',
+					'list',
+					String( liveId ),
+					'category',
+					'--field=name',
+				] )
+			)
+			.toContain( CATEGORY );
+		expect( getPostField( liveId, 'post_status' ) ).toBe( 'publish' );
 		expect( stagedCopyIdFor( liveId ) ).toBeGreaterThan( 0 );
 	} );
 

@@ -9,7 +9,7 @@
  * not have and a word its vocabulary rules out -- when what the click
  * actually does is stage the change; unless the save carries nothing a staged
  * copy could hold anyway, a category on its own, in which case the click
- * publishes it exactly as core's own save would (KTD-42, VIPPROD-1171). And on
+ * publishes it exactly as core's own save would (R42, VIPPROD-1171). And on
  * a published post that already has a staged copy, the same "Submit for
  * Review" or "Stage changes" promises the one thing that save cannot do: the
  * copy owns the title, content, and excerpt now, and a write to any of them
@@ -104,7 +104,7 @@ function relabelDocumentControls() {
  * Watches the header rather than the document: the canvas mutates on every
  * keystroke, and the header does not. `label` is asked fresh on every check,
  * not read once, because on a published post with nothing staged yet the
- * answer can change without the header itself mutating at all (KTD-42): typing
+ * answer can change without the header itself mutating at all (R42): typing
  * into a category checkbox does not touch anything this observer watches, but
  * it does change what the next save carries.
  *
@@ -219,7 +219,7 @@ function verifyTrashLabel() {
 /**
  * What the primary button on a published post has to read.
  *
- * Matches the write path exactly rather than a rule of its own (KTD-42,
+ * Matches the write path exactly rather than a rule of its own (R42,
  * VIPPROD-1171). Once a staged copy exists, every write to the title,
  * content, or excerpt is refused, whoever makes it, so those fields read
  * "Save" -- true, because a write that touches none of them still applies --
@@ -286,6 +286,13 @@ export function registerRelabel() {
 	}
 
 	if ( ! ctx.liveId ) {
+		return;
+	}
+
+	// A direct publisher with no copy in the way sees core's own "Save", which
+	// is the right word already; primaryLabel() has nothing to say for them
+	// and cannot change its mind mid-session, so nothing is watched either.
+	if ( ctx.canPublishDirectly && ! ctx.stagedCopyId ) {
 		return;
 	}
 

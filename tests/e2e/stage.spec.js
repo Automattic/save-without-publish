@@ -182,6 +182,10 @@ test.describe( 'A publisher and a published post', () => {
 		// The keyboard shortcut checks the same lock and does nothing either.
 		await page.keyboard.press( 'ControlOrMeta+s' );
 
+		// Long enough for a request that was going to happen to have happened;
+		// the assertions below are about its absence.
+		await page.waitForTimeout( 1000 );
+
 		// Nothing failed, because nothing was attempted: core's own generic
 		// failure notice never appears.
 		await expect(
