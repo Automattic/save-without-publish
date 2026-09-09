@@ -1,19 +1,28 @@
 /**
  * Renaming core's header buttons, so the primary button says what it will do.
  *
- * Two surfaces, two wrong words. On a staged copy core says "Publish", which
- * publishes the change rather than this post, and "Save draft", which a staged
- * copy is not: it is an unpublished change to a published post. On the published
- * post, someone whose save stages is offered "Submit for Review" -- a state this
+ * Three surfaces, three wrong words, all on the primary button. On a staged
+ * copy core says "Publish", which publishes the change rather than this post,
+ * and "Save draft", which a staged copy is not: it is an unpublished change to
+ * a published post. On a published post with nothing staged against it,
+ * someone whose save stages is offered "Submit for Review" -- a state this
  * plugin does not have and a word its vocabulary rules out -- when what the
- * click actually does is stage the change.
+ * click actually does is stage the change. And on a published post that
+ * already has a staged copy, the same "Submit for Review" or "Stage changes"
+ * promises the one thing that save cannot do: the copy owns the title,
+ * content, and excerpt now, and a write to any of them is refused
+ * (`swpub_live_locked`). That third case reads "Save" instead, honestly: a
+ * write that changes none of those three fields -- a category, a featured
+ * image -- still applies to the published post exactly as core, so "Save" is
+ * never a lie there, and where it would be the fields are locked (KTD-42) so
+ * the click has nothing left to refuse.
  *
- * "Move to trash" is renamed for a third reason, and it is the reason the rename
- * survives even though a control of our own now sits in front of it: a staged
- * copy cannot be trashed, `Transitions` force-deletes anything that reaches the
- * trash, and core's wording promises a way back that does not exist. If our own
- * control ever fails to render, the one an editor reaches instead must not lie
- * about what it destroys.
+ * "Move to trash" is renamed for a fourth reason, and it is the reason the
+ * rename survives even though a control of our own now sits in front of it: a
+ * staged copy cannot be trashed, `Transitions` force-deletes anything that
+ * reaches the trash, and core's wording promises a way back that does not
+ * exist. If our own control ever fails to render, the one an editor reaches
+ * instead must not lie about what it destroys.
  *
  * They are renamed by two different means on purpose. "Save draft", "Move to
  * trash", and the save notice's own two strings each occur in core's editor
@@ -89,18 +98,29 @@ function relabelDocumentControls() {
  * Keeps the primary button's label correct as the editor re-renders it.
  *
  * Watches the header rather than the document: the canvas mutates on every
- * keystroke, and the header does not.
+ * keystroke, and the header does not. `label` is asked fresh on every check,
+ * not read once, because on a published post with nothing staged yet the
+ * answer can change without the header itself mutating at all (KTD-42): typing
+ * into a category checkbox does not touch anything this observer watches, but
+ * it does change what the next save carries.
  *
- * @param {string} label What the button has to read.
+ * @param {Function} label Answers the text the button has to read, or null to
+ *                         leave core's own label alone.
  * @return {void}
  */
 function relabelPublish( label ) {
 	function apply() {
+		const text = label();
+
+		if ( null === text ) {
+			return;
+		}
+
 		document
 			.querySelectorAll( publishButtonSelector() )
 			.forEach( ( button ) => {
-				if ( label !== button.textContent ) {
-					button.textContent = label;
+				if ( text !== button.textContent ) {
+					button.textContent = text;
 				}
 			} );
 	}
@@ -145,8 +165,15 @@ function relabelPublish( label ) {
 			return false;
 		}
 
+		const text = label();
+
+		if ( null === text ) {
+			// This render has nothing to say, so there is nothing to verify.
+			return true;
+		}
+
 		return Array.from( buttons ).every(
-			( button ) => label === button.textContent
+			( button ) => text === button.textContent
 		);
 	} );
 }
@@ -176,17 +203,34 @@ function verifyTrashLabel() {
 }
 
 /**
- * Whether this save is going to stage rather than publish.
+ * What the primary button on a published post has to read.
  *
- * The same two conditions the request middleware matches on, minus the fields:
- * someone who cannot publish this post stages every save, and once a staged copy
- * exists every save joins it whoever makes it.
+ * Three answers, matching the write path exactly rather than a rule of its own
+ * (KTD-42, VIPPROD-1171): once a staged copy exists, every write to the title,
+ * content, or excerpt is refused, whoever makes it, so those fields read "Save"
+ * -- true, because a write that touches none of them still applies -- and are
+ * locked at the keystroke (`existing-staged-copy.js`) so the click never meets
+ * the refusal. With nothing staged yet, someone who cannot publish directly
+ * still sees "Stage changes": correct for the field a fresh save carries, which
+ * is the case this label exists for.
+ *
+ * `null` means core's own label is already right and nothing here should touch
+ * it -- true for a direct publisher with no copy in the way, where core's
+ * "Save" (or "Update") is the same word this plugin would have chosen.
  *
  * @param {Object} ctx The staging context.
- * @return {boolean} True when a save from here stages.
+ * @return {string|null} The label to force, or null to leave core alone.
  */
-function savesByStaging( ctx ) {
-	return !! ctx.liveId && ( ! ctx.canPublishDirectly || !! ctx.stagedCopyId );
+function primaryLabel( ctx ) {
+	if ( ctx.stagedCopyId ) {
+		return __( 'Save', 'save-without-publish' );
+	}
+
+	if ( ctx.canPublishDirectly ) {
+		return null;
+	}
+
+	return __( 'Stage changes', 'save-without-publish' );
 }
 
 /**
@@ -205,13 +249,15 @@ export function registerRelabel() {
 		verifyTrashLabel();
 
 		if ( ! ctx.stranded ) {
-			relabelPublish( publishLabel() );
+			relabelPublish( () => publishLabel() );
 		}
 
 		return;
 	}
 
-	if ( savesByStaging( ctx ) ) {
-		relabelPublish( __( 'Stage changes', 'save-without-publish' ) );
+	if ( ! ctx.liveId ) {
+		return;
 	}
+
+	relabelPublish( () => primaryLabel( ctx ) );
 }

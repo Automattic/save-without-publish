@@ -28,6 +28,7 @@ import { doAction } from '@wordpress/hooks';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { context } from './context';
+import { STAGED_FIELDS, dirtyFields } from './edits';
 import { clearPendingEdits } from './pending-edits';
 import { REPAIR_ACTION } from './publish-changes';
 import { editStaged } from './routes';
@@ -41,11 +42,6 @@ const STAGED_CODE = 'swpub_staged';
  * `includes/class-field-lock.php`.
  */
 const LOCKED_CODE = 'swpub_field_locked';
-
-/**
- * The fields a staged copy can hold (R29), as the REST post resource names them.
- */
-const STAGED_FIELDS = [ 'title', 'content', 'excerpt' ];
 
 /**
  * Fields a staging save drops rather than refuses.
@@ -157,46 +153,6 @@ function savedPostId( options ) {
 	const matched = /^\/wp\/v2\/[^/?]+\/(\d+)(?:\?|$)/.exec( options.path );
 
 	return matched ? Number( matched[ 1 ] ) : 0;
-}
-
-/**
- * The fields this save actually changes, or null when that cannot be answered.
- *
- * Read from the editor's own edit set rather than from the outgoing body, which
- * looks like the same question and is not: `savePost` appends the serialized
- * content to every payload it builds, changed or not, so a save that only ticked
- * a category still carries the post's whole content. Treating that as a text
- * change would send a term change to a route that cannot hold one.
- *
- * The edit set is safe to read here because core reconciles it first: `savePost`
- * writes the content back through `editEntityRecord`, which drops any edit equal
- * to the value already stored. So by the time this middleware runs, `content` is
- * in the set only if it really differs.
- *
- * Answering null rather than an empty list is deliberate. An empty list is "this
- * save changes nothing stageable"; null is "there is no editor here to ask", and
- * the two must not take the same branch -- the second belongs to the server.
- *
- * @param {number} id The post being saved.
- * @return {string[]|null} Field names, or null.
- */
-function dirtyFields( id ) {
-	const data = registry();
-	const editor = data && data.select( 'core/editor' );
-	const records = data && data.select( 'core' );
-	const post = editor && editor.getCurrentPost && editor.getCurrentPost();
-
-	if ( ! records || ! post || post.id !== id || 'publish' !== post.status ) {
-		return null;
-	}
-
-	const edits =
-		records.getEntityRecordNonTransientEdits( 'postType', post.type, id ) ||
-		{};
-
-	return Object.keys( edits ).filter(
-		( key ) => 'id' !== key && undefined !== edits[ key ]
-	);
 }
 
 /**

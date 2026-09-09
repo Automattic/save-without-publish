@@ -18,6 +18,7 @@ const {
 	openEditor,
 	appendAndSave,
 	canvasOf,
+	publishButton,
 	showDocumentPanel,
 	backstopEvents,
 	clearBackstopEvents,
@@ -74,6 +75,22 @@ test.describe( 'A publisher and a published post', () => {
 		);
 	} );
 
+	test( 'the primary button keeps reading Save after a copy exists', async ( {
+		page,
+	} ) => {
+		// The case the label used to get *less* accurate for (VIPPROD-1171): a
+		// publisher's button correctly reads "Save" before a copy exists, and
+		// used to flip to "Stage changes" -- the one thing a save from here
+		// cannot do -- once one did.
+		await openEditor( page, liveId );
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
+		createStagedCopyFor( liveId );
+		await openEditor( page, liveId );
+
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+	} );
+
 	test( 'staging from the editor carries unsaved words to the copy', async ( {
 		page,
 	} ) => {
@@ -120,6 +137,11 @@ test.describe( 'A publisher and a published post', () => {
 		const stagedCopyId = createStagedCopyFor( liveId );
 
 		await openEditor( page, liveId );
+
+		// A save from here is refused whatever it carries, so the label reads
+		// "Save" -- not "Stage changes", which is exactly the thing a click
+		// cannot do (VIPPROD-1171).
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
 
 		await expect(
 			canvasOf( page ).locator( 'p[data-type="core/paragraph"]' ).first()

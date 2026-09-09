@@ -529,6 +529,20 @@ test.describe( 'The published post, for someone whose save stages', () => {
 		expect( stagedCopyIdFor( liveId ) ).toBe( 0 );
 	} );
 
+	test( 'the primary button stops saying it will stage once a copy exists', async ( {
+		page,
+	} ) => {
+		// Core's own label here, with no publish capability, is "Submit for
+		// Review" -- a word this plugin's vocabulary rules out, and no more
+		// honest than "Stage changes": the copy owns the title, content, and
+		// excerpt now, and a write to any of them is refused (VIPPROD-1171).
+		createStagedCopyFor( liveId );
+
+		await openEditor( page, liveId );
+
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+	} );
+
 	test( 'a staged copy they cannot publish says so exactly once', async ( {
 		page,
 	} ) => {

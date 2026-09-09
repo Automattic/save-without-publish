@@ -11,10 +11,7 @@
 
 import apiFetch from '@wordpress/api-fetch';
 
-/**
- * The fields a staged copy can hold, in the shape the route names them.
- */
-const STAGED_FIELDS = [ 'title', 'content', 'excerpt' ];
+import { STAGED_FIELDS } from './edits';
 
 /**
  * The autosave lock's key.
