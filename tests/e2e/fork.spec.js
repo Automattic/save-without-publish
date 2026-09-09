@@ -361,6 +361,14 @@ test.describe( 'Forking a published post', () => {
 		await expect( refusal ).toBeVisible();
 		await expect( refusal ).toContainText( 'Undo that change to save' );
 
+		// Said once: core's own generic failure notice for the same rejection
+		// is removed rather than left to stack under this one.
+		await expect(
+			page
+				.locator( '.components-notice__content' )
+				.filter( { hasText: 'Updating failed' } )
+		).toHaveCount( 0 );
+
 		// Nothing was sent, on either route.
 		expect( stageRouteCalls( seen ) ).toHaveLength( 0 );
 		expect( postEndpointWrites( seen ) ).toHaveLength( 0 );
