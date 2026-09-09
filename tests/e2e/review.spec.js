@@ -679,6 +679,35 @@ test.describe( 'The published post, for someone whose save stages', () => {
 		);
 	} );
 
+	test( 'the excerpt field leaves the published post once a copy exists', async ( {
+		page,
+	} ) => {
+		// The control: present before a copy exists.
+		await openEditor( page, liveId );
+		await showDocumentPanel( page );
+
+		await expect(
+			page.locator( '.editor-post-excerpt__dropdown' )
+		).toBeVisible();
+
+		const stagedCopyId = createStagedCopyFor( liveId );
+
+		await openEditor( page, liveId );
+		await showDocumentPanel( page );
+
+		await expect(
+			page.locator( '.editor-post-excerpt__dropdown' )
+		).toHaveCount( 0 );
+
+		// The copy is where the excerpt is actually edited.
+		await openEditor( page, stagedCopyId );
+		await showDocumentPanel( page );
+
+		await expect(
+			page.locator( '.editor-post-excerpt__dropdown' )
+		).toBeVisible();
+	} );
+
 	test( 'a staged copy they cannot publish says so exactly once', async ( {
 		page,
 	} ) => {

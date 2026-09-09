@@ -1,9 +1,10 @@
 /**
  * What a published post does when someone has already staged a change to it.
  *
- * Four things: it says so, it stops the canvas from being typed into (R55),
- * it stops the title the same way, and it disables saving while a locked
- * field is dirty anyway (VIPPROD-1171, VIPPROD-1121).
+ * Five things: it says so, it stops the canvas from being typed into (R55), it
+ * stops the title the same way, it takes the excerpt field off the screen, and
+ * it disables saving while a locked field is dirty anyway (VIPPROD-1171,
+ * VIPPROD-1121).
  *
  * The save lock exists because the other three do not cover every way a
  * locked field can end up dirty. A save carrying one still reaches the write
@@ -56,6 +57,11 @@ import { editStaged } from './routes';
 const SAVE_LOCK = 'swpub/live-locked';
 
 /**
+ * The name core's own excerpt panel registers as.
+ */
+const EXCERPT_PANEL = 'post-excerpt';
+
+/**
  * Says who staged the change, when that is known.
  *
  * @param {Object} ctx The staging context.
@@ -90,9 +96,10 @@ function who( ctx ) {
  * disabled root that outlived its reason would be an unexplained read-only
  * canvas on a post with nothing staged against it at all.
  *
- * The title is covered separately, in `useLockedTitle()` below: it is not a
- * block, so this switch does not reach it. The client lock has always been
- * the courtesy and `Write_Guard` the boundary.
+ * The title and excerpt are covered separately, in `useLockedTitle()` and
+ * `useLockedExcerpt()` below: neither is a block, so this switch does not
+ * reach them. The client lock has always been the courtesy and `Write_Guard`
+ * the boundary.
  *
  * @param {Object} ctx The staging context.
  * @return {void}
@@ -385,8 +392,33 @@ function useLockedTitle( ctx ) {
 }
 
 /**
- * Posts the notice, locks the canvas and the title, and disables saving
- * where it would be refused anyway.
+ * Takes the excerpt field off a published post while a staged copy holds this
+ * post's next change (VIPPROD-1121).
+ *
+ * `removeEditorPanel()` is public and stable on every version this plugin
+ * supports, so unlike the title there is no selector here and nothing for the
+ * canary to watch. No cleanup: core has no matching `addEditorPanel()`, and
+ * `ctx` does not change within a page load, so there is nothing to reverse
+ * before the next one.
+ *
+ * @param {Object} ctx The staging context.
+ * @return {void}
+ */
+function useLockedExcerpt( ctx ) {
+	const { removeEditorPanel } = useDispatch( editorStore );
+
+	const locked = ! ctx.isStaged && !! ctx.stagedCopyId && !! ctx.liveId;
+
+	useEffect( () => {
+		if ( locked && removeEditorPanel ) {
+			removeEditorPanel( EXCERPT_PANEL );
+		}
+	}, [ locked, removeEditorPanel ] );
+}
+
+/**
+ * Posts the notice, locks the canvas and the title, takes the excerpt field
+ * off the screen, and disables saving where it would be refused anyway.
  *
  * @return {null} Renders nothing.
  */
@@ -396,6 +428,7 @@ export function ExistingStagedCopyNotice() {
 
 	useLockedCanvas( ctx );
 	useLockedTitle( ctx );
+	useLockedExcerpt( ctx );
 	useLockedSave( ctx );
 
 	useEffect( () => {
