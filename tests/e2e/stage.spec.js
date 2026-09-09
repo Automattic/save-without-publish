@@ -18,8 +18,10 @@ const {
 	openEditor,
 	appendAndSave,
 	canvasOf,
+	dirtyTitle,
 	publishButton,
 	showDocumentPanel,
+	titleField,
 	backstopEvents,
 	clearBackstopEvents,
 	grantDirectPublish,
@@ -130,10 +132,10 @@ test.describe( 'A publisher and a published post', () => {
 		page,
 	} ) => {
 		// Someone who can publish, saving a post that already has a copy. The
-		// copy owns the title, content, and excerpt now: the canvas is
-		// read-only, and typing into the title -- which core offers no
-		// read-only path for -- disables saving before anything is sent
-		// (VIPPROD-1171). Nothing reaches either post on either route, and the
+		// copy owns the title, content, and excerpt now: the canvas and the
+		// title are read-only, the save lock behind them still holds if a
+		// title edit reaches the store some other way (VIPPROD-1171,
+		// VIPPROD-1121). Nothing reaches either post on either route, and the
 		// fork underneath never carried it.
 		const stagedCopyId = createStagedCopyFor( liveId );
 
@@ -167,16 +169,27 @@ test.describe( 'A publisher and a published post', () => {
 			);
 		} );
 
-		const title = canvasOf( page ).getByRole( 'textbox', {
-			name: 'Add title',
-		} );
-		await title.click();
-		await page.keyboard.press( 'End' );
+		// The title is read-only here: typing into it changes nothing, and
+		// the editor never counts the post as dirty for it.
+		const title = titleField( page );
+
+		await expect( title ).toHaveAttribute( 'contenteditable', 'false' );
+		await expect( title ).toHaveAttribute( 'aria-readonly', 'true' );
+
+		await title.click( { force: true } );
 		await page.keyboard.type( ', autumn' );
 
-		// Disabled the moment the title is dirty, before any save is
-		// attempted -- the lock working, not a refusal a save would have come
-		// back with.
+		await expect( title ).not.toContainText( 'autumn' );
+		expect(
+			await page.evaluate( () =>
+				window.wp.data.select( 'core/editor' ).isEditedPostDirty()
+			)
+		).toBe( false );
+
+		// The lock behind the read-only field: a title edit that reaches the
+		// store anyway -- a plugin, a restored autosave -- still disables
+		// saving.
+		await dirtyTitle( page, 'Meridian Active, autumn' );
 		await expect( publishButton( page ) ).toBeDisabled();
 
 		// The keyboard shortcut checks the same lock and does nothing either.

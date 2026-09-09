@@ -205,6 +205,32 @@ function canvasOf( page ) {
 }
 
 /**
+ * The title field in the canvas.
+ *
+ * @param {import('@playwright/test').Page} page The page.
+ * @return {Object} A locator for the title.
+ */
+function titleField( page ) {
+	return canvasOf( page ).getByRole( 'textbox', { name: 'Add title' } );
+}
+
+/**
+ * Makes the title dirty through the store, the way a plugin or a restored
+ * autosave would, rather than by typing -- which a read-only title no longer
+ * allows. What the save lock keys on is the edit set, not which control
+ * produced it, so this is the direct way to exercise it.
+ *
+ * @param {import('@playwright/test').Page} page The page.
+ * @param {string}                          text The new title.
+ * @return {Promise<void>}
+ */
+function dirtyTitle( page, text ) {
+	return page.evaluate( ( value ) => {
+		window.wp.data.dispatch( 'core/editor' ).editPost( { title: value } );
+	}, text );
+}
+
+/**
  * Opens a post in the block editor and waits for it to be usable.
  *
  * @param {import('@playwright/test').Page} page The page.
@@ -520,6 +546,8 @@ module.exports = {
 	forcePublishedContent,
 	cleanUp,
 	canvasOf,
+	titleField,
+	dirtyTitle,
 	openEditor,
 	appendAndSave,
 	installEventRecorder,

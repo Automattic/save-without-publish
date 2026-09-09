@@ -1,16 +1,17 @@
 /**
  * Saying so, out loud, when a piece of core's chrome stopped answering to us.
  *
- * Two of this plugin's three editor surfaces are registered slots and cannot
- * silently stop working. The third -- the primary button's label -- is a
- * selector aimed at markup core owns, and core keeps moving. When that selector
- * matches nothing, or the label does not take, the button falls back to core's
- * own words while the save still stages: correct, and no longer honest about
- * what it is about to do.
+ * Most of this plugin's editor surfaces are registered slots and cannot
+ * silently stop working. Two are not: the primary button's label in
+ * `relabel.js`, and the published post's read-only title in
+ * `existing-staged-copy.js`. Both are selectors aimed at markup core owns,
+ * and core keeps moving. When one stops matching, the surface it named falls
+ * back to core's own behaviour while the underlying save or field lock still
+ * holds: correct, and no longer honest about what it is about to do.
  *
- * A console error would be invisible to the person reading that button, so this
- * says it where they are reading, and fires a hook so a site can count it.
- * Nothing here changes behaviour: the flow underneath is already covered
+ * A console error would be invisible to the person looking at the screen, so
+ * this says it where they are looking, and fires a hook so a site can count
+ * it. Nothing here changes behaviour: the flow underneath is already covered
  * server-side, and the disclosure is the whole point.
  */
 
@@ -79,7 +80,7 @@ function reportDegraded( id ) {
 
 	notices.createWarningNotice(
 		__(
-			'Some labels may show WordPress defaults; your changes still stage safely.',
+			'Some of this screen may show WordPress defaults; your changes still stage safely.',
 			'save-without-publish'
 		),
 		{

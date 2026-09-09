@@ -188,10 +188,12 @@ function shouldStage( ctx, id, fields ) {
 /**
  * Whether this save would write fields the staged copy already owns (R55).
  *
- * The client half of `swpub_live_locked`. The canvas is read-only while a copy
- * exists, but core offers no read-only path for the title or the excerpt, so
- * this is where those two are actually caught -- and it catches the content too,
- * for the load where the canvas lock has not applied yet.
+ * The client half of `swpub_live_locked`. The canvas and the title are
+ * read-only while a copy exists, and the excerpt field is gone from the
+ * screen (`existing-staged-copy.js`), but those are courtesies, not the
+ * boundary: this is what actually catches an edit that reaches the store some
+ * other way -- the load before those locks have applied yet, a title-lock
+ * selector gone stale, a plugin writing the entity record directly.
  *
  * Scoped to the staged fields, not to the post. A category, a tag, or a featured
  * image saved from here is a change the copy cannot hold and the published post
