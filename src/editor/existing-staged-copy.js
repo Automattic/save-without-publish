@@ -324,7 +324,13 @@ function useLockedTitle( ctx ) {
 				return;
 			}
 
-			docs.forEach( ( doc ) => {
+			// Only the documents the title actually lives in. The admin page
+			// itself mutates on every re-render of the header and sidebar,
+			// and when the editor is iframed it never holds the title at all,
+			// so watching it would run `apply()` constantly for nothing.
+			docs.filter( ( doc ) =>
+				doc.querySelector( titleSelector() )
+			).forEach( ( doc ) => {
 				const observer = new window.MutationObserver( apply );
 
 				observer.observe( doc.body, {

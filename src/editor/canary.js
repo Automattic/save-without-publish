@@ -2,12 +2,12 @@
  * Saying so, out loud, when a piece of core's chrome stopped answering to us.
  *
  * Most of this plugin's editor surfaces are registered slots and cannot
- * silently stop working. Two are not: the primary button's label
- * (`relabel.js`) and the published post's read-only title (`existing-staged-
- * copy.js`), both selectors aimed at markup core owns, and core keeps moving.
- * When one stops matching, the surface it named falls back to core's own
- * behaviour while the underlying save or field lock still holds: correct, and
- * no longer honest about what it is about to do.
+ * silently stop working. Two are not: the primary button's label in
+ * `relabel.js`, and the published post's read-only title in
+ * `existing-staged-copy.js`. Both are selectors aimed at markup core owns,
+ * and core keeps moving. When one stops matching, the surface it named falls
+ * back to core's own behaviour while the underlying save or field lock still
+ * holds: correct, and no longer honest about what it is about to do.
  *
  * A console error would be invisible to the person looking at the screen, so
  * this says it where they are looking, and fires a hook so a site can count
