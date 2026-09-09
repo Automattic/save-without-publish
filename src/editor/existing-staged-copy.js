@@ -1,21 +1,20 @@
 /**
  * What a published post does when someone has already staged a change to it.
  *
- * Three things: it says so, it stops the three fields the staged copy owns
- * from being typed into (R55), and it disables saving while one of them is
- * dirty anyway (VIPPROD-1171).
+ * Four things: it says so, it stops the canvas from being typed into (R55),
+ * it stops the title the same way, and it disables saving while a locked
+ * field is dirty anyway (VIPPROD-1171, VIPPROD-1121).
  *
- * That third one exists because the first two do not cover the whole screen.
- * The canvas lock below has no equivalent for the title -- core offers no
- * read-only path for it -- and the excerpt has neither. A save carrying either
- * still reaches the write path, which refuses it (`swpub_live_locked`), so
- * without this the primary button would sit there promising a save that
- * cannot succeed. Locking it with core's own `lockPostSaving` -- the same
- * mechanism `PostPublishButton` already reads to grey itself out -- means the
- * button simply cannot be clicked while that is true, rather than being
- * clicked and refused. It is scoped to the three fields, not to the whole
- * screen: a category or a featured image saved from here still applies (R42),
- * so locking every time anything is dirty would refuse a save this screen is
+ * The save lock exists because the other three do not cover every way a
+ * locked field can end up dirty. A save carrying one still reaches the write
+ * path, which refuses it (`swpub_live_locked`), so without the lock the
+ * primary button would sit there promising a save that cannot succeed.
+ * Locking it with core's own `lockPostSaving` -- the same mechanism
+ * `PostPublishButton` already reads to grey itself out -- means the button
+ * simply cannot be clicked while that is true, rather than being clicked and
+ * refused. It is scoped to the three fields, not to the whole screen: a
+ * category or a featured image saved from here still applies (R42), so
+ * locking every time anything is dirty would refuse a save this screen is
  * supposed to make.
  *
  * A notice rather than a sidebar panel, and deliberately: the panel this
@@ -43,6 +42,7 @@ import { store as editorStore } from '@wordpress/editor';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
+import { verify } from './canary';
 import { context } from './context';
 import { STAGED_FIELDS } from './edits';
 import { editStaged } from './routes';
@@ -90,12 +90,9 @@ function who( ctx ) {
  * disabled root that outlived its reason would be an unexplained read-only
  * canvas on a post with nothing staged against it at all.
  *
- * The title and excerpt are not covered, because core offers nothing equivalent
- * for them -- `PostTitle` has no read-only path -- and a second DOM hack to
- * reach them would cost more than it buys. They are refused at the save instead,
- * in `fork-navigation.js`, which is where the notice below sends the reader
- * anyway. The client lock has always been the courtesy and `Write_Guard` the
- * boundary.
+ * The title is covered separately, in `useLockedTitle()` below: it is not a
+ * block, so this switch does not reach it. The client lock has always been
+ * the courtesy and `Write_Guard` the boundary.
  *
  * @param {Object} ctx The staging context.
  * @return {void}
@@ -177,8 +174,219 @@ function useLockedSave( ctx ) {
 }
 
 /**
- * Posts the notice, locks the canvas, and disables saving where it would be
- * refused anyway.
+ * The title's selector, or a broken one under test.
+ *
+ * Test-only, and deliberately unreachable from the server -- the same shape as
+ * `publishButtonSelector()` in `publish-changes.js`, for the same drill.
+ *
+ * @return {string} The selector to use.
+ */
+function titleSelector() {
+	return true === window.swpubTestBreakTitleSelector
+		? '.swpub-title-not-found'
+		: '.editor-post-title__input';
+}
+
+/**
+ * Every document the title could be rendered in.
+ *
+ * Ordinarily one: the canvas iframe's own document. Some configurations --
+ * classic themes, meta boxes present -- run the editor un-iframed, and then
+ * the title is in the page's own document instead. Same-origin either way, so
+ * the frame's document is readable; the try/catch is for the moment before it
+ * has one.
+ *
+ * @return {Document[]} Every document worth searching.
+ */
+function editorDocuments() {
+	const docs = [ document ];
+
+	document
+		.querySelectorAll( 'iframe[name="editor-canvas"]' )
+		.forEach( ( frame ) => {
+			try {
+				if ( frame.contentDocument ) {
+					docs.push( frame.contentDocument );
+				}
+			} catch {
+				// Not same-origin, or not ready yet. Either way, nothing here
+				// to search.
+			}
+		} );
+
+	return docs;
+}
+
+/**
+ * Makes the title read-only while a staged copy holds this post's next
+ * change (R55, VIPPROD-1121).
+ *
+ * `PostTitle` has no public read-only prop on any version this plugin
+ * supports. WP 7.0 added a private one -- the `h1` core renders is not
+ * `contentEditable` while a content-only section is being edited -- but it is
+ * unlocked (`unlock()` from `@wordpress/private-apis`) and this plugin does
+ * not reach for private APIs. So this is a selector, the one other surface
+ * that can rot (`relabel.js`'s primary-button label is the other), and it
+ * carries the same disclosure: `canary.js`'s `verify()`, under the id
+ * `title-lock`.
+ *
+ * `contentEditable = 'false'` rather than `inert`, which is how core disables
+ * a locked block: `inert` removes an element from the accessibility tree, and
+ * the title is the one thing on this screen a screen-reader user most needs
+ * read. A non-editable `h1` with no `tabindex` is not focusable and takes no
+ * `input`, `paste`, or `keydown` -- read-only in fact, not just in name.
+ *
+ * React does not fight this. `PostTitle` renders a constant `contentEditable:
+ * true`, and React only rewrites a DOM property when the value it is asked to
+ * render actually changes, so an unrelated re-render leaves the override
+ * standing -- the same reason `relabelPublish()`'s overwritten button text
+ * survives core's own re-renders. The one thing that does change the prop's
+ * value is the private, content-only-section state above, which is why this
+ * is watched rather than applied once: a `MutationObserver` on the
+ * `contenteditable` attribute puts the lock back the instant core's own
+ * write clears it.
+ *
+ * The canvas iframe, and the title inside it, do not exist yet when this
+ * effect first runs, so it waits for them the way `relabelPublish()` waits
+ * for `.editor-header`: an uncapped `requestAnimationFrame` loop, which never
+ * spins forever in practice because a post type without title support bails
+ * out below before the loop ever starts.
+ *
+ * @param {Object} ctx The staging context.
+ * @return {void}
+ */
+function useLockedTitle( ctx ) {
+	const locked = useSelect(
+		( select ) => {
+			if ( ctx.isStaged || ! ctx.stagedCopyId || ! ctx.liveId ) {
+				return false;
+			}
+
+			const postType = select( editorStore ).getCurrentPostType();
+			const postTypeObject =
+				postType && select( 'core' ).getPostType( postType );
+
+			// A type that never renders a title has nothing here to lock, and
+			// nothing for the canary to judge. Undefined (not yet fetched)
+			// falls through to locked, which is the safe default while this
+			// cannot yet be answered.
+			if ( postTypeObject && false === postTypeObject.supports?.title ) {
+				return false;
+			}
+
+			return true;
+		},
+		[ ctx ]
+	);
+
+	useEffect( () => {
+		if ( ! locked ) {
+			return undefined;
+		}
+
+		const touched = new Set();
+		const observers = [];
+		let frame = null;
+		let unsubscribe = null;
+
+		function lock( el ) {
+			if ( 'false' !== el.contentEditable ) {
+				el.contentEditable = 'false';
+			}
+
+			el.setAttribute( 'aria-readonly', 'true' );
+			el.style.cursor = 'default';
+			touched.add( el );
+		}
+
+		function apply() {
+			editorDocuments().forEach( ( doc ) => {
+				doc.querySelectorAll( titleSelector() ).forEach( lock );
+			} );
+		}
+
+		function watch() {
+			const docs = editorDocuments();
+			const found = docs.some( ( doc ) =>
+				doc.querySelector( titleSelector() )
+			);
+
+			if ( ! found ) {
+				frame = window.requestAnimationFrame( watch );
+
+				return;
+			}
+
+			docs.forEach( ( doc ) => {
+				const observer = new window.MutationObserver( apply );
+
+				observer.observe( doc.body, {
+					childList: true,
+					subtree: true,
+					attributes: true,
+					attributeFilter: [ 'contenteditable' ],
+				} );
+
+				observers.push( observer );
+			} );
+
+			const data = window.wp && window.wp.data;
+
+			if ( data && data.subscribe ) {
+				unsubscribe = data.subscribe( apply );
+			}
+
+			apply();
+		}
+
+		watch();
+
+		verify( 'title-lock', () => {
+			const docs = editorDocuments();
+			const mounted = docs.some( ( doc ) =>
+				doc.querySelector( '.block-editor-block-list__layout' )
+			);
+
+			if ( ! mounted ) {
+				// Nothing has mounted yet, so there is nothing to be wrong
+				// about.
+				return null;
+			}
+
+			const titles = docs.flatMap( ( doc ) =>
+				Array.from( doc.querySelectorAll( titleSelector() ) )
+			);
+
+			if ( ! titles.length ) {
+				return false;
+			}
+
+			return titles.every( ( el ) => 'false' === el.contentEditable );
+		} );
+
+		return () => {
+			if ( null !== frame ) {
+				window.cancelAnimationFrame( frame );
+			}
+
+			observers.forEach( ( observer ) => observer.disconnect() );
+
+			if ( unsubscribe ) {
+				unsubscribe();
+			}
+
+			touched.forEach( ( el ) => {
+				el.contentEditable = 'true';
+				el.removeAttribute( 'aria-readonly' );
+				el.style.cursor = '';
+			} );
+		};
+	}, [ locked ] );
+}
+
+/**
+ * Posts the notice, locks the canvas and the title, and disables saving
+ * where it would be refused anyway.
  *
  * @return {null} Renders nothing.
  */
@@ -187,6 +395,7 @@ export function ExistingStagedCopyNotice() {
 	const { createNotice } = useDispatch( noticesStore );
 
 	useLockedCanvas( ctx );
+	useLockedTitle( ctx );
 	useLockedSave( ctx );
 
 	useEffect( () => {

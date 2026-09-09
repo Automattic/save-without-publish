@@ -1,15 +1,17 @@
 /**
  * What the editor does when this plugin's chrome cannot attach.
  *
- * Two of the three editor surfaces are registered slots and fail by not being
- * there. The third -- the primary button's label -- is a selector aimed at
- * markup core owns, and core keeps moving; its failure mode is a button that
- * lies. This file drills both failures on purpose, because they are the ones
- * nobody notices in a green suite: the flows still work, and the assertions
- * that matter are about what an editor is shown while they do.
+ * Most of this plugin's editor surfaces are registered slots and fail by not
+ * being there. Two are not: the primary button's label, and the published
+ * post's read-only title -- each a selector aimed at markup core owns, and
+ * core keeps moving. Their failure mode is a control that lies rather than
+ * one that is simply absent. This file drills both on purpose, and the bundle
+ * missing outright besides, because these are the ones nobody notices in a
+ * green suite: the flows still work, and the assertions that matter are about
+ * what an editor is shown while they do.
  *
  * Nothing here is a hook the server can reach. The bundle is blocked by refusing
- * to deliver it, which is the real failure; the selector is broken from a script
+ * to deliver it, which is the real failure; a selector is broken from a script
  * that runs in the page before the bundle, which is something only a browser
  * driver can do.
  */
@@ -27,6 +29,7 @@ const {
 	publishButton,
 	showDocumentPanel,
 	stagedCopyIdFor,
+	titleField,
 } = require( './helpers' );
 
 const PUBLISHED_TEXT = 'The Summer collection launches in June.';
@@ -34,7 +37,7 @@ const PUBLISHED_TEXT = 'The Summer collection launches in June.';
 /**
  * The disclosed notice the canary posts.
  */
-const DEGRADED = 'Some labels may show WordPress defaults';
+const DEGRADED = 'Some of this screen may show WordPress defaults';
 
 /**
  * Makes the publish control's selector match nothing, for this page load only.
@@ -52,6 +55,22 @@ const DEGRADED = 'Some labels may show WordPress defaults';
 function breakPublishSelector( page ) {
 	return page.addInitScript( () => {
 		window.swpubTestBreakPublishSelector = true;
+	} );
+}
+
+/**
+ * Makes the title's selector match nothing, for this page load only.
+ *
+ * Same shape and same guarantee as `breakPublishSelector()` above: unreachable
+ * from the server, and the save lock behind the read-only title is unaffected
+ * either way -- this only drills the courtesy in front of it.
+ *
+ * @param {import('@playwright/test').Page} page The page.
+ * @return {Promise<void>}
+ */
+function breakTitleSelector( page ) {
+	return page.addInitScript( () => {
+		window.swpubTestBreakTitleSelector = true;
 	} );
 }
 
@@ -212,6 +231,65 @@ test.describe( 'When the editor chrome cannot attach', () => {
 		expect( getPostField( liveId, 'post_content' ) ).toContain(
 			PUBLISHED_TEXT
 		);
+	} );
+
+	test( 'a rotted title selector discloses itself, and the save stays locked', async ( {
+		page,
+	} ) => {
+		await watchCanary( page );
+		await breakTitleSelector( page );
+
+		// The published post, not the staged copy: this drills the courtesy
+		// standing in front of the boundary a save onto the published post
+		// meets either way.
+		await openEditor( page, liveId );
+
+		await expect(
+			page
+				.locator( '.components-notice__content' )
+				.filter( { hasText: DEGRADED } )
+		).toBeVisible( { timeout: 20_000 } );
+
+		await expect
+			.poll( () => page.evaluate( () => window.swpubCanaryHeard || [] ), {
+				timeout: 20_000,
+			} )
+			.toContain( 'title-lock' );
+
+		// The courtesy failed -- the title is editable, which is the failure
+		// being drilled -- but the boundary behind it did not: a title edit
+		// that reaches the store anyway still disables saving, the same way
+		// it would if the title had never been reachable at all.
+		const title = titleField( page );
+
+		await expect( title ).toHaveAttribute( 'contenteditable', 'true' );
+
+		const seen = [];
+		page.on( 'request', ( request ) => {
+			seen.push(
+				`${ request.method() } ${ decodeURIComponent( request.url() ) }`
+			);
+		} );
+
+		await title.click();
+		await page.keyboard.press( 'End' );
+		await page.keyboard.type( ', autumn' );
+
+		await expect( publishButton( page ) ).toBeDisabled();
+
+		await page.keyboard.press( 'ControlOrMeta+s' );
+		await page.waitForTimeout( 1000 );
+
+		expect(
+			seen.filter( ( request ) =>
+				/^POST .*\/swpub\/v1\/stage\/\d+/.test( request )
+			)
+		).toHaveLength( 0 );
+		expect(
+			seen.filter( ( request ) =>
+				/^(?:PUT|POST) .*\/wp\/v2\/posts\/\d+(?![\d/])/.test( request )
+			)
+		).toHaveLength( 0 );
 	} );
 
 	test( 'the canary is something a site can subscribe to', async ( {

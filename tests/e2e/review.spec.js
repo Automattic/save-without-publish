@@ -16,6 +16,7 @@ const {
 	createCategory,
 	createPublishedPost,
 	createStagedCopyFor,
+	dirtyTitle,
 	getPostField,
 	postExists,
 	stagedCopyIdFor,
@@ -27,6 +28,7 @@ const {
 	revisionsOf,
 	reviewControl,
 	showDocumentPanel,
+	titleField,
 	wp,
 } = require( './helpers' );
 
@@ -550,17 +552,22 @@ test.describe( 'The published post, for someone whose save stages', () => {
 		// already applies.
 		await expect( publishButton( page ) ).toBeDisabled();
 
-		const title = canvasOf( page ).getByRole( 'textbox', {
-			name: 'Add title',
-		} );
-		await title.click();
-		await page.keyboard.press( 'End' );
+		// The title is read-only here: typing into it changes nothing, and
+		// the editor never counts the post as dirty for it (VIPPROD-1121).
+		const title = titleField( page );
+
+		await expect( title ).toHaveAttribute( 'contenteditable', 'false' );
+		await expect( title ).toHaveAttribute( 'aria-readonly', 'true' );
+
+		await title.click( { force: true } );
 		await page.keyboard.type( ', autumn' );
 
-		// Disabled again, now for a different reason: the title is one of the
-		// three fields the copy owns, and this screen locks saving rather than
-		// letting the click reach a refusal.
-		await expect( publishButton( page ) ).toBeDisabled();
+		await expect( title ).not.toContainText( 'autumn' );
+		expect(
+			await page.evaluate( () =>
+				window.wp.data.select( 'core/editor' ).isEditedPostDirty()
+			)
+		).toBe( false );
 
 		const seen = [];
 		page.on( 'request', ( request ) => {
@@ -568,6 +575,12 @@ test.describe( 'The published post, for someone whose save stages', () => {
 				`${ request.method() } ${ decodeURIComponent( request.url() ) }`
 			);
 		} );
+
+		// The lock behind the read-only field: a title edit that reaches the
+		// store anyway still disables saving, the same way it did before this
+		// screen made the field read-only.
+		await dirtyTitle( page, 'Meridian Active, autumn' );
+		await expect( publishButton( page ) ).toBeDisabled();
 
 		await page.keyboard.press( 'ControlOrMeta+s' );
 
@@ -627,6 +640,43 @@ test.describe( 'The published post, for someone whose save stages', () => {
 			.toContain( CATEGORY );
 		expect( getPostField( liveId, 'post_status' ) ).toBe( 'publish' );
 		expect( stagedCopyIdFor( liveId ) ).toBeGreaterThan( 0 );
+	} );
+
+	test( 'the title is read-only on the published post once a copy exists, and nowhere else', async ( {
+		page,
+	} ) => {
+		// The control: editable before a copy exists, the same as any other
+		// published post.
+		await openEditor( page, liveId );
+
+		const title = titleField( page );
+
+		await expect( title ).toHaveAttribute( 'contenteditable', 'true' );
+		await expect( title ).not.toHaveAttribute( 'aria-readonly', 'true' );
+
+		const stagedCopyId = createStagedCopyFor( liveId );
+
+		await openEditor( page, liveId );
+
+		await expect( title ).toHaveAttribute( 'contenteditable', 'false' );
+		await expect( title ).toHaveAttribute( 'aria-readonly', 'true' );
+
+		// The canary stays quiet on a screen that is actually working: waited
+		// past its 4-second grace, not just past the notice's own timeout.
+		await page.waitForTimeout( 5000 );
+		await expect(
+			page.locator( '.components-notice__content' ).filter( {
+				hasText: 'Some of this screen may show WordPress defaults',
+			} )
+		).toHaveCount( 0 );
+
+		// The copy is where the title is actually edited.
+		await openEditor( page, stagedCopyId );
+
+		await expect( titleField( page ) ).toHaveAttribute(
+			'contenteditable',
+			'true'
+		);
 	} );
 
 	test( 'a staged copy they cannot publish says so exactly once', async ( {
