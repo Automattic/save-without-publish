@@ -18,6 +18,7 @@ const {
 	openEditor,
 	appendAndSave,
 	canvasOf,
+	publishButton,
 	showDocumentPanel,
 	backstopEvents,
 	clearBackstopEvents,
@@ -74,6 +75,22 @@ test.describe( 'A publisher and a published post', () => {
 		);
 	} );
 
+	test( 'the primary button keeps reading Save after a copy exists', async ( {
+		page,
+	} ) => {
+		// The case the label used to get *less* accurate for (VIPPROD-1171): a
+		// publisher's button correctly reads "Save" before a copy exists, and
+		// used to flip to "Stage changes" -- the one thing a save from here
+		// cannot do -- once one did.
+		await openEditor( page, liveId );
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
+		createStagedCopyFor( liveId );
+		await openEditor( page, liveId );
+
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+	} );
+
 	test( 'staging from the editor carries unsaved words to the copy', async ( {
 		page,
 	} ) => {
@@ -114,16 +131,34 @@ test.describe( 'A publisher and a published post', () => {
 	} ) => {
 		// Someone who can publish, saving a post that already has a copy. The
 		// copy owns the title, content, and excerpt now: the canvas is
-		// read-only, and the title -- which core offers no read-only path for
-		// -- is refused before anything is sent. Nothing reaches either post on
-		// either route, and the fork underneath never carried it.
+		// read-only, and typing into the title -- which core offers no
+		// read-only path for -- disables saving before anything is sent
+		// (VIPPROD-1171). Nothing reaches either post on either route, and the
+		// fork underneath never carried it.
 		const stagedCopyId = createStagedCopyFor( liveId );
 
 		await openEditor( page, liveId );
 
+		// A save from here is refused whatever it carries, so the label reads
+		// "Save" -- not "Stage changes", which is exactly the thing a click
+		// cannot do.
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
 		await expect(
 			canvasOf( page ).locator( 'p[data-type="core/paragraph"]' ).first()
 		).toHaveClass( /is-editing-disabled/ );
+
+		// The warning is on screen before the first keystroke, and it is what
+		// carries the way to the copy those three fields actually live on --
+		// there is no second, per-attempt notice to carry it once the button
+		// is disabled instead of refused.
+		const warning = page.locator( '.components-notice' ).filter( {
+			hasText: 'staged changes waiting to be published',
+		} );
+
+		await expect(
+			warning.getByRole( 'link', { name: 'Edit staged changes' } )
+		).toBeVisible();
 
 		const seen = [];
 		page.on( 'request', ( request ) => {
@@ -138,20 +173,26 @@ test.describe( 'A publisher and a published post', () => {
 		await title.click();
 		await page.keyboard.press( 'End' );
 		await page.keyboard.type( ', autumn' );
+
+		// Disabled the moment the title is dirty, before any save is
+		// attempted -- the lock working, not a refusal a save would have come
+		// back with.
+		await expect( publishButton( page ) ).toBeDisabled();
+
+		// The keyboard shortcut checks the same lock and does nothing either.
 		await page.keyboard.press( 'ControlOrMeta+s' );
 
-		// The refusal says where those fields can be edited, and carries the
-		// way there.
-		const refusal = page.locator( '.components-notice' ).filter( {
-			hasText: 'Not saved. This post already has staged changes',
-		} );
+		// Long enough for a request that was going to happen to have happened;
+		// the assertions below are about its absence.
+		await page.waitForTimeout( 1000 );
 
+		// Nothing failed, because nothing was attempted: core's own generic
+		// failure notice never appears.
 		await expect(
-			refusal.locator( '.components-notice__content' )
-		).toBeVisible();
-		await expect(
-			refusal.getByRole( 'link', { name: 'Edit staged changes' } )
-		).toBeVisible();
+			page
+				.locator( '.components-notice__content' )
+				.filter( { hasText: 'Updating failed' } )
+		).toHaveCount( 0 );
 
 		expect(
 			seen.filter( ( request ) =>

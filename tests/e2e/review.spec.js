@@ -11,7 +11,9 @@ const path = require( 'path' );
 const { test, expect } = require( '@playwright/test' );
 const {
 	backstopEvents,
+	chooseCategory,
 	clearBackstopEvents,
+	createCategory,
 	createPublishedPost,
 	createStagedCopyFor,
 	getPostField,
@@ -29,6 +31,7 @@ const {
 } = require( './helpers' );
 
 const PUBLISHED_TEXT = 'The Summer collection launches in June.';
+const CATEGORY = 'Collections';
 
 /**
  * Stages typed-but-unsaved text through the editor's own entry point.
@@ -506,6 +509,7 @@ test.describe( 'The published post, for someone whose save stages', () => {
 
 	test.beforeEach( () => {
 		clearBackstopEvents();
+		createCategory( CATEGORY );
 		liveId = createPublishedPost(
 			'Meridian Active, Summer collection',
 			PUBLISHED_TEXT
@@ -527,6 +531,102 @@ test.describe( 'The published post, for someone whose save stages', () => {
 
 		await expect( publishButton( page ) ).toHaveText( 'Stage changes' );
 		expect( stagedCopyIdFor( liveId ) ).toBe( 0 );
+	} );
+
+	test( 'the primary button stops saying it will stage once a copy exists', async ( {
+		page,
+	} ) => {
+		// Core's own label here, with no publish capability, is "Submit for
+		// Review" -- a word this plugin's vocabulary rules out, and no more
+		// honest than "Stage changes": the copy owns the title, content, and
+		// excerpt now, and a write to any of them is refused (VIPPROD-1171).
+		createStagedCopyFor( liveId );
+
+		await openEditor( page, liveId );
+
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
+		// Nothing dirty yet, so core's own disabled state -- nothing to save --
+		// already applies.
+		await expect( publishButton( page ) ).toBeDisabled();
+
+		const title = canvasOf( page ).getByRole( 'textbox', {
+			name: 'Add title',
+		} );
+		await title.click();
+		await page.keyboard.press( 'End' );
+		await page.keyboard.type( ', autumn' );
+
+		// Disabled again, now for a different reason: the title is one of the
+		// three fields the copy owns, and this screen locks saving rather than
+		// letting the click reach a refusal.
+		await expect( publishButton( page ) ).toBeDisabled();
+
+		const seen = [];
+		page.on( 'request', ( request ) => {
+			seen.push(
+				`${ request.method() } ${ decodeURIComponent( request.url() ) }`
+			);
+		} );
+
+		await page.keyboard.press( 'ControlOrMeta+s' );
+
+		// Long enough for a request that was going to happen to have happened.
+		// Asserting "nothing was sent" the instant after the keypress would
+		// pass before anything could have been.
+		await page.waitForTimeout( 1000 );
+
+		expect( seen ).toHaveLength( 0 );
+		await expect(
+			page
+				.locator( '.components-notice__content' )
+				.filter( { hasText: 'Updating failed' } )
+		).toHaveCount( 0 );
+		expect( getPostField( liveId, 'post_title' ) ).not.toContain(
+			'autumn'
+		);
+	} );
+
+	test( 'a category still saves from the published post once a copy exists', async ( {
+		page,
+	} ) => {
+		// R42 with a copy already standing: a category touches none of the
+		// three fields the copy owns, so it still applies to the published
+		// post exactly as core, whoever is saving it.
+		createStagedCopyFor( liveId );
+
+		await openEditor( page, liveId );
+		await chooseCategory( page, CATEGORY );
+
+		await expect( publishButton( page ) ).toBeEnabled();
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
+		const saved = page.waitForResponse(
+			( response ) =>
+				/^(?:PUT|POST)$/.test( response.request().method() ) &&
+				/\/wp\/v2\/posts\/\d+(?![\d/])/.test(
+					decodeURIComponent( response.url() )
+				)
+		);
+		await publishButton( page ).click();
+		expect( ( await saved ).ok() ).toBe( true );
+
+		// The category reached the published post, the post is still
+		// published, and the copy is still standing.
+		await expect
+			.poll( () =>
+				wp( [
+					'post',
+					'term',
+					'list',
+					String( liveId ),
+					'category',
+					'--field=name',
+				] )
+			)
+			.toContain( CATEGORY );
+		expect( getPostField( liveId, 'post_status' ) ).toBe( 'publish' );
+		expect( stagedCopyIdFor( liveId ) ).toBeGreaterThan( 0 );
 	} );
 
 	test( 'a staged copy they cannot publish says so exactly once', async ( {

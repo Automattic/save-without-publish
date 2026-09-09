@@ -22,6 +22,7 @@ const {
 	backstopEvents,
 	clearBackstopEvents,
 	createCategory,
+	chooseCategory,
 	publishButton,
 } = require( './helpers' );
 
@@ -89,28 +90,6 @@ function isDirty( page ) {
 	return page.evaluate( () =>
 		window.wp.data.select( 'core/editor' ).isEditedPostDirty()
 	);
-}
-
-/**
- * Ticks a category in the Summary sidebar.
- *
- * @param {import('@playwright/test').Page} page The page.
- * @param {string}                          name Category name.
- * @return {Promise<void>}
- */
-async function chooseCategory( page, name ) {
-	await showDocumentPanel( page );
-
-	const panel = page.getByRole( 'button', {
-		name: 'Categories',
-		exact: true,
-	} );
-
-	if ( ( await panel.getAttribute( 'aria-expanded' ) ) === 'false' ) {
-		await panel.click();
-	}
-
-	await page.getByRole( 'checkbox', { name, exact: true } ).check();
 }
 
 /*
@@ -326,6 +305,11 @@ test.describe( 'Forking a published post', () => {
 		await openEditor( page, liveId );
 		await chooseCategory( page, CATEGORY );
 
+		// A category is not one of the fields a staged copy can hold, so the
+		// label already says what this save actually does (VIPPROD-1171):
+		// "Save", not "Stage changes".
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
 		/*
 		 * The primary button, not the keyboard shortcut, because they do not
 		 * send the same thing. Core's button dispatches editPost( { status } )
@@ -360,6 +344,11 @@ test.describe( 'Forking a published post', () => {
 
 		await chooseCategory( page, CATEGORY );
 
+		// Content is dirty alongside the category, so the label still reads
+		// "Stage changes" -- it does not read the mix as safely unstageable
+		// just because one of the two fields is.
+		await expect( publishButton( page ) ).toHaveText( 'Stage changes' );
+
 		await page.keyboard.press( 'ControlOrMeta+s' );
 
 		// The refusal names the field and says what to do about it. It has to
@@ -371,6 +360,14 @@ test.describe( 'Forking a published post', () => {
 
 		await expect( refusal ).toBeVisible();
 		await expect( refusal ).toContainText( 'Undo that change to save' );
+
+		// Said once: core's own generic failure notice for the same rejection
+		// is removed rather than left to stack under this one.
+		await expect(
+			page
+				.locator( '.components-notice__content' )
+				.filter( { hasText: 'Updating failed' } )
+		).toHaveCount( 0 );
 
 		// Nothing was sent, on either route.
 		expect( stageRouteCalls( seen ) ).toHaveLength( 0 );
