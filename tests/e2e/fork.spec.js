@@ -22,6 +22,7 @@ const {
 	backstopEvents,
 	clearBackstopEvents,
 	createCategory,
+	chooseCategory,
 	publishButton,
 } = require( './helpers' );
 
@@ -89,28 +90,6 @@ function isDirty( page ) {
 	return page.evaluate( () =>
 		window.wp.data.select( 'core/editor' ).isEditedPostDirty()
 	);
-}
-
-/**
- * Ticks a category in the Summary sidebar.
- *
- * @param {import('@playwright/test').Page} page The page.
- * @param {string}                          name Category name.
- * @return {Promise<void>}
- */
-async function chooseCategory( page, name ) {
-	await showDocumentPanel( page );
-
-	const panel = page.getByRole( 'button', {
-		name: 'Categories',
-		exact: true,
-	} );
-
-	if ( ( await panel.getAttribute( 'aria-expanded' ) ) === 'false' ) {
-		await panel.click();
-	}
-
-	await page.getByRole( 'checkbox', { name, exact: true } ).check();
 }
 
 /*

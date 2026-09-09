@@ -11,7 +11,9 @@ const path = require( 'path' );
 const { test, expect } = require( '@playwright/test' );
 const {
 	backstopEvents,
+	chooseCategory,
 	clearBackstopEvents,
+	createCategory,
 	createPublishedPost,
 	createStagedCopyFor,
 	getPostField,
@@ -29,6 +31,7 @@ const {
 } = require( './helpers' );
 
 const PUBLISHED_TEXT = 'The Summer collection launches in June.';
+const CATEGORY = 'Collections';
 
 /**
  * Stages typed-but-unsaved text through the editor's own entry point.
@@ -506,6 +509,7 @@ test.describe( 'The published post, for someone whose save stages', () => {
 
 	test.beforeEach( () => {
 		clearBackstopEvents();
+		createCategory( CATEGORY );
 		liveId = createPublishedPost(
 			'Meridian Active, Summer collection',
 			PUBLISHED_TEXT
@@ -541,6 +545,63 @@ test.describe( 'The published post, for someone whose save stages', () => {
 		await openEditor( page, liveId );
 
 		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
+		// Nothing dirty yet, so core's own disabled state -- nothing to save --
+		// already applies.
+		await expect( publishButton( page ) ).toBeDisabled();
+
+		const title = canvasOf( page ).getByRole( 'textbox', {
+			name: 'Add title',
+		} );
+		await title.click();
+		await page.keyboard.press( 'End' );
+		await page.keyboard.type( ', autumn' );
+
+		// Disabled again, now for a different reason: the title is one of the
+		// three fields the copy owns, and this screen locks saving rather than
+		// letting the click reach a refusal.
+		await expect( publishButton( page ) ).toBeDisabled();
+
+		const seen = [];
+		page.on( 'request', ( request ) => {
+			seen.push(
+				`${ request.method() } ${ decodeURIComponent( request.url() ) }`
+			);
+		} );
+
+		await page.keyboard.press( 'ControlOrMeta+s' );
+
+		expect( seen ).toHaveLength( 0 );
+		await expect(
+			page
+				.locator( '.components-notice__content' )
+				.filter( { hasText: 'Updating failed' } )
+		).toHaveCount( 0 );
+		expect( getPostField( liveId, 'post_title' ) ).not.toContain(
+			'autumn'
+		);
+	} );
+
+	test( 'a category still saves from the published post once a copy exists', async ( {
+		page,
+	} ) => {
+		// R42 with a copy already standing: a category touches none of the
+		// three fields the copy owns, so it still applies to the published
+		// post exactly as core, whoever is saving it.
+		createStagedCopyFor( liveId );
+
+		await openEditor( page, liveId );
+		await chooseCategory( page, CATEGORY );
+
+		await expect( publishButton( page ) ).toBeEnabled();
+		await expect( publishButton( page ) ).toHaveText( 'Save' );
+
+		await publishButton( page ).click();
+
+		await expect
+			.poll( () => getPostField( liveId, 'post_status' ) )
+			.toBe( 'publish' );
+		expect( stagedCopyIdFor( liveId ) ).toBeGreaterThan( 0 );
 	} );
 
 	test( 'a staged copy they cannot publish says so exactly once', async ( {

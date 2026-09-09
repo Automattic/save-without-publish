@@ -1,8 +1,22 @@
 /**
  * What a published post does when someone has already staged a change to it.
  *
- * Two things: it says so, and it stops the three fields the staged copy owns
- * from being typed into (R55).
+ * Three things: it says so, it stops the three fields the staged copy owns
+ * from being typed into (R55), and it disables saving while one of them is
+ * dirty anyway (VIPPROD-1171).
+ *
+ * That third one exists because the first two do not cover the whole screen.
+ * The canvas lock below has no equivalent for the title -- core offers no
+ * read-only path for it -- and the excerpt has neither. A save carrying either
+ * still reaches the write path, which refuses it (`swpub_live_locked`), so
+ * without this the primary button would sit there promising a save that
+ * cannot succeed. Locking it with core's own `lockPostSaving` -- the same
+ * mechanism `PostPublishButton` already reads to grey itself out -- means the
+ * button simply cannot be clicked while that is true, rather than being
+ * clicked and refused. It is scoped to the three fields, not to the whole
+ * screen: a category or a featured image saved from here still applies (R42),
+ * so locking every time anything is dirty would refuse a save this screen is
+ * supposed to make.
  *
  * A notice rather than a sidebar panel, and deliberately: the panel this
  * replaced sat collapsed below "Move to trash", under Categories and Tags, so
@@ -23,13 +37,23 @@
  */
 
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { useDispatch } from '@wordpress/data';
+import { useDispatch, useSelect } from '@wordpress/data';
 import { useEffect } from '@wordpress/element';
+import { store as editorStore } from '@wordpress/editor';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 import { context } from './context';
+import { STAGED_FIELDS } from './edits';
 import { editStaged } from './routes';
+
+/**
+ * The save lock's key.
+ *
+ * Namespaced for the same reason `stage.js`'s autosave lock is: core keys
+ * locks by string and every plugin's locks share one register.
+ */
+const SAVE_LOCK = 'swpub/live-locked';
 
 /**
  * Says who staged the change, when that is known.
@@ -94,7 +118,67 @@ function useLockedCanvas( ctx ) {
 }
 
 /**
- * Posts the notice and locks the canvas.
+ * Disables saving while a write from here would be refused (VIPPROD-1171).
+ *
+ * Reads the edit set directly rather than through `edits.js`'s `dirtyFields()`:
+ * that function answers null off a screen it cannot read, which the request
+ * middleware treats as "assume the worst" because refusing a save it cannot
+ * see is the safe failure. A lock has the opposite safe failure -- disabling a
+ * button it cannot judge would freeze saving on a state that was never
+ * reached -- so this asks `useSelect` directly and defaults to unlocked.
+ *
+ * Content is included alongside title and excerpt on purpose, even though the
+ * canvas above is already read-only: this runs on every render, including the
+ * one where the canvas lock has not taken yet, and a save slipping through
+ * that gap is exactly what the write path's own field lock exists to catch on
+ * the wire. Catching it here first means the button never offers the click.
+ *
+ * @param {Object} ctx The staging context.
+ * @return {void}
+ */
+function useLockedSave( ctx ) {
+	const { lockPostSaving, unlockPostSaving } = useDispatch( editorStore );
+
+	const lockedFieldDirty = useSelect(
+		( select ) => {
+			if ( ctx.isStaged || ! ctx.stagedCopyId || ! ctx.liveId ) {
+				return false;
+			}
+
+			const post = select( editorStore ).getCurrentPost();
+
+			if ( ! post || post.id !== ctx.liveId ) {
+				return false;
+			}
+
+			const edits =
+				select( 'core' ).getEntityRecordNonTransientEdits(
+					'postType',
+					post.type,
+					post.id
+				) || {};
+
+			return STAGED_FIELDS.some(
+				( field ) => undefined !== edits[ field ]
+			);
+		},
+		[ ctx ]
+	);
+
+	useEffect( () => {
+		if ( ! lockedFieldDirty ) {
+			return undefined;
+		}
+
+		lockPostSaving( SAVE_LOCK );
+
+		return () => unlockPostSaving( SAVE_LOCK );
+	}, [ lockedFieldDirty, lockPostSaving, unlockPostSaving ] );
+}
+
+/**
+ * Posts the notice, locks the canvas, and disables saving where it would be
+ * refused anyway.
  *
  * @return {null} Renders nothing.
  */
@@ -103,6 +187,7 @@ export function ExistingStagedCopyNotice() {
 	const { createNotice } = useDispatch( noticesStore );
 
 	useLockedCanvas( ctx );
+	useLockedSave( ctx );
 
 	useEffect( () => {
 		if ( ctx.isStaged || ! ctx.stagedCopyId ) {
