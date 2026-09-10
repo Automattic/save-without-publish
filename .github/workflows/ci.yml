@@ -54,12 +54,20 @@ jobs:
         run: npm run build
 
   tests:
-    name: PHPUnit (PHP ${{ matrix.php }})
+    name: PHPUnit (PHP ${{ matrix.php }}, WP ${{ matrix.core }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         php: [ '8.2', '8.3', '8.4' ]
+        # Push and pull request runs test one WordPress version -- the
+        # latest release -- so a red run points at the plugin change. The
+        # weekly run instead covers the two versions the review surface
+        # branches on (VIPPROD-753, D1): trunk, so a core change that will
+        # break the plugin shows up before it ships, and 6.8, the oldest
+        # version `Requires at least` promises and the classic surface's
+        # own floor.
+        core: ${{ github.event_name == 'schedule' && fromJSON( '[ "master", "6.8" ]' ) || fromJSON( '[ "release" ]' ) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -83,9 +91,18 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      - name: Pin WordPress to the latest release
-        if: github.event_name != 'schedule'
-        run: echo '{"core":null}' > .wp-env.override.json
+      # A runner is a fresh container on every run, so there is never an
+      # existing database to leave behind on a version switch -- unlike a
+      # local wp-env, which needs `wp core update-db` after one (learned
+      # writing D1: a downgraded core otherwise shows "Database Update
+      # Required" until it runs).
+      - name: Choose WordPress
+        run: |
+          if [ "${{ matrix.core }}" = "release" ]; then
+            echo '{"core":null}' > .wp-env.override.json
+          else
+            echo '{"core":"WordPress/WordPress#${{ matrix.core }}"}' > .wp-env.override.json
+          fi
 
       - name: Start WordPress
         run: npx wp-env start
@@ -94,8 +111,12 @@ jobs:
         run: npm run test:php
 
   e2e:
-    name: Playwright
+    name: Playwright (WP ${{ matrix.core }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        core: ${{ github.event_name == 'schedule' && fromJSON( '[ "master", "6.8" ]' ) || fromJSON( '[ "release" ]' ) }}
     # The suite takes about seven minutes on one worker on a fast machine, and
     # retries and a shared runner stretch that. Anything past this is a wedged
     # wp-env or browser, not a slow test.
@@ -116,9 +137,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Pin WordPress to the latest release
-        if: github.event_name != 'schedule'
-        run: echo '{"core":null}' > .wp-env.override.json
+      - name: Choose WordPress
+        run: |
+          if [ "${{ matrix.core }}" = "release" ]; then
+            echo '{"core":null}' > .wp-env.override.json
+          else
+            echo '{"core":"WordPress/WordPress#${{ matrix.core }}"}' > .wp-env.override.json
+          fi
 
       - name: Start WordPress
         run: npx wp-env start
