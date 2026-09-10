@@ -6,7 +6,7 @@ Save without Publish lets editors revise and review published content without it
 
 What it delivers is that nothing publishes without a deliberate act. It is not an approval workflow: there is no reviewer role, no queue, and no sign-off. Anyone who can edit a staged copy can publish it, and that is on purpose.
 
-Review happens in WordPress's own revisions view, inside the editor, where the change is marked on the blocks that carry it. There is no custom diff tool, no editorial dashboard, and no new admin screens.
+Review happens in WordPress's own revisions view, inside the editor, where the change is marked on the blocks that carry it -- on WordPress 7.0 and later. Earlier versions review on core's classic compare screen instead, since the in-editor view does not exist yet. Both are core's screens, unmodified: there is no custom diff tool, no editorial dashboard, and no new admin screens.
 
 ## Vocabulary
 
@@ -24,7 +24,7 @@ These are the words the interface and the code use, one per thing.
 
 ## Requirements
 
-- WordPress 6.8+
+- WordPress 6.8+ (review is core's in-editor revisions view on 7.0 and later, and core's classic compare screen below that)
 - PHP 8.2+
 - The block editor
 
@@ -113,7 +113,7 @@ A site that runs integrations against published content should decide about this
 1. A change is staged: automatically on save for anyone without the direct-publish capability, which by default is everyone, or by choosing **Stage changes** for someone who holds it.
 2. The staged copy is a private post holding the change. The published post stays editable for everything the copy cannot hold — terms, featured image, slug, meta — and says so: opening it shows a notice naming whose staged changes are waiting, locks the canvas and the title, takes the excerpt field off the screen, and states that all three are edited on the copy.
 3. They keep editing. Every save is an ordinary WordPress revision on the staged copy, with its own author and timestamp.
-4. Anyone with permission reviews the change in the editor's own revisions view, which shows the staged words against the words as published, marked on the blocks that carry them. It is core's screen with the parts that do not apply to a staged copy taken out: there is no timeline to scrub, because a staged copy has two states rather than a history, and no sidebar, because it listed those same two states.
+4. Anyone with permission reviews the change in the editor's own revisions view, which shows the staged words against the words as published, marked on the blocks that carry them. It is core's screen with the parts that do not apply to a staged copy taken out: there is no timeline to scrub, because a staged copy has two states rather than a history, and no sidebar, because it listed those same two states. That view diffs blocks, so a change to only the title or the excerpt does not show there; when either changed, **Compare as text** is offered alongside it, opening core's classic compare screen instead — the one core surface that diffs those fields too. Below WordPress 7.0, where the in-editor view does not exist yet, that classic screen is the review itself, reached the same way review always is.
 5. Publishing applies the staged content to the published post, adopts the staged revisions into its history, and removes the staged copy.
 
 The published post keeps its ID, URL, publish date, author, comments, terms, and featured image throughout. Only the title, content, and excerpt change.
