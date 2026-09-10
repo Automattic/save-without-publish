@@ -6,7 +6,7 @@ Save without Publish lets editors revise and review published content without it
 
 What it delivers is that nothing publishes without a deliberate act. It is not an approval workflow: there is no reviewer role, no queue, and no sign-off. Anyone who can edit a staged copy can publish it, and that is on purpose.
 
-Review happens in WordPress's own revisions view, inside the editor, where the change is marked on the blocks that carry it -- on WordPress 7.0 and later. Earlier versions review on core's classic compare screen instead, since the in-editor view does not exist yet. Both are core's screens, unmodified: there is no custom diff tool, no editorial dashboard, and no new admin screens.
+Review happens in WordPress's own revisions view, inside the editor, where the change is marked on the blocks that carry it — on WordPress 7.0 and later. Earlier versions review on core's classic compare screen instead, since the in-editor view does not exist yet. Both are core's screens, unmodified: there is no custom diff tool, no editorial dashboard, and no new admin screens.
 
 ## Vocabulary
 

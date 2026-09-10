@@ -166,9 +166,6 @@ test.describe( 'Reviewing a staged change', () => {
 		const stagedCopyId = stagedCopyIdFor( liveId );
 
 		const fromStaged = await reviewControl( page ).getAttribute( 'href' );
-		// Read here, on the staged copy's own screen: the published post's
-		// context carries no surface of its own, since `useReviewUrl()`'s
-		// reactive rebuild only ever runs on the staged copy's screen.
 		const surface = await reviewSurface( page );
 
 		await openEditor( page, liveId );

@@ -146,13 +146,18 @@ final class Editor_Assets {
 			/*
 			 * For the editor's own reactive link (`routes.js`'s
 			 * `useReviewUrl()`), so a save that lands mid-session rebuilds the
-			 * right kind of URL rather than always the in-editor one. The
-			 * base is shippable with no revision IDs at all -- `revision.php`
-			 * takes `from` and `to` as query arguments, not path segments --
-			 * so it costs nothing to send even where `compareUrl` is empty.
+			 * right kind of URL rather than always the in-editor one. Both
+			 * bases are shippable with no revision IDs at all -- each takes
+			 * its revision as a query argument -- so they cost nothing to send
+			 * even where `compareUrl` is empty, which is exactly when they
+			 * are needed: the first save onto a copy that arrived with only
+			 * its baseline. The editor base is the copy's own clean edit link
+			 * rather than the address bar, which on arrival still carries the
+			 * `swpub_forked` flag and would carry it into the review.
 			 */
 			$context['reviewSurface']       = Review_Link::surface();
 			$context['classicRevisionBase'] = admin_url( 'revision.php' );
+			$context['editorRevisionBase']  = (string) get_edit_post_link( $post->ID, 'raw' );
 
 			/*
 			 * Discarding is offered here rather than on the posts list, where it
@@ -236,6 +241,10 @@ final class Editor_Assets {
 			$context['compareUrl'] = Review_Link::for_staged_copy( $staged_copy->ID );
 			$context['compareTextUrl'] = Review_Link::compare_as_text_url( $staged_copy->ID );
 			$context['changedFields']  = Review_Link::changed_fields( $staged_copy->ID );
+			// Nothing on this screen rebuilds the review link, so this is
+			// informational: the same answer the staged copy's screen has, so
+			// anything reading the context sees one answer on either copy.
+			$context['reviewSurface'] = Review_Link::surface();
 		}
 
 		return $context;

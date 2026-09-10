@@ -47,14 +47,15 @@ import { addQueryArgs } from '@wordpress/url';
  *
  * Once a second end does exist, the two surfaces are rebuilt differently,
  * because they are not read the same way. The in-editor view takes one
- * revision and diffs it against whichever came before, so its URL is
- * `compareUrl` (or, the first time, the copy's own edit screen -- where this
- * hook is read from) with the freshest id swapped in. The classic screen
- * (WordPress below 7.0, `ctx.reviewSurface`) takes both ends by name, so it
- * is rebuilt from them directly: the baseline, which never moves, and the
- * freshest id. `classicRevisionBase` needs neither id to be shippable --
- * `revision.php` takes `from` and `to` as query arguments -- so it costs
- * nothing sent even where there was nothing yet to review.
+ * revision and diffs it against whichever came before, so its URL is the
+ * copy's own edit link (`editorRevisionBase`) with the freshest id added.
+ * Not the address bar: on arrival that still carries the `swpub_forked`
+ * flag, which would ride into the review and have it announce the fork
+ * again. The classic screen (WordPress below 7.0, `ctx.reviewSurface`)
+ * takes both ends by name, so it is rebuilt from them directly: the
+ * baseline, which never moves, and the freshest id. Both bases are
+ * shippable with no revision in them, which is what makes them usable the
+ * first time, when there was nothing yet to review.
  *
  * Only on the copy being edited. On the published post the review points at the
  * staged copy, which is not the post this editor is holding, so there is no
@@ -87,7 +88,7 @@ export function useReviewUrl( ctx ) {
 		} );
 	}
 
-	return addQueryArgs( ctx.compareUrl || window.location.href, {
+	return addQueryArgs( ctx.editorRevisionBase || ctx.compareUrl, {
 		revision: lastRevisionId,
 	} );
 }

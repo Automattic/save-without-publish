@@ -339,6 +339,14 @@ test.describe( 'A publisher and a published post', () => {
 		await expect( reviewControl( page ) ).toBeVisible( {
 			timeout: 20_000,
 		} );
+
+		// Built from the copy's own edit link, not the address bar: this
+		// screen was arrived at, and its URL still says so. A review that
+		// carried the arrival flag would open announcing the fork again.
+		const href = await reviewControl( page ).getAttribute( 'href' );
+
+		expect( href ).not.toContain( 'swpub_forked' );
+		expect( href ).toMatch( /(revision|to)=\d+/ );
 	} );
 
 	test( 'once a copy exists, the row offers the copy and not a second staging', async ( {

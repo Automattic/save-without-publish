@@ -4,8 +4,10 @@ on:
   push:
   pull_request:
   # Pushes and pull requests test against the latest WordPress release, so a
-  # red run points at the plugin change. This weekly run tests trunk instead,
-  # so a core change that will break the plugin shows up before it ships.
+  # red run points at the plugin change. This weekly run tests trunk and 6.8
+  # instead (see the `core` matrix below): trunk so a core change that will
+  # break the plugin shows up before it ships, 6.8 so the oldest version the
+  # plugin promises keeps working.
   schedule:
     - cron: '0 6 * * 1'
 
