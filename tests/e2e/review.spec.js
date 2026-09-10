@@ -269,6 +269,32 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 			{ timeout: 20_000 }
 		);
 
+		// The diff is real, not just a screen: core marks the changed block
+		// in the margin and, inside it, marks the words themselves --
+		// `<del>` for what the published post said, `<ins>` for what is
+		// staged. Matched on a word from each rather than the block's whole
+		// text, which core's word-level diff interleaves old and new too
+		// closely to match as one phrase.
+		await expect(
+			page.locator( '.revision-diff-marker.is-modified' )
+		).toHaveCount( 1 );
+
+		const paragraph = canvasOf( page )
+			.locator( 'p[data-type="core/paragraph"]' )
+			.first();
+
+		await expect( paragraph ).toHaveClass( /is-revision-modified/ );
+		await expect(
+			paragraph.locator( '.revision-diff-removed' ).filter( {
+				hasText: 'Summer',
+			} )
+		).toHaveCount( 1 );
+		await expect(
+			paragraph.locator( '.revision-diff-added' ).filter( {
+				hasText: 'staged',
+			} )
+		).toHaveCount( 1 );
+
 		// A staged copy's history is two points, the content as published and
 		// the change as staged, so a scrubber between them promises more than
 		// it does. The sidebar lists the same two under a heading that names
