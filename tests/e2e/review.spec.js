@@ -214,7 +214,10 @@ test.describe( 'Reviewing a staged change', () => {
 		const notice = page
 			.locator( '.components-notice' )
 			.filter( { hasText: 'You are staging edits' } );
-		const compareAsText = notice.getByRole( 'link', {
+		// A button, not a link: core's own Notice component drops an
+		// action's click handler whenever the action also carries a URL
+		// (WordPress 6.8), so this reads without one (`toReadInNotice()`).
+		const compareAsText = notice.getByRole( 'button', {
 			name: 'Compare as text',
 		} );
 
@@ -253,7 +256,7 @@ test.describe( 'Reviewing a staged change', () => {
 			existingNotice.getByRole( 'link', { name: 'Edit staged changes' } )
 		).toBeVisible();
 		await expect(
-			existingNotice.getByRole( 'link', { name: 'Compare as text' } )
+			existingNotice.getByRole( 'button', { name: 'Compare as text' } )
 		).toBeVisible();
 	} );
 } );
@@ -568,7 +571,7 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 			notice.locator( '.components-notice__content' )
 		).toBeVisible();
 		await expect(
-			notice.getByRole( 'link', { name: 'Compare as text' } )
+			notice.getByRole( 'button', { name: 'Compare as text' } )
 		).toHaveCount( 0 );
 	} );
 

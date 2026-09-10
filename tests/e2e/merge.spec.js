@@ -98,18 +98,24 @@ test.describe( 'Publishing a staged change', () => {
 		await expect( snackbar ).toBeVisible( { timeout: 20_000 } );
 
 		// And it offers what core offers after any save: the post type's own
-		// view label, the permalink, and a new tab, which is what gives the
-		// control its arrow.
-		const view = await snackbar
-			.getByRole( 'link' )
-			.first()
-			.evaluate( ( link ) => ( {
-				target: link.getAttribute( 'target' ),
-				href: link.getAttribute( 'href' ),
-			} ) );
+		// view label, the permalink, and a new tab -- opened by hand
+		// (`toRead()`) rather than through the snackbar's own
+		// `openInNewTab`, which core's snackbar silently ignores below
+		// WordPress 7.0 (VIPPROD-753, F6), so this is asserted by the tab
+		// it actually opens rather than by a `target` attribute the
+		// component may or may not have set.
+		const view = snackbar.getByRole( 'link' ).first();
+		const href = await view.getAttribute( 'href' );
 
-		expect( view.target ).toBe( '_blank' );
-		expect( view.href ).not.toContain( 'wp-admin' );
+		expect( href ).not.toContain( 'wp-admin' );
+
+		const opened = page.waitForEvent( 'popup' );
+		await view.click();
+		const tab = await opened;
+		await tab.waitForLoadState();
+
+		expect( tab.url() ).toBe( href );
+		await tab.close();
 
 		expect( getPostField( liveId, 'post_content' ) ).toContain(
 			STAGED_TEXT

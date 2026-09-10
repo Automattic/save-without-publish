@@ -11,8 +11,11 @@
  *
  * The new tab is opened by hand rather than declared: core's notice actions pass
  * `href` and `onClick` to a Button and nothing else, so there is no `target` to
- * set. The `url` is still given, which keeps these real links -- middle-click and
- * "open in new tab" behave, and the status bar shows where they go.
+ * set. Where the action still carries a `url` (`toRead()`), that keeps it a real
+ * link -- middle-click and "open in new tab" behave, and the status bar shows
+ * where it goes. `Notice`'s own actions renderer cannot be trusted with both at
+ * once on every supported version (`toReadInNotice()`), so an action rendered
+ * there reads as a plain button instead, `url` dropped rather than risked.
  */
 
 import { useSelect } from '@wordpress/data';
@@ -92,11 +95,17 @@ export function useReviewUrl( ctx ) {
 /**
  * A destination that is read rather than worked in.
  *
+ * Shared by every notice and snackbar action that reads rather than works,
+ * so a new tab opens the same way everywhere this editor offers one: by
+ * hand, on click, rather than through a component option a given
+ * WordPress version may or may not honour (VIPPROD-753, F6 -- the
+ * snackbar's own `openInNewTab` is silently ignored below WordPress 7.0).
+ *
  * @param {string} label The link text.
  * @param {string} url   Where it goes.
  * @return {Object} A notice action.
  */
-function toRead( label, url ) {
+export function toRead( label, url ) {
 	return {
 		label,
 		url,
@@ -116,6 +125,35 @@ function toRead( label, url ) {
  */
 function toOpen( label, url ) {
 	return { label, url };
+}
+
+/**
+ * A read-only destination for an action rendered inside a `Notice`'s own
+ * `actions` array specifically -- never a snackbar, and never a raw
+ * `Button` such as the Status row's.
+ *
+ * `toRead()`'s `url` is what a raw `Button` needs for its `href`, and what
+ * a snackbar's own action renderer is content to carry alongside `onClick`.
+ * WordPress 6.8's `Notice` component is not: its actions renderer drops
+ * `onClick` outright whenever the action also carries a `url`
+ * (`wp-includes/js/dist/components.js`: `onClick: url ? undefined :
+ * onClick`), which would turn "read this without losing your place" into
+ * an ordinary same-tab navigation -- discarding whatever was unsaved in
+ * the editor underneath it. No `url` at all sidesteps that on every
+ * version, at the cost of the control reading as a button rather than a
+ * link (no `href` to carry).
+ *
+ * @param {string} label The link text.
+ * @param {string} url   Where it goes.
+ * @return {Object} A notice action.
+ */
+function toReadInNotice( label, url ) {
+	return {
+		label,
+		variant: 'link',
+		noDefaultClasses: true,
+		onClick: () => window.open( url, '_blank', 'noopener,noreferrer' ),
+	};
 }
 
 /**
@@ -164,7 +202,7 @@ export function compareAsText( ctx ) {
 	}
 
 	return [
-		toRead(
+		toReadInNotice(
 			__( 'Compare as text', 'save-without-publish' ),
 			ctx.compareTextUrl
 		),
@@ -202,7 +240,7 @@ export function reviewPublishedHistory( ctx ) {
 	}
 
 	return [
-		toRead(
+		toReadInNotice(
 			__(
 				'Review what changed on the published post',
 				'save-without-publish'

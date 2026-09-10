@@ -441,16 +441,18 @@ class Test_Review_Link extends WP_UnitTestCase {
 	 * the excerpt as well as the content.
 	 */
 	public function test_compare_as_text_url_names_the_two_ends_on_the_classic_screen(): void {
+		// Forced to the in-editor surface: `compare_as_text_url()` must stay
+		// on the classic screen regardless, which this proves by pinning
+		// the surface `for_staged_copy()` would otherwise use for review
+		// itself.
+		add_filter( 'swpub_review_surface', fn () => 'editor' );
+
 		$all = $this->revisions_of( $this->staged_copy_id );
 		$url = Review_Link::compare_as_text_url( $this->staged_copy_id );
 
 		$this->assertStringContainsString( 'revision.php', $url );
 		$this->assertStringContainsString( 'from=' . $all[0], $url );
 		$this->assertStringContainsString( 'to=' . end( $all ), $url );
-
-		// Even on the in-editor surface, which for review itself never
-		// touches this screen.
-		$this->assertSame( 'editor', Review_Link::surface(), 'Precondition: the test suite runs on WordPress 7.0+.' );
 	}
 
 	/**
