@@ -135,6 +135,15 @@ final class Editor_Assets {
 			$context['baselineRevisionId'] = Review_Link::baseline_revision_id( $post->ID );
 
 			/*
+			 * "Compare as text" is a route around the in-editor view diffing
+			 * blocks, which cannot show a title or excerpt change at all
+			 * (VIPPROD-753, F2). `changedFields` decides whether it is worth
+			 * offering; `compareTextUrl` is where it goes either way.
+			 */
+			$context['compareTextUrl'] = Review_Link::compare_as_text_url( $post->ID );
+			$context['changedFields']  = Review_Link::changed_fields( $post->ID );
+
+			/*
 			 * For the editor's own reactive link (`routes.js`'s
 			 * `useReviewUrl()`), so a save that lands mid-session rebuilds the
 			 * right kind of URL rather than always the in-editor one. The
@@ -225,6 +234,8 @@ final class Editor_Assets {
 			$context['stagedBy']   = $author ? $author->display_name : '';
 			$context['stagedAt']   = (string) get_post_modified_time( 'c', true, $staged_copy );
 			$context['compareUrl'] = Review_Link::for_staged_copy( $staged_copy->ID );
+			$context['compareTextUrl'] = Review_Link::compare_as_text_url( $staged_copy->ID );
+			$context['changedFields']  = Review_Link::changed_fields( $staged_copy->ID );
 		}
 
 		return $context;

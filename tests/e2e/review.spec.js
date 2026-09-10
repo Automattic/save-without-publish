@@ -191,6 +191,71 @@ test.describe( 'Reviewing a staged change', () => {
 			expect( fromStaged ).toContain( `revision=${ newest }` );
 		}
 	} );
+
+	test( 'a title-only change is invisible on the in-editor view, so it offers Compare as text too', async ( {
+		page,
+	} ) => {
+		const stagedCopyId = createStagedCopyFor( liveId );
+
+		wp( [
+			'post',
+			'update',
+			String( stagedCopyId ),
+			'--post_title=Meridian Active, Autumn collection',
+		] );
+
+		await openEditor( page, stagedCopyId );
+		await showDocumentPanel( page );
+
+		// The in-editor review link still exists and is still offered; it
+		// only cannot show this particular change (VIPPROD-753, F2).
+		await expect( reviewControl( page ) ).toBeVisible();
+
+		const notice = page
+			.locator( '.components-notice' )
+			.filter( { hasText: 'You are staging edits' } );
+		const compareAsText = notice.getByRole( 'link', {
+			name: 'Compare as text',
+		} );
+
+		await expect( compareAsText ).toBeVisible();
+
+		const opened = page.waitForEvent( 'popup' );
+		await compareAsText.click();
+		const tab = await opened;
+
+		await expect( tab.locator( '.revisions-diff' ) ).toBeVisible( {
+			timeout: 20_000,
+		} );
+		await expect(
+			tab.locator( '.diff-deletedline' ).filter( { hasText: 'Summer' } )
+		).toHaveCount( 1 );
+		await expect(
+			tab.locator( '.diff-addedline' ).filter( { hasText: 'Autumn' } )
+		).toHaveCount( 1 );
+
+		// Restoring has nothing left to mean here either (D4), and the
+		// screen still knows this is a staged copy's own history.
+		await expect( tab.locator( '.restore-revision' ) ).toHaveCount( 0 );
+		await expect( tab.locator( 'body.swpub-staged' ) ).toHaveCount( 1 );
+
+		await tab.close();
+
+		// The published post's own warning notice offers the same route,
+		// alongside the way over to the copy it already offered.
+		await openEditor( page, liveId );
+
+		const existingNotice = page
+			.locator( '.components-notice' )
+			.filter( { hasText: 'locked here until those changes' } );
+
+		await expect(
+			existingNotice.getByRole( 'link', { name: 'Edit staged changes' } )
+		).toBeVisible();
+		await expect(
+			existingNotice.getByRole( 'link', { name: 'Compare as text' } )
+		).toBeVisible();
+	} );
 } );
 
 /**
@@ -485,6 +550,26 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 			'wp-admin'
 		);
 		await expect( published ).toHaveAttribute( 'target', '_blank' );
+	} );
+
+	test( 'a content-only change offers no Compare as text', async ( {
+		page,
+	} ) => {
+		await openEditor( page, stagedCopyId );
+
+		// This fixture's only staged change is content, which the in-editor
+		// view already shows; a second link to the same comparison would be
+		// noise, not help.
+		const notice = page
+			.locator( '.components-notice' )
+			.filter( { hasText: 'You are staging edits' } );
+
+		await expect(
+			notice.locator( '.components-notice__content' )
+		).toBeVisible();
+		await expect(
+			notice.getByRole( 'link', { name: 'Compare as text' } )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'the Status row is ours, reads Staged, and is the way to review', async ( {

@@ -14,7 +14,7 @@ import { store as noticesStore } from '@wordpress/notices';
 
 import { verify } from './canary';
 import { context } from './context';
-import { reviewPublishedHistory } from './routes';
+import { compareAsText, reviewPublishedHistory } from './routes';
 
 /**
  * The sentence a staged copy opens with, as a format string.
@@ -181,6 +181,11 @@ export function StagedNotices() {
 				// someone publishes or discards it. A notice that can be closed
 				// is one that stops saying so on the second page load.
 				isDismissible: false,
+
+				// Offered here, not on the Status row (one word, one control):
+				// a title or excerpt change is invisible on the in-editor
+				// revisions view, which diffs blocks (VIPPROD-753, F2).
+				actions: compareAsText( ctx ),
 			}
 		);
 

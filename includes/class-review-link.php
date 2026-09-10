@@ -301,6 +301,75 @@ final class Review_Link {
 	}
 
 	/**
+	 * The classic screen, always -- the one core surface that diffs the
+	 * title and the excerpt as well as the content.
+	 *
+	 * The in-editor view diffs blocks; neither field is one, so a
+	 * title-only or excerpt-only change reads there as nothing changed
+	 * (VIPPROD-753, F2). This is the route around that, offered as
+	 * "Compare as text" regardless of which screen `surface()` sends the
+	 * main review link to -- on the classic surface it is the same
+	 * destination as review itself.
+	 *
+	 * @param int $staged_copy_id Staged copy post ID.
+	 * @return string The URL, or an empty string when there is nothing to compare.
+	 */
+	public static function compare_as_text_url( int $staged_copy_id ): string {
+		if ( $staged_copy_id <= 0 ) {
+			return '';
+		}
+
+		$ends = self::span_for( $staged_copy_id );
+
+		if ( count( $ends ) < 2 ) {
+			return '';
+		}
+
+		return self::classic_compare_url( $ends[0], $ends[1] );
+	}
+
+	/**
+	 * Which of the staged fields differ between the fork-time baseline and
+	 * the newest staged save.
+	 *
+	 * Whitespace-normalised the way core's own revision comparison is
+	 * (`wp_text_diff()`), so a change that is only whitespace does not
+	 * read as a change here either.
+	 *
+	 * @param int $staged_copy_id Staged copy post ID.
+	 * @return string[] Any of `'title'`, `'content'`, `'excerpt'`, in that
+	 *                   order; empty when there are not two ends to compare.
+	 */
+	public static function changed_fields( int $staged_copy_id ): array {
+		$ends = self::span_for( $staged_copy_id );
+
+		if ( count( $ends ) < 2 ) {
+			return array();
+		}
+
+		$baseline = get_post( $ends[0] );
+		$newest   = get_post( $ends[1] );
+
+		if ( ! $baseline instanceof WP_Post || ! $newest instanceof WP_Post ) {
+			return array();
+		}
+
+		$changed = array();
+
+		foreach ( array(
+			'title'   => 'post_title',
+			'content' => 'post_content',
+			'excerpt' => 'post_excerpt',
+		) as $name => $field ) {
+			if ( normalize_whitespace( (string) $baseline->$field ) !== normalize_whitespace( (string) $newest->$field ) ) {
+				$changed[] = $name;
+			}
+		}
+
+		return $changed;
+	}
+
+	/**
 	 * A staged copy's own saves, oldest first.
 	 *
 	 * Autosaves are a private in-progress copy, not a staged save, and core's

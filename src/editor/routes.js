@@ -142,6 +142,36 @@ export function reviewStaged( ctx, url ) {
 }
 
 /**
+ * Core's classic compare screen, offered only when it would show something
+ * the in-editor view cannot.
+ *
+ * That view diffs blocks; a title or excerpt is neither, so a change to
+ * either reads there as nothing changed at all (VIPPROD-753, F2). This is
+ * the way around that -- still core's own screen (R23), not offered
+ * everywhere a review link is, because a second review link on a copy
+ * whose only change is content would be a second name for the same
+ * destination `reviewStaged()` already offers.
+ *
+ * @param {Object} ctx The staging context.
+ * @return {Array<Object>} Nothing, or one action.
+ */
+export function compareAsText( ctx ) {
+	const changed = Array.isArray( ctx.changedFields ) ? ctx.changedFields : [];
+	const wanted = changed.includes( 'title' ) || changed.includes( 'excerpt' );
+
+	if ( ! wanted || ! ctx.compareTextUrl ) {
+		return [];
+	}
+
+	return [
+		toRead(
+			__( 'Compare as text', 'save-without-publish' ),
+			ctx.compareTextUrl
+		),
+	];
+}
+
+/**
  * The staged copy, in the editor.
  *
  * @param {Object} ctx The staging context.

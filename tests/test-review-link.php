@@ -367,4 +367,98 @@ class Test_Review_Link extends WP_UnitTestCase {
 
 		$this->assertSame( 'https://example.test/restore-me', $live_data['restoreUrl'] );
 	}
+
+	/**
+	 * A staged copy of its own, with a baseline seeded, ready for a change.
+	 *
+	 * @return int Staged copy post ID.
+	 */
+	private function fresh_staged_copy(): int {
+		$live = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_title'   => 'Meridian Active, Summer collection',
+				'post_content' => 'As published.',
+				'post_excerpt' => 'The Summer collection.',
+			)
+		);
+
+		$staged_copy = Staged_Copy_Repository::create( get_post( $live ) );
+
+		Baseline_Revision::seed( $staged_copy->ID );
+
+		return $staged_copy->ID;
+	}
+
+	/**
+	 * Only the fields that actually differ are named -- not the copy's
+	 * whole shape, and not a field untouched since the fork.
+	 */
+	public function test_changed_fields_names_what_differs(): void {
+		$staged_copy_id = $this->fresh_staged_copy();
+
+		$this->assertSame( array(), Review_Link::changed_fields( $staged_copy_id ), 'A baseline alone is not yet a change.' );
+
+		wp_update_post(
+			array(
+				'ID'         => $staged_copy_id,
+				'post_title' => 'Meridian Active, Autumn collection',
+			)
+		);
+
+		$this->assertSame( array( 'title' ), Review_Link::changed_fields( $staged_copy_id ) );
+
+		wp_update_post(
+			array(
+				'ID'           => $staged_copy_id,
+				'post_excerpt' => 'The Autumn collection.',
+			)
+		);
+
+		$this->assertSame( array( 'title', 'excerpt' ), Review_Link::changed_fields( $staged_copy_id ) );
+
+		wp_update_post(
+			array(
+				'ID'           => $staged_copy_id,
+				'post_content' => 'As staged.',
+			)
+		);
+
+		$this->assertSame( array( 'title', 'content', 'excerpt' ), Review_Link::changed_fields( $staged_copy_id ) );
+	}
+
+	/**
+	 * A content-only change names content alone -- title and excerpt are
+	 * not swept in just because something changed.
+	 */
+	public function test_changed_fields_names_content_alone_when_only_content_changed(): void {
+		$this->assertSame( array( 'content' ), Review_Link::changed_fields( $this->staged_copy_id ) );
+	}
+
+	/**
+	 * The classic screen is always where "Compare as text" goes, on either
+	 * surface, since it is the one core screen that diffs the title and
+	 * the excerpt as well as the content.
+	 */
+	public function test_compare_as_text_url_names_the_two_ends_on_the_classic_screen(): void {
+		$all = $this->revisions_of( $this->staged_copy_id );
+		$url = Review_Link::compare_as_text_url( $this->staged_copy_id );
+
+		$this->assertStringContainsString( 'revision.php', $url );
+		$this->assertStringContainsString( 'from=' . $all[0], $url );
+		$this->assertStringContainsString( 'to=' . end( $all ), $url );
+
+		// Even on the in-editor surface, which for review itself never
+		// touches this screen.
+		$this->assertSame( 'editor', Review_Link::surface(), 'Precondition: the test suite runs on WordPress 7.0+.' );
+	}
+
+	/**
+	 * A copy with only its baseline has nothing to compare as text either.
+	 */
+	public function test_compare_as_text_url_needs_two_ends(): void {
+		$staged_copy_id = $this->fresh_staged_copy();
+
+		$this->assertSame( '', Review_Link::compare_as_text_url( $staged_copy_id ) );
+	}
 }
