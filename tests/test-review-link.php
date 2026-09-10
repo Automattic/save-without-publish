@@ -119,8 +119,14 @@ class Test_Review_Link extends WP_UnitTestCase {
 
 	/**
 	 * The review opens the editor's own revisions view on the newest save.
+	 *
+	 * Forced onto the editor surface: this is what that surface names, on
+	 * whichever WordPress version the suite happens to run against
+	 * (VIPPROD-753's own default is version-dependent below WordPress 7.0).
 	 */
 	public function test_the_review_link_opens_the_editor_revisions_view(): void {
+		add_filter( 'swpub_review_surface', fn () => 'editor' );
+
 		$revisions = $this->revisions_of( $this->staged_copy_id );
 		$newest    = (int) end( $revisions );
 
@@ -265,5 +271,100 @@ class Test_Review_Link extends WP_UnitTestCase {
 		$staged_copy = Staged_Copy_Repository::create( get_post( $live ) );
 
 		$this->assertSame( '', Review_Link::for_staged_copy( $staged_copy->ID ) );
+	}
+
+	/**
+	 * The default surface follows the running WordPress; the filter
+	 * overrides it; anything else falls back to the newer, more common
+	 * answer rather than silently landing on a screen nobody asked for.
+	 */
+	public function test_the_review_surface_follows_the_version_and_the_filter(): void {
+		$expected = version_compare( get_bloginfo( 'version' ), '7.0', '>=' ) ? 'editor' : 'classic';
+
+		$this->assertSame( $expected, Review_Link::surface() );
+
+		add_filter( 'swpub_review_surface', fn () => 'classic' );
+		$this->assertSame( 'classic', Review_Link::surface() );
+
+		add_filter( 'swpub_review_surface', fn () => 'editor', 20 );
+		$this->assertSame( 'editor', Review_Link::surface() );
+
+		add_filter( 'swpub_review_surface', fn () => 'nonsense', 30 );
+		$this->assertSame( 'editor', Review_Link::surface(), 'An unrecognised value must fall back to the newer, more common surface rather than nothing.' );
+	}
+
+	/**
+	 * Forced onto the classic surface, the link names both ends directly.
+	 */
+	public function test_the_classic_surface_links_the_two_ends(): void {
+		add_filter( 'swpub_review_surface', fn () => 'classic' );
+
+		$all = $this->revisions_of( $this->staged_copy_id );
+		$url = Review_Link::for_staged_copy( $this->staged_copy_id );
+
+		$this->assertStringContainsString( 'revision.php', $url );
+		$this->assertStringContainsString( 'from=' . $all[0], $url );
+		$this->assertStringContainsString( 'to=' . end( $all ), $url );
+	}
+
+	/**
+	 * Core's classic screen offers no Restore for a staged copy, and keeps
+	 * offering it, unchanged, for a published post.
+	 *
+	 * The published post half uses a post of its own rather than
+	 * `$this->live_id`: that one already has a staged copy from `set_up()`,
+	 * and the write guard neutralizes a direct content write to a post in
+	 * that state (R55), leaving nothing here for a revision to record.
+	 */
+	public function test_restore_is_withheld_on_a_staged_copy_and_kept_on_a_published_post(): void {
+		$staged_copy_revisions = wp_get_post_revisions( $this->staged_copy_id, array( 'order' => 'ASC' ) );
+		$staged_copy_revision  = end( $staged_copy_revisions );
+
+		$staged_data = apply_filters(
+			'wp_prepare_revision_for_js',
+			array( 'restoreUrl' => 'https://example.test/restore-me' ),
+			$staged_copy_revision,
+			get_post( $this->staged_copy_id )
+		);
+
+		$this->assertFalse( $staged_data['restoreUrl'] );
+
+		$other_live_id = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'As published.',
+			)
+		);
+
+		// Plainly called, `wp_update_post()` is an unidentified write, which
+		// this plugin forks into a staged copy rather than writing the post
+		// directly (KTD30b) -- correctly, and not what this test is about.
+		// The filter is the direct-publish grant's own escape hatch for
+		// exactly this: answering per write rather than fighting a role's
+		// capabilities.
+		add_filter( 'swpub_can_publish_directly', '__return_true' );
+
+		wp_update_post(
+			array(
+				'ID'           => $other_live_id,
+				'post_content' => 'A correction.',
+			)
+		);
+
+		remove_filter( 'swpub_can_publish_directly', '__return_true' );
+
+		$live_revisions = wp_get_post_revisions( $other_live_id, array( 'order' => 'ASC' ) );
+		$live_revision  = end( $live_revisions );
+
+		$this->assertNotFalse( $live_revision, 'Precondition: the edit above has to have left a revision.' );
+
+		$live_data = apply_filters(
+			'wp_prepare_revision_for_js',
+			array( 'restoreUrl' => 'https://example.test/restore-me' ),
+			$live_revision,
+			get_post( $other_live_id )
+		);
+
+		$this->assertSame( 'https://example.test/restore-me', $live_data['restoreUrl'] );
 	}
 }

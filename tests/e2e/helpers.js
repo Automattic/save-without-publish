@@ -315,6 +315,21 @@ function reviewControl( page ) {
 }
 
 /**
+ * Which of core's two revision screens reviews a staged change here --
+ * `'editor'` on WordPress 7.0+, `'classic'` below it (VIPPROD-753).
+ *
+ * Read from the page the editor already shipped rather than asked of the
+ * server directly, so a test branching on it sees the exact answer the
+ * screen under test is working from.
+ *
+ * @param {import('@playwright/test').Page} page The page.
+ * @return {Promise<string>} `'editor'` or `'classic'`.
+ */
+function reviewSurface( page ) {
+	return page.evaluate( () => window.swpubEditor?.reviewSurface || 'editor' );
+}
+
+/**
  * Makes the signed-in administrator someone whose saves publish directly.
  *
  * No role holds `swpub_publish_directly_posts`, so on a default install every
@@ -554,6 +569,7 @@ module.exports = {
 	canvasOf,
 	titleField,
 	dirtyTitle,
+	reviewSurface,
 	openEditor,
 	appendAndSave,
 	installEventRecorder,

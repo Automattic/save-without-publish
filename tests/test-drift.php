@@ -300,4 +300,68 @@ class Test_Drift extends WP_UnitTestCase {
 		$this->assertWPError( $result, 'The check trusted a stale cached post.' );
 		$this->assertSame( 'swpub_drift', $result->get_error_code() );
 	}
+
+	/**
+	 * The refused-merge history link opens whichever screen reviews a staged
+	 * change (VIPPROD-753) -- the same choice `Review_Link::for_staged_copy()`
+	 * makes, since both are answering "how does someone here look at a
+	 * change".
+	 *
+	 * A post of its own, edited before any copy is staged against it, rather
+	 * than the fixture's `live_id`: once a copy exists the write guard
+	 * neutralizes a direct content write to the post it stages (R55), which
+	 * would leave nothing here for a revision to record.
+	 */
+	public function test_history_url_follows_the_surface(): void {
+		$live_id = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'As published.',
+			)
+		);
+
+		/*
+		 * `wp_update_post()` from here is not the "cli" channel `classify()`
+		 * carves out for WP-CLI's own process (KTD30b); called plainly, it is
+		 * an unidentified write, and this plugin forks one into a staged
+		 * copy rather than writing the post directly -- correctly, and not
+		 * what this test is about. The filter is the direct-publish grant's
+		 * own escape hatch for exactly this: answering per write rather than
+		 * fighting a role's capabilities.
+		 */
+		add_filter( 'swpub_can_publish_directly', '__return_true' );
+
+		// One edit is enough: both surfaces default their `from` to
+		// "whatever came before", core's own reading on either screen, so
+		// this proves that reading holds even with a single revision to
+		// its name.
+		wp_update_post(
+			array(
+				'ID'           => $live_id,
+				'post_content' => 'Someone else moved this.',
+			)
+		);
+
+		remove_filter( 'swpub_can_publish_directly', '__return_true' );
+
+		$revisions = wp_get_post_revisions( $live_id, array( 'order' => 'ASC' ) );
+		$newest    = (int) end( $revisions )->ID;
+
+		$this->assertGreaterThan( 0, $newest, 'Precondition: the edits above have to have left revisions.' );
+
+		add_filter( 'swpub_review_surface', fn () => 'editor' );
+
+		$editor_url = Drift::history_url( $live_id );
+
+		$this->assertStringContainsString( 'post.php', $editor_url );
+		$this->assertStringContainsString( 'revision=' . $newest, $editor_url );
+
+		add_filter( 'swpub_review_surface', fn () => 'classic' );
+
+		$classic_url = Drift::history_url( $live_id );
+
+		$this->assertStringContainsString( 'revision.php', $classic_url );
+		$this->assertStringContainsString( 'revision=' . $newest, $classic_url );
+		$this->assertStringNotContainsString( 'revision.php', $editor_url );
+	}
 }

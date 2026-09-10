@@ -34,16 +34,24 @@ import { addQueryArgs } from '@wordpress/url';
  * link, which the save response replaces, so it is right again the moment a save
  * settles.
  *
- * The server's URL is the base when there is one. A copy holding only its
- * baseline arrives with none (VIPPROD-753): one revision is nothing to
- * review, so there is nothing to build a link on top of yet.
- * `getCurrentPostLastRevisionId()` cannot say when that changes on its own --
- * it names whichever revision is newest, baseline included, so it already
- * answers "yes" to "is there a last revision" before there is a second end.
- * The comparison that actually answers this is against the baseline's own
- * id, sent alongside `compareUrl` for exactly this: once the newest revision
- * differs from it, a real second end exists, and the copy's own edit screen
- * -- where this hook is read from -- is the base to build the link on.
+ * A copy holding only its baseline arrives with no URL to refresh at all
+ * (VIPPROD-753): one revision is nothing to review yet. Whether that has
+ * changed is answered against the baseline's own id, sent for exactly this
+ * -- `getCurrentPostLastRevisionId()` cannot say it on its own, since it
+ * names whichever revision is newest, baseline included, so it already
+ * answers "yes" to "is there a last revision" before there is a second end
+ * to compare it against.
+ *
+ * Once a second end does exist, the two surfaces are rebuilt differently,
+ * because they are not read the same way. The in-editor view takes one
+ * revision and diffs it against whichever came before, so its URL is
+ * `compareUrl` (or, the first time, the copy's own edit screen -- where this
+ * hook is read from) with the freshest id swapped in. The classic screen
+ * (WordPress below 7.0, `ctx.reviewSurface`) takes both ends by name, so it
+ * is rebuilt from them directly: the baseline, which never moves, and the
+ * freshest id. `classicRevisionBase` needs neither id to be shippable --
+ * `revision.php` takes `from` and `to` as query arguments -- so it costs
+ * nothing sent even where there was nothing yet to review.
  *
  * Only on the copy being edited. On the published post the review points at the
  * staged copy, which is not the post this editor is holding, so there is no
@@ -62,18 +70,23 @@ export function useReviewUrl( ctx ) {
 		return ctx.compareUrl || '';
 	}
 
-	if ( ctx.compareUrl ) {
-		return addQueryArgs( ctx.compareUrl, { revision: lastRevisionId } );
-	}
-
 	if (
 		! ctx.baselineRevisionId ||
 		lastRevisionId === ctx.baselineRevisionId
 	) {
-		return '';
+		return ctx.compareUrl || '';
 	}
 
-	return addQueryArgs( window.location.href, { revision: lastRevisionId } );
+	if ( 'classic' === ctx.reviewSurface ) {
+		return addQueryArgs( ctx.classicRevisionBase, {
+			from: ctx.baselineRevisionId,
+			to: lastRevisionId,
+		} );
+	}
+
+	return addQueryArgs( ctx.compareUrl || window.location.href, {
+		revision: lastRevisionId,
+	} );
 }
 
 /**

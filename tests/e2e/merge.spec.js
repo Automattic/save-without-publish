@@ -23,6 +23,7 @@ const {
 	publishButton,
 	publishStagedChanges,
 	reviewControl,
+	reviewSurface,
 	publishedEditControl,
 	canvasOf,
 	revisionsOf,
@@ -189,11 +190,16 @@ test.describe( 'Publishing a staged change', () => {
 
 		// Reading must not cost the staged edits sitting in the editor, so the
 		// review control leaves this tab where it is.
+		const surface = await reviewSurface( page );
 		const opened = page.waitForEvent( 'popup' );
 		await reviewControl( page ).click();
 
 		const reviewTab = await opened;
-		expect( reviewTab.url() ).toMatch( /post\.php\?.*revision=\d+/ );
+		expect( reviewTab.url() ).toMatch(
+			'classic' === surface
+				? /revision\.php\?from=\d+&to=\d+/
+				: /post\.php\?.*revision=\d+/
+		);
 		await reviewTab.close();
 
 		await expect( page ).toHaveURL(
@@ -362,7 +368,14 @@ test.describe( 'Publishing when the post has changed underneath', () => {
 		await expect( link ).toHaveAttribute( 'target', '_blank' );
 
 		const href = await link.getAttribute( 'href' );
-		expect( href ).toMatch( new RegExp( `post=${ liveId }&action=edit` ) );
+
+		if ( 'classic' === ( await reviewSurface( page ) ) ) {
+			expect( href ).toContain( 'revision.php' );
+		} else {
+			expect( href ).toMatch(
+				new RegExp( `post=${ liveId }&action=edit` )
+			);
+		}
 		expect( href ).toMatch( /revision=\d+/ );
 		expect( href ).not.toMatch( /revision=0?$/ );
 	} );

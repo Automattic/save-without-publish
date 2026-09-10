@@ -135,6 +135,17 @@ final class Editor_Assets {
 			$context['baselineRevisionId'] = Review_Link::baseline_revision_id( $post->ID );
 
 			/*
+			 * For the editor's own reactive link (`routes.js`'s
+			 * `useReviewUrl()`), so a save that lands mid-session rebuilds the
+			 * right kind of URL rather than always the in-editor one. The
+			 * base is shippable with no revision IDs at all -- `revision.php`
+			 * takes `from` and `to` as query arguments, not path segments --
+			 * so it costs nothing to send even where `compareUrl` is empty.
+			 */
+			$context['reviewSurface']       = Review_Link::surface();
+			$context['classicRevisionBase'] = admin_url( 'revision.php' );
+
+			/*
 			 * Discarding is offered here rather than on the posts list, where it
 			 * made the row wrap. It is a decision about this copy, so it belongs
 			 * where this copy is open. The URL is nonced and leads to the same
