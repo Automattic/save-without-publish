@@ -20,6 +20,7 @@ const {
 	canvasOf,
 	dirtyTitle,
 	publishButton,
+	reviewControl,
 	showDocumentPanel,
 	titleField,
 	backstopEvents,
@@ -319,6 +320,25 @@ test.describe( 'A publisher and a published post', () => {
 		expect( getPostField( liveId, 'post_content' ) ).toContain(
 			'launches in June'
 		);
+
+		// One revision -- the baseline this staging wrote, and nothing staged
+		// on top of it yet -- is not a change, so there is nothing to review.
+		// The word is stated on its own rather than offered as a link to a
+		// screen that would have nothing on the other side of the comparison.
+		await showDocumentPanel( page );
+		await expect( page.locator( '.swpub-status-row__value' ) ).toHaveText(
+			'Staged'
+		);
+		await expect( reviewControl( page ) ).toHaveCount( 0 );
+
+		// A second end, and the link appears. Clicking into the block to
+		// type switched the sidebar to its Block tab, so the Post tab that
+		// carries the Status row has to be brought back.
+		await appendAndSave( page, STAGED_TEXT );
+		await showDocumentPanel( page );
+		await expect( reviewControl( page ) ).toBeVisible( {
+			timeout: 20_000,
+		} );
 	} );
 
 	test( 'once a copy exists, the row offers the copy and not a second staging', async ( {

@@ -32,8 +32,18 @@ import { addQueryArgs } from '@wordpress/url';
  * So the revision is re-read from the editor rather than trusted from the page.
  * `getCurrentPostLastRevisionId()` reads the post's own `predecessor-version`
  * link, which the save response replaces, so it is right again the moment a save
- * settles. The server's URL is still the base: it carries the admin address and
- * the post, and only the revision it named goes stale.
+ * settles.
+ *
+ * The server's URL is the base when there is one. A copy holding only its
+ * baseline arrives with none (VIPPROD-753): one revision is nothing to
+ * review, so there is nothing to build a link on top of yet.
+ * `getCurrentPostLastRevisionId()` cannot say when that changes on its own --
+ * it names whichever revision is newest, baseline included, so it already
+ * answers "yes" to "is there a last revision" before there is a second end.
+ * The comparison that actually answers this is against the baseline's own
+ * id, sent alongside `compareUrl` for exactly this: once the newest revision
+ * differs from it, a real second end exists, and the copy's own edit screen
+ * -- where this hook is read from -- is the base to build the link on.
  *
  * Only on the copy being edited. On the published post the review points at the
  * staged copy, which is not the post this editor is holding, so there is no
@@ -48,11 +58,22 @@ export function useReviewUrl( ctx ) {
 		[]
 	);
 
-	if ( ! ctx.compareUrl || ! ctx.isStaged || ! lastRevisionId ) {
+	if ( ! ctx.isStaged || ! lastRevisionId ) {
 		return ctx.compareUrl || '';
 	}
 
-	return addQueryArgs( ctx.compareUrl, { revision: lastRevisionId } );
+	if ( ctx.compareUrl ) {
+		return addQueryArgs( ctx.compareUrl, { revision: lastRevisionId } );
+	}
+
+	if (
+		! ctx.baselineRevisionId ||
+		lastRevisionId === ctx.baselineRevisionId
+	) {
+		return '';
+	}
+
+	return addQueryArgs( window.location.href, { revision: lastRevisionId } );
 }
 
 /**

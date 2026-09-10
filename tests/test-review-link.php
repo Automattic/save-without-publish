@@ -200,4 +200,70 @@ class Test_Review_Link extends WP_UnitTestCase {
 			$this->rest_revisions_of( $staged_copy->ID )
 		);
 	}
+
+	/**
+	 * A copy holding only its baseline is offered no review link.
+	 *
+	 * One revision is not a change to review: a link to the newest of the
+	 * two would open on a screen that had nothing on the other side of the
+	 * comparison to show.
+	 */
+	public function test_no_review_link_without_two_ends(): void {
+		$live = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'As published.',
+			)
+		);
+
+		$staged_copy = Staged_Copy_Repository::create( get_post( $live ) );
+
+		Baseline_Revision::seed( $staged_copy->ID );
+
+		$this->assertSame( '', Review_Link::for_staged_copy( $staged_copy->ID ) );
+	}
+
+	/**
+	 * The link returns once a second end exists.
+	 */
+	public function test_the_review_link_appears_after_the_first_staged_save(): void {
+		$live = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'As published.',
+			)
+		);
+
+		$staged_copy = Staged_Copy_Repository::create( get_post( $live ) );
+
+		Baseline_Revision::seed( $staged_copy->ID );
+
+		$this->assertSame( '', Review_Link::for_staged_copy( $staged_copy->ID ) );
+
+		wp_update_post(
+			array(
+				'ID'           => $staged_copy->ID,
+				'post_content' => 'Staged wording.',
+			)
+		);
+
+		$this->assertNotSame( '', Review_Link::for_staged_copy( $staged_copy->ID ) );
+	}
+
+	/**
+	 * A staged copy that never had a baseline seeded is left with no link
+	 * either -- the same "fewer than two ends" answer, from the other side.
+	 */
+	public function test_no_review_link_without_any_revision_at_all(): void {
+		$live = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'As published.',
+			)
+		);
+
+		$staged_copy = Staged_Copy_Repository::create( get_post( $live ) );
+
+		$this->assertSame( '', Review_Link::for_staged_copy( $staged_copy->ID ) );
+	}
 }

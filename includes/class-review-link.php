@@ -84,6 +84,26 @@ final class Review_Link {
 	}
 
 	/**
+	 * A staged copy's baseline revision, if it has been seeded.
+	 *
+	 * The client-side twin of the check in `for_staged_copy()`: something has
+	 * to tell the editor's reactive review link (`routes.js`'s
+	 * `useReviewUrl()`) apart the moment a real second end appears from the
+	 * one revision the copy is born with, and `getCurrentPostLastRevisionId()`
+	 * cannot -- it names whichever revision is newest, baseline included, so
+	 * on a copy with only its baseline it is already answering "yes" to the
+	 * wrong question.
+	 *
+	 * @param int $staged_copy_id Staged copy post ID.
+	 * @return int The revision ID, or 0 when the copy has none yet.
+	 */
+	public static function baseline_revision_id( int $staged_copy_id ): int {
+		$ends = self::span_for( $staged_copy_id );
+
+		return $ends ? $ends[0] : 0;
+	}
+
+	/**
 	 * The two ends of a staged copy's change, oldest first.
 	 *
 	 * @param int $staged_copy_id Staged copy post ID.
@@ -133,18 +153,17 @@ final class Review_Link {
 	}
 
 	/**
-	 * The review for a staged copy, which is its newest staged save.
+	 * The review for a staged copy, which is its newest staged save against
+	 * the fork-time baseline.
 	 *
-	 * This used to span the whole staged range on the classic screen: `from` the
-	 * fork-time baseline `to` the newest save. The editor's own view diffs a
-	 * revision against the one before it and has no from and to, so this opens
-	 * on the newest and a reviewer walks the timeline back for anything earlier.
-	 *
-	 * That is a trade, and it is made deliberately. The range view answers "what
-	 * is staged" in one picture, which the timeline answers a save at a time. In
-	 * exchange the reader stops diffing serialized block markup, where a change
-	 * to one word arrives wrapped in block attributes nobody asked about, and
-	 * starts reading the change in the layout it will be published in.
+	 * The timeline is hidden on a staged copy's revisions view
+	 * (`src/editor/revisions-screen.scss`), so there is one reading: this
+	 * revision against the one before it, which `span_staged_revisions()`
+	 * above has already narrowed to mean "as published". A copy holding only
+	 * its baseline has nothing on the other side of that comparison -- one
+	 * revision is not a change -- so this answers with nothing to review
+	 * rather than a link to a screen that would say "Only one revision
+	 * found."
 	 *
 	 * @param int $staged_copy_id Staged copy post ID.
 	 * @return string The URL, or an empty string when there is nothing to review.
@@ -154,13 +173,13 @@ final class Review_Link {
 			return '';
 		}
 
-		$revisions = self::staged_revisions( $staged_copy_id );
+		$ends = self::span_for( $staged_copy_id );
 
-		if ( empty( $revisions ) ) {
+		if ( count( $ends ) < 2 ) {
 			return '';
 		}
 
-		return self::for_revision( $staged_copy_id, (int) end( $revisions )->ID );
+		return self::for_revision( $staged_copy_id, $ends[1] );
 	}
 
 	/**

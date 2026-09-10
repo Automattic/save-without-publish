@@ -132,6 +132,7 @@ final class Editor_Assets {
 			$context['strandReason']  = $stranding ? (string) $stranding['reason'] : '';
 			$context['strandedTitle'] = $stranding ? (string) $stranding['live_title'] : '';
 			$context['compareUrl'] = Review_Link::for_staged_copy( $post->ID );
+			$context['baselineRevisionId'] = Review_Link::baseline_revision_id( $post->ID );
 
 			/*
 			 * Discarding is offered here rather than on the posts list, where it
