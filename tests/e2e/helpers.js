@@ -117,6 +117,12 @@ function stagedCopyIdFor( liveId ) {
 /**
  * Stages a staged copy directly, for tests that are not about the fork itself.
  *
+ * Goes through `establish()`, the entry point every production caller uses,
+ * rather than `create()` alone: `establish()` is what seeds the baseline
+ * revision, and a copy without one has nothing for the review surface to
+ * compare the staged text against. `create()` on its own is what a test would
+ * reach for to arrange a copy with no baseline on purpose; nothing here does.
+ *
  * @param {number} liveId Published post ID.
  * @return {number} The staged copy ID.
  */
@@ -124,7 +130,7 @@ function createStagedCopyFor( liveId ) {
 	return Number(
 		wp( [
 			'eval',
-			`echo \\SaveWithoutPublish\\Staged_Copy_Repository::create( get_post( ${ liveId } ) )->ID;`,
+			`$staged_copy = \\SaveWithoutPublish\\Staged_Copy_Repository::establish( get_post( ${ liveId } ) ); if ( is_wp_error( $staged_copy ) ) { \\WP_CLI::error( $staged_copy->get_error_message() ); } echo $staged_copy->ID;`,
 		] )
 	);
 }
@@ -306,6 +312,21 @@ function notice( page, text ) {
  */
 function reviewControl( page ) {
 	return page.getByRole( 'link', { name: 'Review staged changes' } );
+}
+
+/**
+ * Which of core's two revision screens reviews a staged change here --
+ * `'editor'` on WordPress 7.0+, `'classic'` below it (VIPPROD-753).
+ *
+ * Read from the page the editor already shipped rather than asked of the
+ * server directly, so a test branching on it sees the exact answer the
+ * screen under test is working from.
+ *
+ * @param {import('@playwright/test').Page} page The page.
+ * @return {Promise<string>} `'editor'` or `'classic'`.
+ */
+function reviewSurface( page ) {
+	return page.evaluate( () => window.swpubEditor?.reviewSurface || 'editor' );
 }
 
 /**
@@ -548,6 +569,7 @@ module.exports = {
 	canvasOf,
 	titleField,
 	dirtyTitle,
+	reviewSurface,
 	openEditor,
 	appendAndSave,
 	installEventRecorder,

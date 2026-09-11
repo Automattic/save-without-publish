@@ -18,6 +18,7 @@ const {
 	appendAndSave,
 	canvasOf,
 	reviewControl,
+	reviewSurface,
 	showDocumentPanel,
 	backstopEvents,
 	clearBackstopEvents,
@@ -195,11 +196,13 @@ test.describe( 'Forking a published post', () => {
 
 		await expect( review ).toBeVisible();
 
-		// The editor's revisions view on the staged copy, not the classic
-		// compare screen: review.spec.js is where the revision it names is
-		// pinned to the newest staged save.
+		// Whichever surface reviews a staged change (VIPPROD-753); which
+		// revision it names is pinned to the newest staged save by
+		// review.spec.js.
 		expect( await review.getAttribute( 'href' ) ).toMatch(
-			/post\.php\?post=\d+&action=edit&revision=\d+/
+			'classic' === ( await reviewSurface( page ) )
+				? /revision\.php\?from=\d+&to=\d+/
+				: /post\.php\?post=\d+&action=edit&revision=\d+/
 		);
 	} );
 

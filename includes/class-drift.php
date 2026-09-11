@@ -141,11 +141,14 @@ final class Drift {
 	}
 
 	/**
-	 * The live post's own history, in the editor's revisions view.
+	 * The live post's own history, on whichever revisions screen reviews a
+	 * staged change (`Review_Link::surface()`).
 	 *
-	 * This is what a refused merge offers (R13). It is core's screen, unmodified,
-	 * opened on the most recent revision -- which for drift is exactly the change
-	 * being asked about, because that revision is the write that caused it.
+	 * This is what a refused merge offers (R13). It is core's screen,
+	 * unmodified, opened on the most recent revision -- which for drift is
+	 * exactly the change being asked about, because that revision is the
+	 * write that caused it. Core names its own "revision before this one"
+	 * on both surfaces; only the destination screen differs.
 	 *
 	 * @param int $live_id Live post ID.
 	 * @return string The URL, or an empty string when the post has no revisions.
@@ -155,6 +158,10 @@ final class Drift {
 
 		if ( is_wp_error( $latest ) || empty( $latest['latest_id'] ) ) {
 			return '';
+		}
+
+		if ( 'classic' === Review_Link::surface() ) {
+			return Review_Link::classic_revision_url( (int) $latest['latest_id'] );
 		}
 
 		return Review_Link::for_revision( $live_id, (int) $latest['latest_id'] );

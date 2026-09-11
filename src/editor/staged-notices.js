@@ -14,7 +14,7 @@ import { store as noticesStore } from '@wordpress/notices';
 
 import { verify } from './canary';
 import { context } from './context';
-import { reviewPublishedHistory } from './routes';
+import { compareAsText, reviewPublishedHistory, toRead } from './routes';
 
 /**
  * The sentence a staged copy opens with, as a format string.
@@ -181,6 +181,11 @@ export function StagedNotices() {
 				// someone publishes or discards it. A notice that can be closed
 				// is one that stops saying so on the second page load.
 				isDismissible: false,
+
+				// Offered here, not on the Status row (one word, one control):
+				// a title or excerpt change is invisible on the in-editor
+				// revisions view, which diffs blocks (VIPPROD-753, F2).
+				actions: compareAsText( ctx ),
 			}
 		);
 
@@ -210,20 +215,19 @@ export function StagedNotices() {
 
 				/*
 				 * Shaped like core's own after any save: the post type's own
-				 * "View Post" label, the permalink, and a new tab -- which is
-				 * what turns it into an external link with the arrow core puts
-				 * on one. The words are core's so the control reads the same
-				 * here as it does everywhere else this editor offers it.
+				 * "View Post" label, the permalink, and a new tab. Opened by
+				 * hand (`toRead()`) rather than through the snackbar's own
+				 * `openInNewTab`, which core's snackbar silently ignores
+				 * below WordPress 7.0 (VIPPROD-753, F6) -- this way the tab
+				 * opens the same way on every version this plugin supports.
 				 */
 				actions: ctx.liveView
 					? [
-							{
-								label:
-									ctx.viewLabel ||
+							toRead(
+								ctx.viewLabel ||
 									__( 'View Post', 'save-without-publish' ),
-								url: ctx.liveView,
-								openInNewTab: true,
-							},
+								ctx.liveView
+							),
 					  ]
 					: [],
 			}

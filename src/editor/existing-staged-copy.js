@@ -46,7 +46,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import { verify } from './canary';
 import { context } from './context';
 import { STAGED_FIELDS } from './edits';
-import { editStaged } from './routes';
+import { compareAsText, editStaged } from './routes';
 
 /**
  * The save lock's key.
@@ -458,8 +458,11 @@ export function ExistingStagedCopyNotice() {
 				isDismissible: false,
 				// Reviewing is the Summary's "Staged / Review changes" row, on
 				// this screen as much as on the staged copy. What only this
-				// screen can offer is the way over to that copy.
-				actions: editStaged( ctx ),
+				// screen can offer is the way over to that copy. Compare as
+				// text rides along when a title or excerpt changed, since the
+				// in-editor view that copy's own review link opens cannot
+				// show either (VIPPROD-753, F2).
+				actions: [ ...editStaged( ctx ), ...compareAsText( ctx ) ],
 			}
 		);
 	}, [ ctx, createNotice ] );

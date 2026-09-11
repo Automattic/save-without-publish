@@ -27,6 +27,7 @@ const {
 	publishButton,
 	revisionsOf,
 	reviewControl,
+	reviewSurface,
 	showDocumentPanel,
 	titleField,
 	wp,
@@ -77,7 +78,7 @@ test.describe( 'Reviewing a staged change', () => {
 		cleanUp( liveId );
 	} );
 
-	test( 'the review link opens the editor revisions view on the newest staged save', async ( {
+	test( 'the review link opens the right revisions view on the newest staged save', async ( {
 		page,
 	} ) => {
 		// Staged through the editor rather than arranged directly, because the
@@ -103,20 +104,28 @@ test.describe( 'Reviewing a staged change', () => {
 		expect( revisions.length ).toBeGreaterThan( 2 );
 
 		const href = await reviewControl( page ).getAttribute( 'href' );
+		const newest = revisions[ revisions.length - 1 ];
+		const baseline = revisions[ 0 ];
 
-		// The staged copy's own editor, on its newest save. That screen diffs a
-		// revision against the one before it, so the newest is the one that
-		// shows the most recent staged change, and its timeline is the way back
-		// through the rest.
-		expect( href ).toContain( `post=${ stagedCopyId }` );
-		expect( href ).toContain( 'action=edit' );
-		expect( href ).toContain(
-			`revision=${ revisions[ revisions.length - 1 ] }`
-		);
+		if ( 'classic' === ( await reviewSurface( page ) ) ) {
+			// The classic surface names both ends by id; the baseline is the
+			// `from`, and the newest staged save is the `to`.
+			expect( href ).toContain( `from=${ baseline }` );
+			expect( href ).toContain( `to=${ newest }` );
+		} else {
+			// The staged copy's own editor, on its newest save. That screen diffs
+			// a revision against the one before it, so the newest is the one that
+			// shows the most recent staged change, and its timeline is the way
+			// back through the rest.
+			expect( href ).toContain( `post=${ stagedCopyId }` );
+			expect( href ).toContain( 'action=edit' );
+			expect( href ).toContain( `revision=${ newest }` );
 
-		// The baseline is where the classic screen used to start. Opening there
-		// now would show the fork itself rather than anything anyone staged.
-		expect( href ).not.toContain( `revision=${ revisions[ 0 ] }` );
+			// The baseline is where the classic screen used to start. Opening
+			// there now would show the fork itself rather than anything anyone
+			// staged.
+			expect( href ).not.toContain( `revision=${ baseline }` );
+		}
 	} );
 
 	test( 'the published post announces the staged copy before a keystroke', async ( {
@@ -157,6 +166,7 @@ test.describe( 'Reviewing a staged change', () => {
 		const stagedCopyId = stagedCopyIdFor( liveId );
 
 		const fromStaged = await reviewControl( page ).getAttribute( 'href' );
+		const surface = await reviewSurface( page );
 
 		await openEditor( page, liveId );
 
@@ -168,10 +178,83 @@ test.describe( 'Reviewing a staged change', () => {
 		expect( fromPublished ).toBe( fromStaged );
 
 		const revisions = revisionsOf( stagedCopyId );
-		expect( fromStaged ).toContain( `post=${ stagedCopyId }` );
-		expect( fromStaged ).toContain(
-			`revision=${ revisions[ revisions.length - 1 ] }`
-		);
+		const newest = revisions[ revisions.length - 1 ];
+
+		if ( 'classic' === surface ) {
+			expect( fromStaged ).toContain( `from=${ revisions[ 0 ] }` );
+			expect( fromStaged ).toContain( `to=${ newest }` );
+		} else {
+			expect( fromStaged ).toContain( `post=${ stagedCopyId }` );
+			expect( fromStaged ).toContain( `revision=${ newest }` );
+		}
+	} );
+
+	test( 'a title-only change is invisible on the in-editor view, so it offers Compare as text too', async ( {
+		page,
+	} ) => {
+		const stagedCopyId = createStagedCopyFor( liveId );
+
+		wp( [
+			'post',
+			'update',
+			String( stagedCopyId ),
+			'--post_title=Meridian Active, Autumn collection',
+		] );
+
+		await openEditor( page, stagedCopyId );
+		await showDocumentPanel( page );
+
+		// The in-editor review link still exists and is still offered; it
+		// only cannot show this particular change (VIPPROD-753, F2).
+		await expect( reviewControl( page ) ).toBeVisible();
+
+		const notice = page
+			.locator( '.components-notice' )
+			.filter( { hasText: 'You are staging edits' } );
+		// A button, not a link: core's own Notice component drops an
+		// action's click handler whenever the action also carries a URL
+		// (WordPress 6.8), so this reads without one (`toReadInNotice()`).
+		const compareAsText = notice.getByRole( 'button', {
+			name: 'Compare as text',
+		} );
+
+		await expect( compareAsText ).toBeVisible();
+
+		const opened = page.waitForEvent( 'popup' );
+		await compareAsText.click();
+		const tab = await opened;
+
+		await expect( tab.locator( '.revisions-diff' ) ).toBeVisible( {
+			timeout: 20_000,
+		} );
+		await expect(
+			tab.locator( '.diff-deletedline' ).filter( { hasText: 'Summer' } )
+		).toHaveCount( 1 );
+		await expect(
+			tab.locator( '.diff-addedline' ).filter( { hasText: 'Autumn' } )
+		).toHaveCount( 1 );
+
+		// Restoring has nothing left to mean here either (D4), and the
+		// screen still knows this is a staged copy's own history.
+		await expect( tab.locator( '.restore-revision' ) ).toHaveCount( 0 );
+		await expect( tab.locator( 'body.swpub-staged' ) ).toHaveCount( 1 );
+
+		await tab.close();
+
+		// The published post's own warning notice offers the same route,
+		// alongside the way over to the copy it already offered.
+		await openEditor( page, liveId );
+
+		const existingNotice = page
+			.locator( '.components-notice' )
+			.filter( { hasText: 'locked here until those changes' } );
+
+		await expect(
+			existingNotice.getByRole( 'link', { name: 'Edit staged changes' } )
+		).toBeVisible();
+		await expect(
+			existingNotice.getByRole( 'button', { name: 'Compare as text' } )
+		).toBeVisible();
 	} );
 } );
 
@@ -246,10 +329,17 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		} );
 
 		const revisions = revisionsOf( stagedCopyId );
+		const href = await link.getAttribute( 'href' );
 
-		expect( await link.getAttribute( 'href' ) ).toContain(
-			`revision=${ revisions[ revisions.length - 1 ] }`
-		);
+		if ( 'classic' === ( await reviewSurface( page ) ) ) {
+			expect( href ).toContain(
+				`to=${ revisions[ revisions.length - 1 ] }`
+			);
+		} else {
+			expect( href ).toContain(
+				`revision=${ revisions[ revisions.length - 1 ] }`
+			);
+		}
 	} );
 
 	test( 'the revisions view is stripped to the change, and only there', async ( {
@@ -257,6 +347,15 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 	} ) => {
 		await openEditor( page, stagedCopyId );
 		await showDocumentPanel( page );
+
+		// This whole test is about the in-editor view; below WordPress 7.0
+		// review lands on the classic screen instead (VIPPROD-753), which
+		// "the classic surface diffs the change, and offers no Restore"
+		// below covers.
+		test.skip(
+			( await reviewSurface( page ) ) === 'classic',
+			'The classic surface has its own test below.'
+		);
 
 		const href = await page
 			.locator( '.swpub-status-row a' )
@@ -268,6 +367,32 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		await expect( page.locator( '.editor-revisions-header' ) ).toBeVisible(
 			{ timeout: 20_000 }
 		);
+
+		// The diff is real, not just a screen: core marks the changed block
+		// in the margin and, inside it, marks the words themselves --
+		// `<del>` for what the published post said, `<ins>` for what is
+		// staged. Matched on a word from each rather than the block's whole
+		// text, which core's word-level diff interleaves old and new too
+		// closely to match as one phrase.
+		await expect(
+			page.locator( '.revision-diff-marker.is-modified' )
+		).toHaveCount( 1 );
+
+		const paragraph = canvasOf( page )
+			.locator( 'p[data-type="core/paragraph"]' )
+			.first();
+
+		await expect( paragraph ).toHaveClass( /is-revision-modified/ );
+		await expect(
+			paragraph.locator( '.revision-diff-removed' ).filter( {
+				hasText: 'Summer',
+			} )
+		).toHaveCount( 1 );
+		await expect(
+			paragraph.locator( '.revision-diff-added' ).filter( {
+				hasText: 'staged',
+			} )
+		).toHaveCount( 1 );
 
 		// A staged copy's history is two points, the content as published and
 		// the change as staged, so a scrubber between them promises more than
@@ -311,6 +436,15 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		await openEditor( page, stagedCopyId );
 		await showDocumentPanel( page );
 
+		// The click takeover this asserts (`publish-changes.js`) is specific
+		// to the in-editor view; the classic surface (below WordPress 7.0,
+		// VIPPROD-753) offers no publish-from-review action to take over --
+		// only Restore to withhold, which the sibling test below covers.
+		test.skip(
+			( await reviewSurface( page ) ) === 'classic',
+			'The classic surface has no publish action to take over.'
+		);
+
 		const href = await page
 			.locator( '.swpub-status-row a' )
 			.first()
@@ -347,6 +481,50 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		);
 	} );
 
+	test( 'the classic surface diffs the change, and offers no Restore', async ( {
+		page,
+	} ) => {
+		await openEditor( page, stagedCopyId );
+		await showDocumentPanel( page );
+
+		// The in-editor tests above cover this same ground on the surface
+		// WordPress 7.0+ opens by default; below that version review lands
+		// here instead (VIPPROD-753).
+		test.skip(
+			( await reviewSurface( page ) ) !== 'classic',
+			'The in-editor surface has its own tests above.'
+		);
+
+		const href = await page
+			.locator( '.swpub-status-row a' )
+			.first()
+			.getAttribute( 'href' );
+
+		await page.goto( href );
+
+		await expect( page.locator( '.revisions-diff' ) ).toBeVisible( {
+			timeout: 20_000,
+		} );
+
+		// Word-level, the same way the in-editor surface marks its diff:
+		// `<del>` for what the published post said, `<ins>` for what is
+		// staged, each inside its own added/deleted table cell.
+		await expect(
+			page.locator( '.diff-deletedline' ).filter( { hasText: 'Summer' } )
+		).toHaveCount( 1 );
+		await expect(
+			page.locator( '.diff-addedline' ).filter( { hasText: 'staged' } )
+		).toHaveCount( 1 );
+
+		// Restoring has nothing left to mean on a staged copy (D4): core's own
+		// button is withheld here rather than left pointing at a discard.
+		await expect( page.locator( '.restore-revision' ) ).toHaveCount( 0 );
+
+		// The body class this plugin marks the staged copy's own screens
+		// with reaches even this admin-side page.
+		await expect( page.locator( 'body.swpub-staged' ) ).toHaveCount( 1 );
+	} );
+
 	test( 'the notice links the phrase naming what readers see', async ( {
 		page,
 	} ) => {
@@ -374,6 +552,26 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		await expect( published ).toHaveAttribute( 'target', '_blank' );
 	} );
 
+	test( 'a content-only change offers no Compare as text', async ( {
+		page,
+	} ) => {
+		await openEditor( page, stagedCopyId );
+
+		// This fixture's only staged change is content, which the in-editor
+		// view already shows; a second link to the same comparison would be
+		// noise, not help.
+		const notice = page
+			.locator( '.components-notice' )
+			.filter( { hasText: 'You are staging edits' } );
+
+		await expect(
+			notice.locator( '.components-notice__content' )
+		).toBeVisible();
+		await expect(
+			notice.getByRole( 'button', { name: 'Compare as text' } )
+		).toHaveCount( 0 );
+	} );
+
 	test( 'the Status row is ours, reads Staged, and is the way to review', async ( {
 		page,
 	} ) => {
@@ -395,12 +593,20 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 
 		await expect( review ).toHaveText( 'Staged' );
 
-		// Core's revisions view, which R23 makes the only review surface. Which
-		// revision it opens on is pinned by the tests above; here the point is
-		// that the row's value is the route at all.
-		expect( await review.getAttribute( 'href' ) ).toMatch(
-			/post\.php\?post=\d+&action=edit&revision=\d+/
-		);
+		// Core's revisions view, which R23 makes the only review surface --
+		// the in-editor one on WordPress 7.0+, the classic one below it
+		// (VIPPROD-753). Which revision it opens on is pinned by the tests
+		// above; here the point is that the row's value is a route to one of
+		// the two at all.
+		const reviewHref = await review.getAttribute( 'href' );
+
+		if ( 'classic' === ( await reviewSurface( page ) ) ) {
+			expect( reviewHref ).toMatch( /revision\.php\?from=\d+&to=\d+/ );
+		} else {
+			expect( reviewHref ).toMatch(
+				/post\.php\?post=\d+&action=edit&revision=\d+/
+			);
+		}
 
 		// Core prints an icon before every status it names, so a row that named
 		// one without an icon would be the only bare row in the panel.
