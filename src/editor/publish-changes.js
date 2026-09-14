@@ -165,8 +165,8 @@ export function PublishChanges() {
 	 * Publishes the staged changes, and handles the one refusal that is not an
 	 * error: the published post changed while these edits were staged.
 	 *
-	 * @param {string|null} confirm The published state being overwritten, when
-	 *                              this is the second attempt.
+	 * @param {string|null} confirm The published state token being overwritten,
+	 *                              when this is the second attempt.
 	 */
 	const merge = useCallback(
 		async ( confirm ) => {
@@ -321,10 +321,15 @@ export function PublishChanges() {
 			onRequestClose={ close }
 		>
 			<Notice status="warning" isDismissible={ false }>
-				{ __(
-					'The published post changed while these edits were staged. Review that change before continuing: publishing now will overwrite it.',
-					'save-without-publish'
-				) }
+				{ 'other' === drift.drift_kind
+					? __(
+							'The published post was updated after these edits were staged, but its title, content, and excerpt are unchanged. Publishing will not overwrite that update.',
+							'save-without-publish'
+					  )
+					: __(
+							'The published post changed while these edits were staged. Review that change before continuing: publishing now will overwrite it.',
+							'save-without-publish'
+					  ) }
 			</Notice>
 
 			{ !! drift.history_url && (
@@ -346,11 +351,13 @@ export function PublishChanges() {
 					disabled={ busy }
 					/*
 					 * The exact state the editor was shown is sent back
-					 * verbatim. The server compares it for equality against
-					 * the live post read at that moment, so a confirmation
-					 * only ever applies to the change actually reviewed.
+					 * verbatim, as the one token that names both the
+					 * timestamp and the content (VIPPROD-752). The server
+					 * compares it for equality against the live post read
+					 * at that moment, so a confirmation only ever applies
+					 * to the change actually reviewed.
 					 */
-					onClick={ () => merge( drift.live_modified ) }
+					onClick={ () => merge( drift.live_state ) }
 				>
 					{ __( 'Overwrite and publish', 'save-without-publish' ) }
 				</Button>

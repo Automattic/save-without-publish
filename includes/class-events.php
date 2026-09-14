@@ -338,10 +338,11 @@ final class Events {
 	 *
 	 * @param int    $staged_copy_id Staged copy post ID.
 	 * @param int    $live_id   Published post ID.
-	 * @param string $confirmed The published state they confirmed against.
+	 * @param string $confirmed The published state token they confirmed against.
+	 * @param string $kind      What kind of drift was overridden (VIPPROD-752).
 	 * @return void
 	 */
-	public static function drift_overridden( int $staged_copy_id, int $live_id, string $confirmed ): void {
+	public static function drift_overridden( int $staged_copy_id, int $live_id, string $confirmed, string $kind ): void {
 		/**
 		 * Fires when a merge proceeds over a change made after staging began.
 		 *
@@ -355,9 +356,10 @@ final class Events {
 		 * @param int    $staged_copy_id Staged copy post ID.
 		 * @param int    $live_id   Published post ID being overwritten.
 		 * @param int    $user_id   User who confirmed.
-		 * @param string $confirmed GMT timestamp of the published state they were shown.
+		 * @param string $confirmed The published state token they were shown.
+		 * @param string $kind      `'content'`, `'other'`, or `'unknown'` (VIPPROD-752).
 		 */
-		do_action( 'swpub_drift_overridden', $staged_copy_id, $live_id, get_current_user_id(), $confirmed );
+		do_action( 'swpub_drift_overridden', $staged_copy_id, $live_id, get_current_user_id(), $confirmed, $kind );
 	}
 
 	/**

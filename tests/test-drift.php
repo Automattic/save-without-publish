@@ -54,11 +54,19 @@ class Test_Drift extends WP_UnitTestCase {
 	/**
 	 * Moves the live post and returns its new GMT modified time.
 	 *
-	 * The timestamp is stamped onto the row afterwards rather than passed to
-	 * `wp_update_post`, which ignores it: core sets `post_modified_gmt` to the
-	 * current time on every update. Without the stamp a test edit lands in the
-	 * same second as the fork, the two timestamps match, and a genuine drift
-	 * test silently reports no drift.
+	 * A direct row write, not `wp_update_post()`: the write guard contains
+	 * every write to a post that already has a staged copy (R55), which
+	 * this fixture's `set_up()` always leaves it with, and that containment
+	 * is unconditional Tier 1 -- no capability or channel changes it. Before
+	 * the fingerprint existed (VIPPROD-752) that made no difference here,
+	 * since `wp_update_post()` being silently blocked and `$content` never
+	 * landing was invisible to a timestamp-only comparison; now it would
+	 * make every "content changed" test below false by construction. The
+	 * timestamp is written in the same query rather than left to core,
+	 * which sets `post_modified_gmt` to the current time on every update:
+	 * without an explicit stamp a test edit lands in the same second as the
+	 * fork, the two timestamps match, and a genuine drift test silently
+	 * reports no drift.
 	 *
 	 * @param string $content New content.
 	 * @param string $when    GMT timestamp to stamp the edit with.
@@ -67,17 +75,11 @@ class Test_Drift extends WP_UnitTestCase {
 	private function move_live( string $content, string $when = '2026-08-13 09:00:00' ): string {
 		global $wpdb;
 
-		wp_update_post(
-			array(
-				'ID'           => $this->live_id,
-				'post_content' => $content,
-			)
-		);
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- No core API can set this field; core overwrites it on every update.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- No core API can set this field; core overwrites it on every update. The content is written here too, for the same reason (R55 blocks wp_update_post unconditionally once a copy exists).
 		$wpdb->update(
 			$wpdb->posts,
 			array(
+				'post_content'      => $content,
 				'post_modified'     => $when,
 				'post_modified_gmt' => $when,
 			),
@@ -87,6 +89,38 @@ class Test_Drift extends WP_UnitTestCase {
 		clean_post_cache( $this->live_id );
 
 		return get_post( $this->live_id )->post_modified_gmt;
+	}
+
+	/**
+	 * Changes the live post's content directly, leaving its timestamp
+	 * exactly as it was (VIPPROD-752, F1).
+	 *
+	 * A direct row write, deliberately: this is what a database restore or
+	 * a migration tool does, and it is the one case a timestamp comparison
+	 * alone cannot see.
+	 *
+	 * @param string $content New content.
+	 * @return void
+	 */
+	private function change_live_content_without_moving_the_timestamp( string $content ): void {
+		global $wpdb;
+
+		$before = get_post( $this->live_id )->post_modified_gmt;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Simulating a restore or direct write that changes content but never touches the timestamp.
+		$wpdb->update(
+			$wpdb->posts,
+			array( 'post_content' => $content ),
+			array( 'ID' => $this->live_id )
+		);
+
+		clean_post_cache( $this->live_id );
+
+		$this->assertSame(
+			$before,
+			get_post( $this->live_id )->post_modified_gmt,
+			'Precondition: the timestamp must not have moved.'
+		);
 	}
 
 	/**
@@ -128,35 +162,108 @@ class Test_Drift extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Covers AE3. An override naming the exact state shown allows the merge.
+	 * A content change that reaches the row without moving the timestamp
+	 * is still caught (VIPPROD-752, F1) -- the one case the timestamp
+	 * alone could never see, and the reason the fingerprint exists.
+	 */
+	public function test_content_changed_behind_a_preserved_timestamp_is_drift(): void {
+		$this->change_live_content_without_moving_the_timestamp( 'Launches in July.' );
+
+		$this->assertSame( 'content', Drift::kind( $this->staged_copy_id ) );
+
+		$result = Drift::check( $this->staged_copy_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'content', $result->get_error_data()['drift_kind'] );
+	}
+
+	/**
+	 * A change to something other than title, content, or excerpt is a
+	 * different kind of drift (VIPPROD-752, F2): the merge never writes
+	 * those fields, so nothing here is something publishing could
+	 * overwrite. It still refuses -- the published post did change -- but
+	 * says so honestly, and offers no history link to a diff that would
+	 * show nothing.
+	 */
+	public function test_a_change_to_other_fields_is_other_drift(): void {
+		$this->move_live( get_post( $this->live_id )->post_content );
+
+		$this->assertSame( 'other', Drift::kind( $this->staged_copy_id ) );
+
+		$result = Drift::check( $this->staged_copy_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+
+		$data = $result->get_error_data();
+
+		$this->assertSame( 'other', $data['drift_kind'] );
+		$this->assertSame( '', $data['history_url'] );
+		$this->assertStringContainsString( 'unchanged', $result->get_error_message() );
+		$this->assertStringContainsString( 'will not overwrite', $result->get_error_message() );
+	}
+
+	/**
+	 * Covers AE3. A token naming the exact state shown allows the merge.
 	 */
 	public function test_an_override_naming_the_shown_state_is_accepted(): void {
-		$shown = $this->move_live( 'Launches in July.' );
+		$this->move_live( 'Launches in July.' );
+
+		$shown = Drift::state( get_post( $this->live_id ) );
 
 		$this->assertTrue( Drift::check( $this->staged_copy_id, $shown ) );
 	}
 
 	/**
-	 * A future timestamp is refused.
-	 *
-	 * This is the whole reason the comparison is equality rather than "not
-	 * older" (KTD15): under an ordering test a client could send a timestamp
-	 * years ahead and pass the drift check on every request, forever.
+	 * The token binds content as well as time (VIPPROD-752): a token
+	 * captured before a content change that preserved the timestamp no
+	 * longer matches once that change lands, so it cannot be replayed to
+	 * override a content drift the timestamp alone did not register.
 	 */
-	public function test_an_override_newer_than_the_live_post_is_refused(): void {
+	public function test_the_token_binds_content_as_well_as_time(): void {
+		// Captured while nothing has drifted yet.
+		$stale = Drift::state( get_post( $this->live_id ) );
+
+		$this->change_live_content_without_moving_the_timestamp( 'Launches in July.' );
+
+		$result = Drift::check( $this->staged_copy_id, $stale );
+
+		$this->assertWPError( $result, 'A token from before the content changed must not override it.' );
+		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+
+		$fresh = $result->get_error_data()['live_state'];
+
+		$this->assertTrue( Drift::check( $this->staged_copy_id, $fresh ) );
+	}
+
+	/**
+	 * A token that does not name the live post's current state is refused,
+	 * whatever it claims to be.
+	 *
+	 * This is the whole reason the comparison is equality (KTD15): under an
+	 * ordering test on a timestamp a client could send a value far in the
+	 * future and pass the check on every request, forever. The state token
+	 * this replaces that with has no order to game, so what is left to pin
+	 * is that an arbitrary well-formed value is refused outright.
+	 */
+	public function test_a_token_that_does_not_match_the_live_state_is_refused(): void {
 		$this->move_live( 'Launches in July.' );
 
-		$result = Drift::check( $this->staged_copy_id, '2099-01-01 00:00:00' );
+		$result = Drift::check( $this->staged_copy_id, str_repeat( 'a', 64 ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'swpub_drift', $result->get_error_code() );
 	}
 
 	/**
-	 * An override naming a state older than the current one is refused.
+	 * A token naming an earlier published state is refused once the post
+	 * has moved again.
 	 */
-	public function test_an_override_older_than_the_live_post_is_refused(): void {
-		$first = $this->move_live( 'Launches in July.', '2026-08-13 09:00:00' );
+	public function test_an_override_naming_an_earlier_state_is_refused(): void {
+		$this->move_live( 'Launches in July.', '2026-08-13 09:00:00' );
+		$first = Drift::state( get_post( $this->live_id ) );
+
 		$this->move_live( 'Launches in August.', '2026-08-13 10:00:00' );
 
 		$result = Drift::check( $this->staged_copy_id, $first );
@@ -184,16 +291,21 @@ class Test_Drift extends WP_UnitTestCase {
 	/**
 	 * Override values that must never reach a comparison.
 	 *
+	 * A `post_modified_gmt`-shaped timestamp is deliberately included: that
+	 * was the override's whole shape before VIPPROD-752, and it must not be
+	 * silently accepted as half of the new token.
+	 *
 	 * @return array<string, array{string}> Test cases.
 	 */
 	public function malformed_overrides(): array {
 		return array(
-			'not a date'      => array( 'yes' ),
-			'wrong separator' => array( '2026-08-13T09:00:00' ),
-			'no time'         => array( '2026-08-13' ),
-			'trailing text'   => array( '2026-08-13 09:00:00 OR 1=1' ),
-			'numeric'         => array( '99999999999' ),
-			'wildcard'        => array( '%' ),
+			'not hex'          => array( 'yes' ),
+			'too short'        => array( str_repeat( 'a', 63 ) ),
+			'too long'         => array( str_repeat( 'a', 65 ) ),
+			'uppercase hex'    => array( str_repeat( 'A', 64 ) ),
+			'a bare timestamp' => array( '2026-08-13 09:00:00' ),
+			'trailing text'    => array( str_repeat( 'a', 64 ) . ' OR 1=1' ),
+			'wildcard'         => array( '%' ),
 		);
 	}
 
@@ -201,19 +313,20 @@ class Test_Drift extends WP_UnitTestCase {
 	 * An override sent when nothing drifted is an ordinary merge, not a bypass.
 	 */
 	public function test_an_override_without_drift_is_not_a_bypass(): void {
-		$this->assertTrue( Drift::check( $this->staged_copy_id, '2026-08-13 09:00:00' ) );
+		$this->assertTrue( Drift::check( $this->staged_copy_id, str_repeat( '0', 64 ) ) );
 	}
 
 	/**
-	 * An override applies to the state it named and nothing later.
+	 * A token applies to the state it named and nothing later.
 	 *
 	 * Nothing is consumed or stored, because the baseline is written once at
 	 * fork and never updated (I8): the next check re-compares against the same
-	 * baseline and the live post's new timestamp, so a second merge after a
+	 * baseline and the live post's new state, so a second merge after a
 	 * further live change refuses again on its own.
 	 */
 	public function test_an_override_does_not_persist_to_a_later_merge(): void {
-		$shown = $this->move_live( 'Launches in July.', '2026-08-13 09:00:00' );
+		$this->move_live( 'Launches in July.', '2026-08-13 09:00:00' );
+		$shown = Drift::state( get_post( $this->live_id ) );
 
 		$this->assertTrue( Drift::check( $this->staged_copy_id, $shown ) );
 
@@ -226,11 +339,10 @@ class Test_Drift extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A touch with no content change still counts as drift.
-	 *
-	 * Detection is timestamp-based (KTD11), so this is expected rather than a
-	 * defect. It costs one confirmation; comparing content instead would cost
-	 * correctness on every field the comparison did not cover.
+	 * A touch with no content change is `other` drift, not `content`
+	 * (VIPPROD-752): the fingerprint is unchanged, so the timestamp moving
+	 * on its own is the one case this plugin was already careful never to
+	 * mistake for something a merge could overwrite.
 	 */
 	public function test_a_touch_without_content_change_counts_as_drift(): void {
 		$this->move_live( get_post( $this->live_id )->post_content );
@@ -242,6 +354,7 @@ class Test_Drift extends WP_UnitTestCase {
 		);
 
 		$this->assertTrue( Drift::has_drifted( $this->staged_copy_id ) );
+		$this->assertSame( 'other', Drift::kind( $this->staged_copy_id ) );
 	}
 
 	/**
@@ -251,11 +364,34 @@ class Test_Drift extends WP_UnitTestCase {
 		delete_post_meta( $this->staged_copy_id, Staged_Copy_Repository::FORK_BASELINE_META );
 
 		$this->assertTrue( Drift::has_drifted( $this->staged_copy_id ) );
+		$this->assertSame( 'unknown', Drift::kind( $this->staged_copy_id ) );
 
 		$result = Drift::check( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+	}
+
+	/**
+	 * A copy with no recorded fingerprint reads as `unknown` drift once the
+	 * timestamp moves, the same answer a missing baseline gets -- neither
+	 * can tell content drift from anything else, so neither claims to.
+	 */
+	public function test_a_copy_without_a_fingerprint_is_unknown_drift(): void {
+		delete_post_meta( $this->staged_copy_id, Staged_Copy_Repository::FORK_FINGERPRINT_META );
+
+		$this->move_live( 'Launches in July.' );
+
+		$this->assertSame( 'unknown', Drift::kind( $this->staged_copy_id ) );
+
+		$result = Drift::check( $this->staged_copy_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'unknown', $result->get_error_data()['drift_kind'] );
+
+		$shown = Drift::state( get_post( $this->live_id ) );
+
+		$this->assertTrue( Drift::check( $this->staged_copy_id, $shown ) );
 	}
 
 	/**
@@ -279,8 +415,10 @@ class Test_Drift extends WP_UnitTestCase {
 		$data = Drift::check( $this->staged_copy_id )->get_error_data();
 
 		$this->assertSame( $shown, $data['live_modified'] );
+		$this->assertSame( Drift::state( get_post( $this->live_id ) ), $data['live_state'] );
 		$this->assertSame( $this->live_id, $data['live_id'] );
 		$this->assertSame( 409, $data['status'] );
+		$this->assertSame( 'content', $data['drift_kind'] );
 		$this->assertNotSame( $data['forked_at'], $data['live_modified'] );
 	}
 
@@ -291,6 +429,10 @@ class Test_Drift extends WP_UnitTestCase {
 	 * by design, since an ungated writer can touch the live post at any moment.
 	 * This simulates that: the post is loaded into cache, then changed behind
 	 * the request's back.
+	 *
+	 * Also covers VIPPROD-752, F4: a direct SQL write that moves the
+	 * timestamp is caught, and correctly read as `content` drift, since
+	 * this write changes content too.
 	 */
 	public function test_the_check_re_reads_the_live_post(): void {
 		global $wpdb;
@@ -307,7 +449,10 @@ class Test_Drift extends WP_UnitTestCase {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Simulating an out-of-process write; caching it would erase the condition under test.
 		$wpdb->update(
 			$wpdb->posts,
-			array( 'post_modified_gmt' => '2026-08-13 09:00:00' ),
+			array(
+				'post_content'      => 'Launches in July.',
+				'post_modified_gmt' => '2026-08-13 09:00:00',
+			),
 			array( 'ID' => $this->live_id )
 		);
 
@@ -315,6 +460,7 @@ class Test_Drift extends WP_UnitTestCase {
 
 		$this->assertWPError( $result, 'The check trusted a stale cached post.' );
 		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'content', $result->get_error_data()['drift_kind'] );
 	}
 
 	/**

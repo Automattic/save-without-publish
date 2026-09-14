@@ -340,7 +340,8 @@ final class Merge_Marker {
 		 *     @type string $forked_at   GMT time the staged copy was created.
 		 *     @type int    $merged_by   User who applied the merge.
 		 *     @type bool   $drifted     Whether the live post moved while staged.
-		 *     @type string $override    The state confirmed against, when it drifted.
+		 *     @type string $override    The state token confirmed against, when it drifted.
+		 *     @type string $drift_kind  `'content'`, `'other'`, or `'unknown'`, when it drifted (VIPPROD-752).
 		 *     @type int[]  $revisions   Staged revisions adopted onto the live post.
 		 *     @type int[]  $attachments Attachments moved onto the live post.
 		 * }
@@ -362,15 +363,16 @@ final class Merge_Marker {
 	 */
 	private static function payload( array $marker ): array {
 		return array(
-			'staged_copy_id'   => (int) ( $marker['staged_copy_id'] ?? 0 ),
-			'snapshot_id' => (int) ( $marker['snapshot_id'] ?? 0 ),
-			'staged_by'   => (int) ( $marker['staged_by'] ?? 0 ),
-			'forked_at'   => (string) ( $marker['forked_at'] ?? '' ),
-			'merged_by'   => (int) ( $marker['merged_by'] ?? 0 ),
-			'drifted'     => (bool) ( $marker['drifted'] ?? false ),
-			'override'    => (string) ( $marker['override'] ?? '' ),
-			'revisions'   => array_values( (array) ( $marker['revisions'] ?? array() ) ),
-			'attachments' => array_values( (array) ( $marker['attachments'] ?? array() ) ),
+			'staged_copy_id' => (int) ( $marker['staged_copy_id'] ?? 0 ),
+			'snapshot_id'    => (int) ( $marker['snapshot_id'] ?? 0 ),
+			'staged_by'      => (int) ( $marker['staged_by'] ?? 0 ),
+			'forked_at'      => (string) ( $marker['forked_at'] ?? '' ),
+			'merged_by'      => (int) ( $marker['merged_by'] ?? 0 ),
+			'drifted'        => (bool) ( $marker['drifted'] ?? false ),
+			'override'       => (string) ( $marker['override'] ?? '' ),
+			'drift_kind'     => (string) ( $marker['drift_kind'] ?? '' ),
+			'revisions'      => array_values( (array) ( $marker['revisions'] ?? array() ) ),
+			'attachments'    => array_values( (array) ( $marker['attachments'] ?? array() ) ),
 		);
 	}
 

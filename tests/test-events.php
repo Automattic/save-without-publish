@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 namespace SaveWithoutPublish\Tests;
 
 use SaveWithoutPublish\Capabilities;
+use SaveWithoutPublish\Drift;
 use SaveWithoutPublish\Merge;
 use SaveWithoutPublish\Staged_Copy_Repository;
 use WP_Post;
@@ -80,17 +81,18 @@ class Test_Events extends WP_UnitTestCase {
 
 		add_action(
 			'swpub_drift_overridden',
-			function ( $staged_copy_id, $live_id, $user_id, $confirmed ): void {
+			function ( $staged_copy_id, $live_id, $user_id, $confirmed, $kind ): void {
 				$this->captured[] = array(
 					'hook'      => 'swpub_drift_overridden',
 					'staged_copy_id' => $staged_copy_id,
 					'live_id'   => $live_id,
 					'user_id'   => $user_id,
 					'confirmed' => $confirmed,
+					'kind'      => $kind,
 				);
 			},
 			10,
-			4
+			5
 		);
 	}
 
@@ -233,7 +235,9 @@ class Test_Events extends WP_UnitTestCase {
 		);
 		clean_post_cache( $this->live_id );
 
-		Merge::apply( $staged_copy_id, '2026-08-14 09:00:00' );
+		$shown = Drift::state( get_post( $this->live_id ) );
+
+		Merge::apply( $staged_copy_id, $shown );
 
 		$overrides = $this->events( 'swpub_drift_overridden' );
 
@@ -241,7 +245,8 @@ class Test_Events extends WP_UnitTestCase {
 		$this->assertSame( $staged_copy_id, $overrides[0]['staged_copy_id'] );
 		$this->assertSame( $this->live_id, $overrides[0]['live_id'] );
 		$this->assertSame( $this->user_id, $overrides[0]['user_id'] );
-		$this->assertSame( '2026-08-14 09:00:00', $overrides[0]['confirmed'] );
+		$this->assertSame( $shown, $overrides[0]['confirmed'] );
+		$this->assertSame( 'other', $overrides[0]['kind'], 'This drift only moves the timestamp.' );
 	}
 
 	/**

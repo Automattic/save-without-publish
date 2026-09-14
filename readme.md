@@ -134,11 +134,15 @@ Publishing saves first when there is anything unsaved in the editor, because the
 
 ### When the published post has changed
 
-If someone edited the published post after staging began, publishing is refused. The editor is shown what changed, on the live post's revision screen, opened in a new tab so their staged edits survive the trip.
+If someone changed the published post's title, content, or excerpt after staging began, publishing is refused. The editor is shown what changed, on the live post's revision screen, opened in a new tab so their staged edits survive the trip.
 
-They can then confirm and overwrite. That confirmation names the exact published state they were shown: if the post changes again in between, the confirmation no longer matches and the merge is refused again.
+If something else changed instead -- a category, the featured image, the slug -- publishing is still refused, but says so plainly: that update will not be overwritten, because publishing never touches those fields. There is no revision screen to send anyone to in that case, since there is nothing to diff.
+
+Either way, they can confirm and overwrite. The confirmation names the exact published state they were shown -- its content as well as its timestamp -- as one token: if the post changes again in between, or if the words in it change without the timestamp moving at all, the confirmation no longer matches and the merge is refused again.
 
 Every merge writes the published post's previous content as a revision first, so any publish can be rolled back from the core revision screen.
+
+Not everything that can change the published post is caught. A term, meta, or featured-image change made through its own API -- `wp_set_post_terms()`, `update_post_meta()`, `set_post_thumbnail()` -- rather than a post save leaves the row untouched, so there is nothing here to see it move. That is not a gap in what a merge could overwrite: it never writes those fields either.
 
 ## Discarding a staged change
 
@@ -212,7 +216,7 @@ do_action( 'swpub_stage_refused',        int $live_id,        string $channel, i
 do_action( 'swpub_write_blocked',        int $staged_copy_id, int $live_id, string $channel, int $user_id );
 do_action( 'swpub_published_via_carveout', int $live_id,      string $channel, int $user_id );
 do_action( 'swpub_staging_write_failed', int $live_id,        string $reason,  int $user_id );
-do_action( 'swpub_drift_overridden',     int $staged_copy_id, int $live_id, int $user_id, string $confirmed );
+do_action( 'swpub_drift_overridden',     int $staged_copy_id, int $live_id, int $user_id, string $confirmed, string $drift_kind );
 do_action( 'swpub_merge_completed',      int $live_id,        array $payload );
 do_action( 'swpub_staged_stranded',      int $staged_copy_id, string $reason, int $live_id );
 do_action( 'swpub_staged_recovered',     int $staged_copy_id );
@@ -254,7 +258,7 @@ add_action(
 
 `swpub_staging_write_failed` fires when a first write was diverted but the staged copy could not be written. The whole update is aborted, so the published post is unchanged and so is the copy. The caller receives core's `empty_content` failure, whose message is wrong by construction; `$reason` is the real one.
 
-`swpub_drift_overridden` fires only when a merge proceeds over a change made after staging began. It is the one moment the plugin knowingly overwrites somebody else's edit.
+`swpub_drift_overridden` fires only when a merge proceeds over a change made after staging began. It is the one moment the plugin knowingly overwrites somebody else's edit. `$confirmed` is the state token the editor sent back, naming the exact published state -- content included -- they were shown; `$drift_kind` is `content`, `other`, or `unknown` (below).
 
 `swpub_merge_completed` fires once per applied merge, after the staged copy is gone. Its payload carries what nothing can read back afterwards:
 
@@ -266,13 +270,14 @@ array(
     'forked_at'      => '2026-08-13 21:28:06',  // when staging began (GMT)
     'merged_by'      => 12,                     // who published it
     'drifted'        => true,                   // had the published post moved
-    'override'       => '2026-08-13 22:26:07',  // the state confirmed against, or ''
+    'override'       => 'e3b0c44298fc1c14...',  // the state token confirmed against, or ''
+    'drift_kind'     => 'content',              // 'content', 'other', or 'unknown' when it drifted
     'revisions'      => array( 15, 16, 17 ),    // staged revisions adopted
     'attachments'    => array( 44 ),            // media moved to the published post
 )
 ```
 
-`snapshot_id` is the revision to restore to if a merge turns out to have been wrong. `drifted` with `override` records whether the person publishing was shown someone else's change and confirmed past it.
+`snapshot_id` is the revision to restore to if a merge turns out to have been wrong. `drifted` with `override` records whether the person publishing was shown someone else's change and confirmed past it. `drift_kind` says what that change actually was: `content` means the published post's title, content, or excerpt moved -- the one thing this merge could have overwritten; `other` means something else changed, such as a category, that the merge never writes and could not have overwritten; `unknown` means the copy predates the fingerprint this distinction relies on and was never backfilled, so the plugin cannot tell the two apart and treats it as it always has.
 
 The plugin implements no notification and no audit log of its own. These actions are the seam for a site that wants either.
 
@@ -372,6 +377,8 @@ Accepts either post of a pair. A merge that fails repeatedly stops re-attempting
 ## Upgrading
 
 The pointer meta key was `_swpub_shadow_id` before the plugin settled on one word for the second copy. Visiting the admin after an upgrade renames it to `_swpub_staged_copy_id` once, tracked by the `swpub_schema` option. Staged copies created before the rename keep their `swpub-shadow-*` slug, which nothing reads.
+
+Staged copies created before drift detection told content changes apart from everything else are backfilled from their own baseline revision at the same upgrade. A copy with no baseline revision to read from is left as it was: drift on it reads `unknown`, exactly as it did before this existed.
 
 ## FAQ
 

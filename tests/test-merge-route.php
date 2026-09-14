@@ -162,12 +162,35 @@ class Test_Merge_Route extends WP_UnitTestCase {
 
 		$data = $error->get_error_data();
 		$this->assertSame( '2026-08-14 09:00:00', $data['live_modified'] );
+		$this->assertSame( 'other', $data['drift_kind'], 'This drift only moves the timestamp.' );
 
-		// The editor sends that exact value back to confirm.
-		$confirmed = $this->request( $this->staged_copy_id, $data['live_modified'] );
+		// The editor sends that exact token back to confirm.
+		$confirmed = $this->request( $this->staged_copy_id, $data['live_state'] );
 
 		$this->assertFalse( $confirmed->is_error() );
 		$this->assertSame( 'Launches on October 3.', get_post( $this->live_id )->post_content );
+	}
+
+	/**
+	 * A timestamp-shaped confirmation -- the override's whole shape before
+	 * VIPPROD-752 -- is refused at the route, not silently accepted as half
+	 * of the new token.
+	 */
+	public function test_a_timestamp_shaped_confirmation_is_refused_at_the_route(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Core overwrites post_modified_gmt on every update, so it cannot be set through the API.
+		$wpdb->update(
+			$wpdb->posts,
+			array( 'post_modified_gmt' => '2026-08-14 09:00:00' ),
+			array( 'ID' => $this->live_id )
+		);
+		clean_post_cache( $this->live_id );
+
+		$response = $this->request( $this->staged_copy_id, '2026-08-14 09:00:00' );
+
+		$this->assertTrue( $response->is_error() );
+		$this->assertSame( 'rest_invalid_param', $response->as_error()->get_error_code() );
 	}
 
 	/**
