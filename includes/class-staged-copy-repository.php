@@ -51,6 +51,19 @@ final class Staged_Copy_Repository {
 	public const FORK_BASELINE_META = '_swpub_forked_modified_gmt';
 
 	/**
+	 * Meta on the staged copy recording a fingerprint of the live post's
+	 * staged fields at fork (VIPPROD-752).
+	 *
+	 * The timestamp alone cannot tell a content change from any other write
+	 * that touches the live post, and cannot see a content change made by a
+	 * write that does not move the timestamp at all -- a direct database
+	 * write, or a restore from backup. This is what makes both distinctions
+	 * possible. Written once and never updated, for the same reason the
+	 * baseline is (I8).
+	 */
+	public const FORK_FINGERPRINT_META = '_swpub_forked_fingerprint';
+
+	/**
 	 * Fields an editor may change on a staged copy (R29, KD9).
 	 *
 	 * Everything else is copied at fork for fidelity and locked, so nothing can
@@ -340,8 +353,9 @@ final class Staged_Copy_Repository {
 			 * published content.
 			 */
 			'meta_input'     => array(
-				self::LIVE_META          => $live->ID,
-				self::FORK_BASELINE_META => $live->post_modified_gmt,
+				self::LIVE_META             => $live->ID,
+				self::FORK_BASELINE_META    => $live->post_modified_gmt,
+				self::FORK_FINGERPRINT_META => Drift::fingerprint( $live ),
 			),
 		);
 

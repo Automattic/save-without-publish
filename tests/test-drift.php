@@ -98,6 +98,22 @@ class Test_Drift extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The fork writes a fingerprint of the live post's staged fields, not
+	 * just its timestamp -- what tells a content change apart from
+	 * everything else that can move `post_modified_gmt`, and what catches
+	 * one even when the timestamp does not move at all.
+	 */
+	public function test_a_fresh_fork_carries_a_fingerprint(): void {
+		$fingerprint = get_post_meta(
+			$this->staged_copy_id,
+			Staged_Copy_Repository::FORK_FINGERPRINT_META,
+			true
+		);
+
+		$this->assertSame( Drift::fingerprint( get_post( $this->live_id ) ), $fingerprint );
+	}
+
+	/**
 	 * Covers AE3. A live change after the fork refuses the merge.
 	 */
 	public function test_a_live_change_refuses_the_merge(): void {

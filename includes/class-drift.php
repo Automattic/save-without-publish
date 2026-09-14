@@ -49,6 +49,23 @@ final class Drift {
 	}
 
 	/**
+	 * A byte-exact fingerprint of the fields a merge actually writes.
+	 *
+	 * Not normalised (VIPPROD-752): the merge overwrites bytes, so bytes are
+	 * what drift is. This is what lets a content change be told apart from
+	 * everything else that can move `post_modified_gmt` -- and, paired with
+	 * the timestamp, what lets a content change be caught even when the
+	 * timestamp does not move at all, which a direct database write or a
+	 * restore from backup can do.
+	 *
+	 * @param WP_Post $post The post to fingerprint.
+	 * @return string A sha256 hex digest of the staged fields.
+	 */
+	public static function fingerprint( WP_Post $post ): string {
+		return hash( 'sha256', $post->post_title . "\0" . $post->post_content . "\0" . $post->post_excerpt );
+	}
+
+	/**
 	 * Whether the live post has changed since the fork.
 	 *
 	 * A missing baseline counts as drift. It should be impossible -- the fork
