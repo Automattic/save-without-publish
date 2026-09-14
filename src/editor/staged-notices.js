@@ -244,13 +244,25 @@ export function StagedNotices() {
 		 * live post is server-side, re-checked immediately before the merge
 		 * writes (KTD15), because anything the browser decides can be skipped by
 		 * not using the browser.
+		 *
+		 * The wording splits on `driftKind` (VIPPROD-752) the same way the
+		 * merge's own refusal does: a change to title, content, or excerpt is
+		 * something publishing could overwrite, and anything else provably
+		 * is not, since the merge never writes it. `reviewPublishedHistory()`
+		 * already renders nothing when the server withheld the history link
+		 * for that same reason, so the action needs no branch of its own.
 		 */
 		createNotice(
 			'warning',
-			__(
-				'Someone changed the published post after these edits were staged. Publishing these changes will overwrite that change.',
-				'save-without-publish'
-			),
+			'other' === ctx.driftKind
+				? __(
+						'The published post was updated after these edits were staged. Its title, content, and excerpt are unchanged.',
+						'save-without-publish'
+				  )
+				: __(
+						'Someone changed the published post after these edits were staged. Publishing these changes will overwrite that change.',
+						'save-without-publish'
+				  ),
 			{
 				id: 'swpub-drift',
 				isDismissible: false,

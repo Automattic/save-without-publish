@@ -9,12 +9,14 @@ declare( strict_types = 1 );
 
 namespace SaveWithoutPublish;
 
+use WP_Post;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Brings stored pointers up to the current vocabulary.
+ * Brings stored state up to date across a version bump.
  *
  * The pointer meta key was `_swpub_shadow_id` before the plugin settled on one
  * word for the second copy. Nothing reads the old key any more, so a site that
@@ -22,7 +24,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * the published post would look clean, the copy would be invisible in the posts
  * list, and the next edit would stage a second one beside it.
  *
- * Runs in the admin only. The rename has to happen before anyone can act on a
+ * A staged copy created before VIPPROD-752 carries a fork baseline timestamp
+ * but no fingerprint, which `Drift::kind()` reads as `unknown` once the live
+ * post moves -- the same answer a missing baseline gets, and by design: an
+ * unbackfilled copy behaves exactly as drift detection did before this
+ * fingerprint existed. The backfill only upgrades what it can prove.
+ *
+ * Runs in the admin only. Both steps have to happen before anyone can act on a
  * staged copy, and every way of acting on one goes through the admin or WP-CLI,
  * which loads the admin's `init` too.
  */
@@ -37,9 +45,9 @@ final class Upgrade {
 	 * Current stored-state version.
 	 *
 	 * 1 is everything before the rename, including installs that predate this
-	 * option and therefore read as 0.
+	 * option and therefore read as 0. 3 adds the fork fingerprint (VIPPROD-752).
 	 */
-	private const VERSION = 2;
+	private const VERSION = 3;
 
 	/**
 	 * The pointer key as it was written before the rename.
@@ -66,6 +74,7 @@ final class Upgrade {
 		}
 
 		self::rename_pointers();
+		self::backfill_fingerprints();
 
 		update_option( self::OPTION, self::VERSION, true );
 	}
@@ -114,5 +123,78 @@ final class Upgrade {
 		}
 
 		return is_int( $renamed ) ? $renamed : 0;
+	}
+
+	/**
+	 * Backfills the fork fingerprint for staged copies that predate it (VIPPROD-752).
+	 *
+	 * The fingerprint means "the live post's title, content, and excerpt at
+	 * the moment staging began". The only place those exact bytes still exist
+	 * by the time an upgrade runs is the live row itself -- and only while
+	 * nothing has touched it since the fork, which the recorded baseline
+	 * timestamp still matching `post_modified_gmt` is the plugin's own
+	 * definition of. So that is the one case backfilled, from the live row.
+	 *
+	 * Not from the copy's baseline revision, which looks like the same
+	 * content and is not: the copy was written through `wp_insert_post()`,
+	 * whose sanitization can alter bytes for a user without
+	 * `unfiltered_html` (every non-super-admin on multisite). A fingerprint
+	 * of those bytes would read as content drift on every such copy with
+	 * nothing having changed at all.
+	 *
+	 * A copy whose live post has already moved is left alone. It reads as
+	 * `unknown` drift from here on, which is exactly what it read as before
+	 * this fingerprint existed: refused, confirmable, no kind.
+	 *
+	 * A direct query on posts and postmeta, so it never traverses `Write_Guard`
+	 * and touches no post row: it reads the live row and writes only meta on
+	 * the staged copy.
+	 *
+	 * @return int How many copies were backfilled.
+	 */
+	public static function backfill_fingerprints(): int {
+		global $wpdb;
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- A one-time backfill across posts and postmeta; the "posts missing this meta key" query has no non-direct expression VIP Search's WP_Query offload can serve.
+		$staged_copy_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT p.ID FROM {$wpdb->posts} p
+				LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = %s
+				WHERE p.post_status = %s AND m.post_id IS NULL",
+				Staged_Copy_Repository::FORK_FINGERPRINT_META,
+				Status::NAME
+			)
+		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		$backfilled = 0;
+
+		foreach ( $staged_copy_ids as $staged_copy_id ) {
+			$staged_copy_id = (int) $staged_copy_id;
+			$live           = Staged_Copy_Repository::find_live_for_staged_copy( $staged_copy_id );
+
+			if ( ! $live instanceof WP_Post ) {
+				continue;
+			}
+
+			$baseline = Drift::baseline( $staged_copy_id );
+
+			if ( '' === $baseline || $baseline !== $live->post_modified_gmt ) {
+				continue;
+			}
+
+			add_post_meta(
+				$staged_copy_id,
+				Staged_Copy_Repository::FORK_FINGERPRINT_META,
+				Drift::fingerprint( $live ),
+				true
+			);
+
+			clean_post_cache( $staged_copy_id );
+
+			++$backfilled;
+		}
+
+		return $backfilled;
 	}
 }

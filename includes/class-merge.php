@@ -145,22 +145,25 @@ final class Merge {
 				);
 			}
 
+			$drift_kind = $drifted ? Drift::kind( $staged_copy_id ) : '';
+
 			if ( $drifted ) {
 				// Announced before the write, so a listener sees it even if the
 				// merge then fails. This is the one moment the plugin knowingly
 				// overwrites somebody else's edit.
-				Events::drift_overridden( $staged_copy_id, $live->ID, (string) $override );
+				Events::drift_overridden( $staged_copy_id, $live->ID, (string) $override, $drift_kind );
 			}
 
 			Merge_Marker::start( $live->ID, $staged_copy_id );
 			Merge_Marker::record(
 				$live->ID,
 				array(
-					'staged_by' => (int) $staged_copy->post_author,
-					'forked_at' => (string) $staged_copy->post_date_gmt,
-					'merged_by' => get_current_user_id(),
-					'drifted'   => $drifted,
-					'override'  => $drifted ? (string) $override : '',
+					'staged_by'  => (int) $staged_copy->post_author,
+					'forked_at'  => (string) $staged_copy->post_date_gmt,
+					'merged_by'  => get_current_user_id(),
+					'drifted'    => $drifted,
+					'override'   => $drifted ? (string) $override : '',
+					'drift_kind' => $drift_kind,
 				)
 			);
 

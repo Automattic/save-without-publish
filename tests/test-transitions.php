@@ -218,7 +218,7 @@ class Test_Transitions extends WP_UnitTestCase {
 		 * asserts the recovery either way rather than depending on clock
 		 * granularity.
 		 */
-		$shown  = get_post( $this->live_id )->post_modified_gmt;
+		$shown  = Drift::state( get_post( $this->live_id ) );
 		$result = Merge::apply( $this->staged_copy_id, $shown );
 
 		$this->assertIsArray( $result, 'A recovered staged copy could not be merged.' );

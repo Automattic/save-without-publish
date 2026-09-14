@@ -64,7 +64,8 @@ final class Merge_Route {
 					'confirm' => array(
 						'type'        => 'string',
 						'required'    => false,
-						'description' => __( 'The published state the editor was shown, when confirming past a change.', 'save-without-publish' ),
+						'pattern'     => '^[0-9a-f]{64}$',
+						'description' => __( 'The published state token the editor was shown, when confirming past a change.', 'save-without-publish' ),
 					),
 				),
 			)

@@ -12,7 +12,7 @@ import apiFetch from '@wordpress/api-fetch';
  * Publishes the staged changes.
  *
  * @param {number}      stagedCopyId Staged copy's post ID.
- * @param {string|null} confirm      The live post's modified time being overwritten,
+ * @param {string|null} confirm      The live post's state token being overwritten,
  *                                   when confirming a drifted merge.
  * @return {Promise<Object>} The merge result.
  */

@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 namespace SaveWithoutPublish\Tests;
 
 use SaveWithoutPublish\Capabilities;
+use SaveWithoutPublish\Drift;
 use SaveWithoutPublish\Merge;
 use SaveWithoutPublish\Merge_Marker;
 use SaveWithoutPublish\Staged_Copy_Repository;
@@ -444,7 +445,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$this->assertSame( self::PUBLISHED_CONTENT, get_post( $this->live_id )->post_content );
 		$this->assertNull( Merge_Marker::get( $this->live_id ), 'A refused merge left a marker behind.' );
 
-		$applied = Merge::apply( $this->staged_copy_id, '2026-08-14 09:00:00' );
+		$applied = Merge::apply( $this->staged_copy_id, Drift::state( get_post( $this->live_id ) ) );
 
 		$this->assertIsArray( $applied );
 		$this->assertSame( self::STAGED_CONTENT, get_post( $this->live_id )->post_content );
@@ -476,8 +477,53 @@ class Test_Merge extends WP_UnitTestCase {
 		$this->assertSame( $staged_by, $payload['merged_by'] );
 		$this->assertFalse( $payload['drifted'] );
 		$this->assertSame( '', $payload['override'] );
+		$this->assertSame( '', $payload['drift_kind'] );
 		$this->assertSame( $staged, $payload['revisions'] );
 		$this->assertNotEmpty( $payload['forked_at'] );
+	}
+
+	/**
+	 * A merge that proceeded over drift records what kind it was
+	 * (VIPPROD-752), both in the completion event and in the one moment
+	 * the plugin announces overwriting somebody else's edit.
+	 */
+	public function test_a_merge_over_drift_records_the_kind(): void {
+		$shown = $this->drift_live();
+
+		$overridden = null;
+		add_action(
+			'swpub_drift_overridden',
+			static function ( $staged_copy_id, $live_id, $user_id, $confirmed, $kind ) use ( &$overridden ): void {
+				$overridden = array(
+					'confirmed' => $confirmed,
+					'kind'      => $kind,
+				);
+			},
+			10,
+			5
+		);
+
+		$payload = null;
+		add_action(
+			'swpub_merge_completed',
+			static function ( $live_id, $data ) use ( &$payload ): void {
+				$payload = $data;
+			},
+			10,
+			2
+		);
+
+		$applied = Merge::apply( $this->staged_copy_id, $shown );
+
+		$this->assertIsArray( $applied );
+		$this->assertIsArray( $overridden, 'swpub_drift_overridden did not fire.' );
+		$this->assertSame( $shown, $overridden['confirmed'] );
+		$this->assertSame( 'other', $overridden['kind'], 'drift_live() only moves the timestamp.' );
+
+		$this->assertIsArray( $payload, 'The completion event did not fire.' );
+		$this->assertTrue( $payload['drifted'] );
+		$this->assertSame( $shown, $payload['override'] );
+		$this->assertSame( 'other', $payload['drift_kind'] );
 	}
 
 	/**
@@ -667,10 +713,11 @@ class Test_Merge extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Moves the live post so it no longer matches the fork baseline.
+	 * Moves the live post so it no longer matches the fork baseline, and
+	 * returns the confirmation token for the state that leaves it in.
 	 *
 	 * @param string $when GMT timestamp to stamp.
-	 * @return string The new timestamp.
+	 * @return string The state token a confirmation would need to name.
 	 */
 	private function drift_live( string $when = '2026-08-14 09:00:00' ): string {
 		global $wpdb;
@@ -683,7 +730,7 @@ class Test_Merge extends WP_UnitTestCase {
 		);
 		clean_post_cache( $this->live_id );
 
-		return $when;
+		return Drift::state( get_post( $this->live_id ) );
 	}
 
 	/**

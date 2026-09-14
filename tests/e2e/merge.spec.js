@@ -11,6 +11,7 @@
 const { test, expect } = require( '@playwright/test' );
 const {
 	createPublishedPost,
+	createCategory,
 	getPostField,
 	postExists,
 	createStagedCopyFor,
@@ -384,5 +385,137 @@ test.describe( 'Publishing when the post has changed underneath', () => {
 		}
 		expect( href ).toMatch( /revision=\d+/ );
 		expect( href ).not.toMatch( /revision=0?$/ );
+	} );
+} );
+
+test.describe( 'Publishing when the post changed without its timestamp moving', () => {
+	let liveId;
+	let stagedCopyId;
+
+	test.beforeEach( () => {
+		liveId = createPublishedPost(
+			'Meridian Active, Summer collection',
+			PUBLISHED_TEXT
+		);
+		stagedCopyId = stageWithContent( liveId );
+
+		// A direct row write that changes content but never touches
+		// `post_modified_gmt` at all (VIPPROD-752, F1) -- what a database
+		// restore or a migration tool does, and the one case a timestamp
+		// comparison alone could never see.
+		forcePublishedContent(
+			liveId,
+			`<!-- wp:paragraph --><p>${ PUBLISHED_TEXT } Typo fixed.</p><!-- /wp:paragraph -->`
+		);
+	} );
+
+	test.afterEach( () => {
+		cleanUp( liveId );
+	} );
+
+	test( 'the change is still caught, and confirming overwrites it', async ( {
+		page,
+	} ) => {
+		await openEditor( page, stagedCopyId );
+
+		await publishStagedChanges( page );
+
+		await expect(
+			page
+				.getByRole( 'dialog' )
+				.locator( '.components-notice__content' )
+				.filter( {
+					hasText:
+						'The published post changed while these edits were staged',
+				} )
+		).toBeVisible();
+
+		await page
+			.getByRole( 'button', { name: 'Overwrite and publish' } )
+			.click();
+
+		await page.waitForURL( new RegExp( `post=${ liveId }` ), {
+			timeout: 20_000,
+		} );
+
+		expect( getPostField( liveId, 'post_content' ) ).toContain(
+			STAGED_TEXT
+		);
+		expect( postExists( stagedCopyId ) ).toBe( false );
+	} );
+} );
+
+test.describe( 'Publishing when the post changed in a way the merge never writes', () => {
+	let liveId;
+	let stagedCopyId;
+	let categoryId;
+
+	test.beforeEach( () => {
+		liveId = createPublishedPost(
+			'Meridian Active, Summer collection',
+			PUBLISHED_TEXT
+		);
+		stagedCopyId = stageWithContent( liveId );
+		categoryId = createCategory( 'Autumn collection' );
+
+		// A category, not a staged field (R42): the write guard lets this
+		// straight through even with a copy in place, and core bumps the
+		// timestamp on it like any other save. The merge never writes
+		// categories, so this is a change publishing could not have
+		// overwritten either way.
+		wp( [
+			'post',
+			'update',
+			String( liveId ),
+			`--post_category=${ categoryId }`,
+		] );
+	} );
+
+	test.afterEach( () => {
+		cleanUp( liveId );
+	} );
+
+	test( 'the change is refused in different words, and confirming keeps it', async ( {
+		page,
+	} ) => {
+		await openEditor( page, stagedCopyId );
+
+		await publishStagedChanges( page );
+
+		const dialog = page.getByRole( 'dialog' );
+
+		await expect(
+			dialog.locator( '.components-notice__content' ).filter( {
+				hasText: 'title, content, and excerpt are unchanged',
+			} )
+		).toBeVisible();
+		// The review screen would diff to nothing, so nothing offers it.
+		await expect(
+			dialog.getByRole( 'link', { name: 'Review the change' } )
+		).toHaveCount( 0 );
+
+		await page
+			.getByRole( 'button', { name: 'Overwrite and publish' } )
+			.click();
+
+		await page.waitForURL( new RegExp( `post=${ liveId }` ), {
+			timeout: 20_000,
+		} );
+
+		expect( getPostField( liveId, 'post_content' ) ).toContain(
+			STAGED_TEXT
+		);
+		expect( postExists( stagedCopyId ) ).toBe( false );
+
+		const categories = wp( [
+			'post',
+			'term',
+			'list',
+			String( liveId ),
+			'category',
+			'--field=name',
+		] );
+
+		expect( categories ).toContain( 'Autumn collection' );
 	} );
 } );

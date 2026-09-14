@@ -700,6 +700,43 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A revision restore on the live post is blocked the same as any other
+	 * write to it, once a copy exists (VIPPROD-752, F4).
+	 *
+	 * `wp_restore_post_revision()` is `wp_update_post()` underneath, so it
+	 * meets Tier 1 exactly like a direct call would: the filter returns the
+	 * live row's own current data unchanged, and nothing on the row -- not
+	 * the content, not the modified time -- moves.
+	 */
+	public function test_a_revision_restore_on_the_live_post_is_blocked_while_a_copy_exists(): void {
+		// Two edits, not one: a revision is a checkpoint of the state a save
+		// just left, not the state before it, so restoring "the version
+		// before this one" needs an older checkpoint and a current state
+		// both distinct from it.
+		wp_update_post( array( 'ID' => $this->live_id, 'post_content' => 'Version A.' ) );
+		wp_update_post( array( 'ID' => $this->live_id, 'post_content' => 'Version B.' ) );
+
+		$revisions = wp_get_post_revisions( $this->live_id, array( 'order' => 'ASC' ) );
+		$revision  = reset( $revisions );
+
+		$this->assertNotFalse( $revision, 'Precondition: the edits above have to have left revisions.' );
+		$this->assertSame(
+			'Version A.',
+			$this->stored( $revision->ID, 'post_content' ),
+			'Precondition: the oldest revision holds the earlier version.'
+		);
+
+		$this->stage();
+
+		$before_modified = $this->stored( $this->live_id, 'post_modified_gmt' );
+
+		wp_restore_post_revision( $revision->ID );
+
+		$this->assertSame( 'Version B.', $this->stored( $this->live_id, 'post_content' ) );
+		$this->assertSame( $before_modified, $this->stored( $this->live_id, 'post_modified_gmt' ) );
+	}
+
+	/**
 	 * Covers AE29. The rule holds with no authenticated user at all.
 	 */
 	public function test_a_user_less_write_to_a_post_with_a_copy_is_refused(): void {

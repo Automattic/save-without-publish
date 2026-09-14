@@ -179,14 +179,20 @@ final class Editor_Assets {
 				: '';
 
 			/*
-			 * Drift state is resolved server-side and shipped with the page. The
-			 * timestamp is the exact state the editor is being shown, and a merge
-			 * confirming against it must send this value back unchanged (KTD15).
+			 * Drift state is resolved server-side and shipped with the page.
+			 * `driftKind` (VIPPROD-752) is what the load-time notice reads to
+			 * say what actually changed; `historyUrl` is withheld for
+			 * `'other'` the same way the merge's own refusal withholds it --
+			 * a change to anything but title, content, or excerpt diffs to
+			 * nothing on the review screen.
 			 */
 			$context['drifted']      = Drift::has_drifted( $post->ID );
+			$context['driftKind']    = Drift::kind( $post->ID, $live );
 			$context['forkedAt']     = Drift::baseline( $post->ID );
 			$context['liveModified'] = $live instanceof \WP_Post ? $live->post_modified_gmt : '';
-			$context['historyUrl']   = $live instanceof \WP_Post ? Drift::history_url( $live->ID ) : '';
+			$context['historyUrl']   = ( $live instanceof \WP_Post && 'other' !== $context['driftKind'] )
+				? Drift::history_url( $live->ID )
+				: '';
 
 			return $context;
 		}

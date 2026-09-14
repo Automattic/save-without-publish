@@ -19,24 +19,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Answers one question: has the published post moved since this staged copy forked?
  *
- * Detection compares the live post's GMT modified time against the value the
- * fork recorded (KTD11). GMT because a site timezone change shifts local
- * timestamps and would break the comparison in both directions. Timestamps
- * rather than content because a merge that silently overwrites someone's edit
- * is the failure this product exists to prevent, and an inconsequential touch
- * reported as drift costs one confirmation.
+ * Detection compares the live post's GMT modified time and the fingerprint of
+ * its staged fields against the values the fork recorded (KTD11). GMT because
+ * a site timezone change shifts local timestamps and would break the
+ * comparison in both directions. Both, rather than the timestamp alone,
+ * because a merge that silently overwrites someone's edit is the failure this
+ * product exists to prevent, and a timestamp move with no content behind it
+ * (VIPPROD-752, `kind()`) costs one confirmation for something the merge
+ * would never have overwritten anyway.
  */
 final class Drift {
 
 	/**
-	 * The parameter a merge sends to confirm against a state it was shown.
+	 * The exact shape of the confirmation token `state()` produces.
 	 */
-	public const OVERRIDE_PARAM = 'swpub_seen_modified_gmt';
-
-	/**
-	 * The exact shape of a GMT timestamp in `post_modified_gmt`.
-	 */
-	private const TIMESTAMP_PATTERN = '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/';
+	private const TOKEN_PATTERN = '/^[0-9a-f]{64}$/';
 
 	/**
 	 * The live post's GMT modified time as it was when the staged copy forked.
@@ -49,29 +46,99 @@ final class Drift {
 	}
 
 	/**
-	 * Whether the live post has changed since the fork.
+	 * A byte-exact fingerprint of the fields a merge actually writes.
 	 *
-	 * A missing baseline counts as drift. It should be impossible -- the fork
-	 * writes it inside the insert -- but guessing "no drift" from missing
-	 * evidence is the one wrong answer here.
+	 * Not normalised (VIPPROD-752): the merge overwrites bytes, so bytes are
+	 * what drift is. This is what lets a content change be told apart from
+	 * everything else that can move `post_modified_gmt` -- and, paired with
+	 * the timestamp, what lets a content change be caught even when the
+	 * timestamp does not move at all, which a direct database write or a
+	 * restore from backup can do.
 	 *
-	 * @param int $staged_copy_id Staged copy post ID.
-	 * @return bool True when the live post moved.
+	 * @param WP_Post $post The post to fingerprint.
+	 * @return string A sha256 hex digest of the staged fields.
 	 */
-	public static function has_drifted( int $staged_copy_id ): bool {
-		$live = Staged_Copy_Repository::find_live_for_staged_copy( $staged_copy_id );
+	public static function fingerprint( WP_Post $post ): string {
+		return hash( 'sha256', $post->post_title . "\0" . $post->post_content . "\0" . $post->post_excerpt );
+	}
+
+	/**
+	 * The live post's whole comparable state, as one token a confirmation can name.
+	 *
+	 * Binding the timestamp and the fingerprint together in one hash, rather
+	 * than sending each separately, is what makes a single equality check
+	 * (KTD15) enough: a confirmation obtained before a content change that
+	 * preserved the timestamp names a state that no longer exists once that
+	 * change lands, exactly as one obtained before an ordinary edit does.
+	 *
+	 * @param WP_Post $live The live post.
+	 * @return string A sha256 hex digest of its modified time and its fingerprint.
+	 */
+	public static function state( WP_Post $live ): string {
+		return hash( 'sha256', $live->post_modified_gmt . "\0" . self::fingerprint( $live ) );
+	}
+
+	/**
+	 * What, if anything, changed on the live post since the fork.
+	 *
+	 * Two independent facts, read together:
+	 *
+	 * - Did `post_modified_gmt` move from the value recorded at fork?
+	 * - Does the live post's current fingerprint match the one recorded at fork?
+	 *
+	 * A fingerprint mismatch is `'content'` regardless of the timestamp --
+	 * and regardless of whether the timestamp was even recorded -- because
+	 * that is the one case a merge can silently overwrite: a direct
+	 * database write or a restore from backup can change title, content, or
+	 * excerpt without moving `post_modified_gmt` at all. A moved timestamp
+	 * with the same fingerprint is `'other'`: something changed that the
+	 * merge never writes, such as a category. Where the recorded evidence
+	 * cannot say -- no baseline timestamp at all, or a timestamp that moved
+	 * on a copy with no recorded fingerprint (created before VIPPROD-752 and
+	 * not backfillable) -- the answer is `'unknown'`, which is treated
+	 * exactly as drift always was.
+	 *
+	 * @param int          $staged_copy_id Staged copy post ID.
+	 * @param WP_Post|null $live      The live post, when already fetched fresh.
+	 *                                Fetched again when omitted.
+	 * @return string `''` (no drift), `'content'`, `'other'`, or `'unknown'`.
+	 */
+	public static function kind( int $staged_copy_id, ?WP_Post $live = null ): string {
+		$live = $live ?? Staged_Copy_Repository::find_live_for_staged_copy( $staged_copy_id );
 
 		if ( ! $live instanceof WP_Post ) {
-			return false;
+			return '';
+		}
+
+		$fingerprint = (string) get_post_meta( $staged_copy_id, Staged_Copy_Repository::FORK_FINGERPRINT_META, true );
+
+		// The strongest evidence first: recorded content that no longer
+		// matches is drift whatever the timestamps say, or fail to say.
+		if ( '' !== $fingerprint && $fingerprint !== self::fingerprint( $live ) ) {
+			return 'content';
 		}
 
 		$baseline = self::baseline( $staged_copy_id );
 
 		if ( '' === $baseline ) {
-			return true;
+			return 'unknown';
 		}
 
-		return $baseline !== $live->post_modified_gmt;
+		if ( $baseline === $live->post_modified_gmt ) {
+			return '';
+		}
+
+		return '' === $fingerprint ? 'unknown' : 'other';
+	}
+
+	/**
+	 * Whether the live post has changed since the fork.
+	 *
+	 * @param int $staged_copy_id Staged copy post ID.
+	 * @return bool True when `kind()` is anything but no drift.
+	 */
+	public static function has_drifted( int $staged_copy_id ): bool {
+		return '' !== self::kind( $staged_copy_id );
 	}
 
 	/**
@@ -84,7 +151,7 @@ final class Drift {
 	 * their merge.
 	 *
 	 * @param int         $staged_copy_id Staged copy post ID.
-	 * @param string|null $override  The GMT timestamp the editor confirmed against, if any.
+	 * @param string|null $override  The state token the editor confirmed against, if any.
 	 * @return true|WP_Error True when the merge may proceed.
 	 */
 	public static function check( int $staged_copy_id, ?string $override = null ) {
@@ -101,7 +168,7 @@ final class Drift {
 		$confirmed = null;
 
 		if ( null !== $override && '' !== $override ) {
-			if ( ! self::is_timestamp( $override ) ) {
+			if ( ! self::is_token( $override ) ) {
 				return new WP_Error(
 					'swpub_bad_override',
 					__( 'The confirmation did not name a valid published state.', 'save-without-publish' ),
@@ -112,7 +179,9 @@ final class Drift {
 			$confirmed = $override;
 		}
 
-		if ( ! self::has_drifted( $staged_copy_id ) ) {
+		$kind = self::kind( $staged_copy_id, $live );
+
+		if ( '' === $kind ) {
 			// No drift, so there is nothing for a confirmation to consume. A
 			// merge carrying one is an ordinary merge, not a bypass.
 			return true;
@@ -120,24 +189,52 @@ final class Drift {
 
 		/*
 		 * Equality, not "not older" (KTD15). An ordering test lets a client send
-		 * a timestamp far in the future and satisfy the check on every request,
-		 * forever, which turns the override into an unconditional bypass.
+		 * a token it captured once and satisfy the check on every later request,
+		 * forever, which turns the override into an unconditional bypass. Naming
+		 * the fingerprint as well as the timestamp closes the same door one layer
+		 * up: a token captured before a content change that preserved the
+		 * timestamp names a state that no longer exists once that change lands.
 		 */
-		if ( null !== $confirmed && $confirmed === $live->post_modified_gmt ) {
+		if ( null !== $confirmed && $confirmed === self::state( $live ) ) {
 			return true;
 		}
 
 		return new WP_Error(
 			'swpub_drift',
-			__( 'The published post changed after these edits were staged. Review the change before publishing.', 'save-without-publish' ),
+			self::message( $kind ),
 			array(
 				'status'        => 409,
 				'live_id'       => $live->ID,
+				'drift_kind'    => $kind,
 				'forked_at'     => self::baseline( $staged_copy_id ),
 				'live_modified' => $live->post_modified_gmt,
-				'history_url'   => self::history_url( $live->ID ),
+				'live_state'    => self::state( $live ),
+				// A content change is what the review screen can show; anything
+				// else diffs to nothing there, so there is nothing to send an
+				// editor to look at.
+				'history_url'   => 'other' === $kind ? '' : self::history_url( $live->ID ),
 			)
 		);
+	}
+
+	/**
+	 * The refusal's sentence, specific to what actually changed.
+	 *
+	 * `content` and `unknown` both name a change the merge could overwrite --
+	 * `unknown` because there is nothing recorded to say otherwise -- and get
+	 * the same words. `other` is the one case that is provably not that: the
+	 * merge writes only title, content, and excerpt, so a change that left
+	 * those three untouched is not something publishing could overwrite.
+	 *
+	 * @param string $kind `'content'`, `'other'`, or `'unknown'`.
+	 * @return string The message.
+	 */
+	private static function message( string $kind ): string {
+		if ( 'other' === $kind ) {
+			return __( 'The published post was updated after these edits were staged, but its title, content, and excerpt are unchanged. Publishing will not overwrite that update.', 'save-without-publish' );
+		}
+
+		return __( 'The published post changed after these edits were staged. Review the change before publishing.', 'save-without-publish' );
 	}
 
 	/**
@@ -186,15 +283,15 @@ final class Drift {
 	}
 
 	/**
-	 * Whether a value is exactly a `post_modified_gmt` timestamp.
+	 * Whether a value is exactly the shape `state()` produces.
 	 *
 	 * Format is checked before value so nothing is coerced: PHP would happily
 	 * compare an integer or an array-shaped value and produce an answer.
 	 *
-	 * @param string $value Candidate timestamp.
+	 * @param string $value Candidate token.
 	 * @return bool True when the value has the exact expected shape.
 	 */
-	private static function is_timestamp( string $value ): bool {
-		return 1 === preg_match( self::TIMESTAMP_PATTERN, $value );
+	private static function is_token( string $value ): bool {
+		return 1 === preg_match( self::TOKEN_PATTERN, $value );
 	}
 }
