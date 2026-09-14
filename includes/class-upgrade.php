@@ -25,10 +25,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * list, and the next edit would stage a second one beside it.
  *
  * A staged copy created before VIPPROD-752 carries a fork baseline timestamp
- * but no fingerprint, which `Drift::kind()` reads as `unknown` -- the same
- * answer a missing baseline gets, and by design: an unbackfilled copy behaves
- * exactly as drift detection did before this fingerprint existed. The backfill
- * only upgrades what it safely can.
+ * but no fingerprint, which `Drift::kind()` reads as `unknown` once the live
+ * post moves -- the same answer a missing baseline gets, and by design: an
+ * unbackfilled copy behaves exactly as drift detection did before this
+ * fingerprint existed. The backfill only upgrades what it can prove.
  *
  * Runs in the admin only. Both steps have to happen before anyone can act on a
  * staged copy, and every way of acting on one goes through the admin or WP-CLI,
@@ -128,19 +128,27 @@ final class Upgrade {
 	/**
 	 * Backfills the fork fingerprint for staged copies that predate it (VIPPROD-752).
 	 *
-	 * A copy's own oldest non-autosave revision is the baseline `establish()`
-	 * seeds at fork -- the content as published, at the moment staging began --
-	 * so it stands in for the live post's state at that same moment, which is
-	 * long gone by the time this runs. A copy with no such revision (baseline
-	 * seeding failed, or every revision was later pruned by
-	 * `wp_revisions_to_keep`) is left without a fingerprint: `Drift::kind()`
-	 * reads that as `unknown`, the same answer a missing baseline already
-	 * gets, so an unbackfilled copy is no worse off than before this existed.
+	 * The fingerprint means "the live post's title, content, and excerpt at
+	 * the moment staging began". The only place those exact bytes still exist
+	 * by the time an upgrade runs is the live row itself -- and only while
+	 * nothing has touched it since the fork, which the recorded baseline
+	 * timestamp still matching `post_modified_gmt` is the plugin's own
+	 * definition of. So that is the one case backfilled, from the live row.
+	 *
+	 * Not from the copy's baseline revision, which looks like the same
+	 * content and is not: the copy was written through `wp_insert_post()`,
+	 * whose sanitization can alter bytes for a user without
+	 * `unfiltered_html` (every non-super-admin on multisite). A fingerprint
+	 * of those bytes would read as content drift on every such copy with
+	 * nothing having changed at all.
+	 *
+	 * A copy whose live post has already moved is left alone. It reads as
+	 * `unknown` drift from here on, which is exactly what it read as before
+	 * this fingerprint existed: refused, confirmable, no kind.
 	 *
 	 * A direct query on posts and postmeta, so it never traverses `Write_Guard`
-	 * and touches no post row. Reading the revision, which is not this
-	 * plugin's row to own, and writing only meta on the staged copy, is not
-	 * a write this containment is about.
+	 * and touches no post row: it reads the live row and writes only meta on
+	 * the staged copy.
 	 *
 	 * @return int How many copies were backfilled.
 	 */
@@ -163,16 +171,22 @@ final class Upgrade {
 
 		foreach ( $staged_copy_ids as $staged_copy_id ) {
 			$staged_copy_id = (int) $staged_copy_id;
-			$baseline       = self::oldest_non_autosave_revision( $staged_copy_id );
+			$live           = Staged_Copy_Repository::find_live_for_staged_copy( $staged_copy_id );
 
-			if ( ! $baseline instanceof WP_Post ) {
+			if ( ! $live instanceof WP_Post ) {
+				continue;
+			}
+
+			$baseline = Drift::baseline( $staged_copy_id );
+
+			if ( '' === $baseline || $baseline !== $live->post_modified_gmt ) {
 				continue;
 			}
 
 			add_post_meta(
 				$staged_copy_id,
 				Staged_Copy_Repository::FORK_FINGERPRINT_META,
-				Drift::fingerprint( $baseline ),
+				Drift::fingerprint( $live ),
 				true
 			);
 
@@ -182,21 +196,5 @@ final class Upgrade {
 		}
 
 		return $backfilled;
-	}
-
-	/**
-	 * A staged copy's oldest revision that is not an autosave.
-	 *
-	 * @param int $staged_copy_id Staged copy post ID.
-	 * @return WP_Post|null The revision, or null when the copy has none.
-	 */
-	private static function oldest_non_autosave_revision( int $staged_copy_id ): ?WP_Post {
-		foreach ( wp_get_post_revisions( $staged_copy_id, array( 'order' => 'ASC' ) ) as $revision ) {
-			if ( ! wp_is_post_autosave( $revision ) ) {
-				return $revision;
-			}
-		}
-
-		return null;
 	}
 }

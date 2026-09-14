@@ -378,7 +378,7 @@ Accepts either post of a pair. A merge that fails repeatedly stops re-attempting
 
 The pointer meta key was `_swpub_shadow_id` before the plugin settled on one word for the second copy. Visiting the admin after an upgrade renames it to `_swpub_staged_copy_id` once, tracked by the `swpub_schema` option. Staged copies created before the rename keep their `swpub-shadow-*` slug, which nothing reads.
 
-Staged copies created before drift detection told content changes apart from everything else are backfilled from their own baseline revision at the same upgrade. A copy with no baseline revision to read from is left as it was: drift on it reads `unknown`, exactly as it did before this existed.
+Staged copies created before drift detection told content changes apart from everything else are backfilled at the same upgrade, from the published post's own row, for every copy whose published post has not been touched since staging began. A copy whose published post already moved is left as it was: drift on it reads `unknown`, exactly as it did before this existed.
 
 ## FAQ
 

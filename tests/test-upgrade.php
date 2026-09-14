@@ -83,12 +83,15 @@ class Test_Upgrade extends WP_UnitTestCase {
 
 	/**
 	 * A copy staged before the fork fingerprint existed (VIPPROD-752) is
-	 * backfilled from its own baseline revision -- the content as
-	 * published at the moment staging began, which is what the fingerprint
-	 * has always meant, and the only trace of that moment still available
-	 * by the time an upgrade runs.
+	 * backfilled from the live row while nothing has touched it since the
+	 * fork -- the one place the bytes the fingerprint means still exist,
+	 * and the one case the recorded timestamp can vouch for.
+	 *
+	 * From the live row, not the copy's baseline revision: the copy went
+	 * through `wp_insert_post()` sanitization at fork, which can alter
+	 * bytes for a user without `unfiltered_html`. The live row did not.
 	 */
-	public function test_backfill_fingerprints_reads_the_baseline_revision(): void {
+	public function test_backfill_fingerprints_the_live_row_while_it_is_unmoved(): void {
 		$live_id = self::factory()->post->create(
 			array(
 				'post_status'  => 'publish',
@@ -106,29 +109,52 @@ class Test_Upgrade extends WP_UnitTestCase {
 
 		$this->assertSame( 1, Upgrade::backfill_fingerprints() );
 
-		$revisions = wp_get_post_revisions( $staged_copy->ID, array( 'order' => 'ASC' ) );
-		$baseline  = reset( $revisions );
-
-		$this->assertNotFalse( $baseline, 'Precondition: the seeded baseline has to exist to read from.' );
 		$this->assertSame(
-			Drift::fingerprint( $baseline ),
+			Drift::fingerprint( get_post( $live_id ) ),
 			get_post_meta( $staged_copy->ID, Staged_Copy_Repository::FORK_FINGERPRINT_META, true )
 		);
+		$this->assertFalse( Drift::has_drifted( $staged_copy->ID ), 'A backfilled, untouched copy must not read as drifted.' );
 	}
 
 	/**
-	 * A copy with no baseline revision to read is left without a
-	 * fingerprint rather than backfilled from a guess. `Drift::kind()`
-	 * reads that exactly as it reads a missing baseline today, so this
-	 * copy is no worse off than before the fingerprint existed.
+	 * A copy whose live post already moved is left alone: nothing left can
+	 * say what its content was at fork, so it stays `unknown` drift, which
+	 * is exactly what it was before the fingerprint existed.
 	 */
-	public function test_backfill_leaves_a_copy_without_a_baseline_alone(): void {
-		$live_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+	public function test_backfill_leaves_a_copy_alone_once_the_live_post_moved(): void {
+		global $wpdb;
 
-		// create() alone, deliberately: no baseline revision is seeded.
+		$live_id     = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$staged_copy = Staged_Copy_Repository::create( get_post( $live_id ) );
 
 		delete_post_meta( $staged_copy->ID, Staged_Copy_Repository::FORK_FINGERPRINT_META );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Core overwrites post_modified_gmt on every update, so it cannot be set through the API.
+		$wpdb->update(
+			$wpdb->posts,
+			array( 'post_modified_gmt' => '2026-08-14 09:00:00' ),
+			array( 'ID' => $live_id )
+		);
+		clean_post_cache( $live_id );
+		clean_post_cache( $staged_copy->ID );
+
+		$this->assertSame( 0, Upgrade::backfill_fingerprints() );
+		$this->assertSame(
+			'',
+			get_post_meta( $staged_copy->ID, Staged_Copy_Repository::FORK_FINGERPRINT_META, true )
+		);
+		$this->assertSame( 'unknown', Drift::kind( $staged_copy->ID ) );
+	}
+
+	/**
+	 * A copy whose live post is gone has nothing to backfill from.
+	 */
+	public function test_backfill_leaves_a_copy_without_a_live_post_alone(): void {
+		$live_id     = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$staged_copy = Staged_Copy_Repository::create( get_post( $live_id ) );
+
+		delete_post_meta( $staged_copy->ID, Staged_Copy_Repository::FORK_FINGERPRINT_META );
+		wp_delete_post( $live_id, true );
 		clean_post_cache( $staged_copy->ID );
 
 		$this->assertSame( 0, Upgrade::backfill_fingerprints() );

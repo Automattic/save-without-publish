@@ -86,16 +86,17 @@ final class Drift {
 	 * - Did `post_modified_gmt` move from the value recorded at fork?
 	 * - Does the live post's current fingerprint match the one recorded at fork?
 	 *
-	 * A fingerprint mismatch is `'content'` regardless of the timestamp,
-	 * because that is the one case a merge can silently overwrite: a direct
+	 * A fingerprint mismatch is `'content'` regardless of the timestamp --
+	 * and regardless of whether the timestamp was even recorded -- because
+	 * that is the one case a merge can silently overwrite: a direct
 	 * database write or a restore from backup can change title, content, or
 	 * excerpt without moving `post_modified_gmt` at all. A moved timestamp
-	 * with the same fingerprint is `'other'` -- something changed that the
-	 * merge never writes, such as a category. A copy with no recorded
-	 * fingerprint (backfilled from nothing, or created before VIPPROD-752
-	 * and never backfilled) is `'unknown'` when the timestamp moved, the
-	 * same answer a missing baseline gets; neither can tell content drift
-	 * from anything else.
+	 * with the same fingerprint is `'other'`: something changed that the
+	 * merge never writes, such as a category. Where the recorded evidence
+	 * cannot say -- no baseline timestamp at all, or a timestamp that moved
+	 * on a copy with no recorded fingerprint (created before VIPPROD-752 and
+	 * not backfillable) -- the answer is `'unknown'`, which is treated
+	 * exactly as drift always was.
 	 *
 	 * @param int          $staged_copy_id Staged copy post ID.
 	 * @param WP_Post|null $live      The live post, when already fetched fresh.
@@ -109,24 +110,25 @@ final class Drift {
 			return '';
 		}
 
+		$fingerprint = (string) get_post_meta( $staged_copy_id, Staged_Copy_Repository::FORK_FINGERPRINT_META, true );
+
+		// The strongest evidence first: recorded content that no longer
+		// matches is drift whatever the timestamps say, or fail to say.
+		if ( '' !== $fingerprint && $fingerprint !== self::fingerprint( $live ) ) {
+			return 'content';
+		}
+
 		$baseline = self::baseline( $staged_copy_id );
 
 		if ( '' === $baseline ) {
 			return 'unknown';
 		}
 
-		$moved       = $baseline !== $live->post_modified_gmt;
-		$fingerprint = (string) get_post_meta( $staged_copy_id, Staged_Copy_Repository::FORK_FINGERPRINT_META, true );
-
-		if ( '' === $fingerprint ) {
-			return $moved ? 'unknown' : '';
+		if ( $baseline === $live->post_modified_gmt ) {
+			return '';
 		}
 
-		if ( $fingerprint !== self::fingerprint( $live ) ) {
-			return 'content';
-		}
-
-		return $moved ? 'other' : '';
+		return '' === $fingerprint ? 'unknown' : 'other';
 	}
 
 	/**
