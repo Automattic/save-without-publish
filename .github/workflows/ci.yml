@@ -98,10 +98,27 @@ jobs:
       # local wp-env, which needs `wp core update-db` after one (learned
       # writing D1: a downgraded core otherwise shows "Database Update
       # Required" until it runs).
+      # `core: null` would mean "the latest release", but wp-env resolves that
+      # by asking wordpress.org for the version and then fetching that tag from
+      # the WordPress/WordPress GitHub mirror -- which lags a point release by
+      # hours, and every job died on `couldn't find remote ref 7.1.1` the day
+      # 7.1.1 shipped. So the release is resolved here, against the mirror,
+      # and when the mirror is behind the newest tag it does have is used and
+      # the run says so. wordpress.org's version-check is the same source
+      # wp-env itself reads.
       - name: Choose WordPress
         run: |
           if [ "${{ matrix.core }}" = "release" ]; then
-            echo '{"core":null}' > .wp-env.override.json
+            latest=$(curl -fsS https://api.wordpress.org/core/version-check/1.7/ | jq -r '.offers[0].version')
+            mirror='https://github.com/WordPress/WordPress.git'
+            if git ls-remote --exit-code --tags "$mirror" "refs/tags/$latest" >/dev/null 2>&1; then
+              core="$latest"
+            else
+              core=$(git ls-remote --tags "$mirror" 'refs/tags/*' | awk -F/ '{ print $3 }' | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | sort -V | tail -n 1)
+              echo "::notice title=WordPress mirror lag::wordpress.org says $latest is current, but the GitHub mirror has no such tag yet. Testing against $core, the newest it does have."
+            fi
+            echo "Testing against WordPress $core"
+            echo "{\"core\":\"WordPress/WordPress#$core\"}" > .wp-env.override.json
           else
             echo '{"core":"WordPress/WordPress#${{ matrix.core }}"}' > .wp-env.override.json
           fi
@@ -139,10 +156,27 @@ jobs:
       - name: Build
         run: npm run build
 
+      # `core: null` would mean "the latest release", but wp-env resolves that
+      # by asking wordpress.org for the version and then fetching that tag from
+      # the WordPress/WordPress GitHub mirror -- which lags a point release by
+      # hours, and every job died on `couldn't find remote ref 7.1.1` the day
+      # 7.1.1 shipped. So the release is resolved here, against the mirror,
+      # and when the mirror is behind the newest tag it does have is used and
+      # the run says so. wordpress.org's version-check is the same source
+      # wp-env itself reads.
       - name: Choose WordPress
         run: |
           if [ "${{ matrix.core }}" = "release" ]; then
-            echo '{"core":null}' > .wp-env.override.json
+            latest=$(curl -fsS https://api.wordpress.org/core/version-check/1.7/ | jq -r '.offers[0].version')
+            mirror='https://github.com/WordPress/WordPress.git'
+            if git ls-remote --exit-code --tags "$mirror" "refs/tags/$latest" >/dev/null 2>&1; then
+              core="$latest"
+            else
+              core=$(git ls-remote --tags "$mirror" 'refs/tags/*' | awk -F/ '{ print $3 }' | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | sort -V | tail -n 1)
+              echo "::notice title=WordPress mirror lag::wordpress.org says $latest is current, but the GitHub mirror has no such tag yet. Testing against $core, the newest it does have."
+            fi
+            echo "Testing against WordPress $core"
+            echo "{\"core\":\"WordPress/WordPress#$core\"}" > .wp-env.override.json
           else
             echo '{"core":"WordPress/WordPress#${{ matrix.core }}"}' > .wp-env.override.json
           fi
