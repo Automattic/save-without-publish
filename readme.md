@@ -195,6 +195,8 @@ The write succeeded; the staged copy holds the change. The 409 exists because th
 
 A write that would change a locked field on a staged copy is refused with `swpub_field_locked`, HTTP 403, and a `field` key naming the parameter. That code is contract, not an incident identifier: the editor keys its own recovery on it, and integrations may match on it.
 
+`meta` is the one locked field that does not refuse the write. A staged copy's ordinary save often carries `meta` it never asked to stage -- an SEO plugin's own panel, a custom field, core's own footnotes -- and refusing the whole request for it used to cost the title, content, and excerpt sent alongside it. Instead, any key outside the staged-meta set is silently dropped from the request rather than written, the save proceeds with everything else it carried, and the drop is named twice: on the `X-SWPub-Meta-Dropped` response header, a comma-separated list of the keys, and on `swpub_meta_keys_dropped` below. The staged-meta set is empty today -- no meta key is staged yet -- so every key currently arrives dropped; a client relying on a meta write to a staged copy should not assume it landed without checking one of those two. That includes core's own footnotes: a footnote added on a staged copy keeps its marker in the content and loses its text, which lives in meta, until the staged-meta set has members. A write refused for some other locked field is refused whole, meta included, and announces nothing about its meta.
+
 `swpub_live_locked` is contract in the same way, and will not be renamed:
 
 ```
@@ -220,6 +222,7 @@ do_action( 'swpub_drift_overridden',     int $staged_copy_id, int $live_id, int 
 do_action( 'swpub_merge_completed',      int $live_id,        array $payload );
 do_action( 'swpub_staged_stranded',      int $staged_copy_id, string $reason, int $live_id );
 do_action( 'swpub_staged_recovered',     int $staged_copy_id );
+do_action( 'swpub_meta_keys_dropped',    int $staged_copy_id, array $keys, int $user_id );
 ```
 
 `swpub_write_staged` fires every time a write is diverted into a staged copy, whatever transport it came from. That is the first save; a later one is refused rather than diverted, and fires `swpub_write_blocked`. It adds to `swpub_staged_created` and `swpub_staged_edited` rather than replacing them: a diverted write is a save of the staged copy, so those fire too. Its argument order matches theirs deliberately, so a handler copied between them reads the same posts. What it carries that they cannot is the channel, which is the difference between an editor staging a change and an integration finding its first write staged.
@@ -242,6 +245,8 @@ add_action(
 	4
 );
 ```
+
+`swpub_meta_keys_dropped` fires when a staged copy's own save carried a meta key outside the staged set. The save is not refused for it -- `meta` is the one locked field that is stripped rather than refused, described under [REST](#rest) above -- so this is the one place a site sees that the key did not follow the rest of the save onto the copy.
 
 `swpub_published_via_carveout` fires on every use of the programmatic first-save seam. The plugin logs nothing itself, so this is where a site sees the seam being used:
 

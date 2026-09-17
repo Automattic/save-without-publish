@@ -363,6 +363,35 @@ final class Events {
 	}
 
 	/**
+	 * Announces that a locked meta key was dropped from a staged copy's save
+	 * rather than costing the rest of it (VIPPROD-755).
+	 *
+	 * The counterpart to the old all-or-nothing refusal: the save succeeded,
+	 * the title, content, and excerpt it carried are on the copy, and this
+	 * names the one thing that is not -- a meta key outside the staged set,
+	 * which today is every key. This is where a site sees that an SEO
+	 * plugin's own field, or any other meta write, did not follow a rewrite
+	 * onto its staged copy.
+	 *
+	 * @param int      $staged_copy_id Staged copy post ID.
+	 * @param string[] $keys           Meta keys that were dropped.
+	 * @return void
+	 */
+	public static function meta_keys_dropped( int $staged_copy_id, array $keys ): void {
+		/**
+		 * Fires when a staged copy's save carried a meta key outside the staged
+		 * set, which was dropped rather than costing the rest of the save.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param int      $staged_copy_id Staged copy post ID.
+		 * @param string[] $keys           Meta keys that were dropped.
+		 * @param int      $user_id        User who made the write. 0 when there is none.
+		 */
+		do_action( 'swpub_meta_keys_dropped', $staged_copy_id, $keys, get_current_user_id() );
+	}
+
+	/**
 	 * Whether a post is a staged copy (R35).
 	 *
 	 * The one-line opt-out for anything hooked to core's save and transition
