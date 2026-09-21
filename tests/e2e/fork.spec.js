@@ -410,6 +410,16 @@ test.describe( 'Forking a published post', () => {
 			canvasOf( page ).locator( 'p[data-type="core/paragraph"]' ).first()
 		).toHaveClass( /is-editing-disabled/ );
 
+		// The notice also names what is not locked: the slug is one of the
+		// fields that still saves from this screen and changes the published
+		// post immediately (VIPPROD-1230).
+		await expect(
+			locked.locator( '.components-notice__content' )
+		).toContainText( 'slug' );
+		await expect(
+			locked.locator( '.components-notice__content' )
+		).toContainText( 'published post at once' );
+
 		// The notice carries the way over to the copy, where the second pass
 		// is made.
 		await locked
