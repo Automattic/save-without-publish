@@ -1,9 +1,9 @@
 /**
  * What a published post does when someone has already staged a change to it.
  *
- * Five things: it says so -- naming the three locked fields and stating that
- * everything else on this screen still saves and changes the published post
- * at once (VIPPROD-1230) -- it stops the canvas from being typed into (R55),
+ * Five things: it says so, naming the three locked fields and stating that
+ * everything else cannot be staged and goes live at once when saved from here
+ * (VIPPROD-1230); it stops the canvas from being typed into (R55),
  * it stops the title the same way, it takes the excerpt field off the screen,
  * and it disables saving while a locked field is dirty anyway (VIPPROD-1171,
  * VIPPROD-1121).
@@ -447,7 +447,7 @@ export function ExistingStagedCopyNotice() {
 		createNotice(
 			'warning',
 			`${ who( ctx ) } ${ __(
-				'The title, content, and excerpt are locked here until those changes are published or discarded. Everything else still saves from here and changes the published post at once: the slug, publish date, author, categories, tags, and featured image are not staged.',
+				'The title, content, and excerpt are locked here until those changes are published or discarded. Everything else cannot be staged and saves straight to the published post: a change to the slug, publish date, author, categories, tags, or featured image goes live at once.',
 				'save-without-publish'
 			) }`,
 			{
