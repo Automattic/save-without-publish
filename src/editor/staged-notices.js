@@ -268,7 +268,7 @@ function verifyNoticeLink() {
  */
 export function StagedNotices() {
 	const ctx = context();
-	const { createNotice } = useDispatch( noticesStore );
+	const { createNotice, removeNotice } = useDispatch( noticesStore );
 
 	/*
 	 * `ctx` is the page-load snapshot and never changes; the schedule can,
@@ -388,7 +388,7 @@ export function StagedNotices() {
 			! ctx.isStaged ||
 			! ctx.drifted ||
 			ctx.stranded ||
-			'swpub_drift' === ctx.scheduleRefused?.reason
+			'swpub_drift' === schedule.scheduleRefused?.reason
 		) {
 			return;
 		}
@@ -423,10 +423,17 @@ export function StagedNotices() {
 				actions: reviewPublishedHistory( ctx ),
 			}
 		);
-	}, [ ctx, createNotice ] );
+	}, [ ctx, schedule.scheduleRefused, createNotice ] );
 
 	useEffect( () => {
-		if ( ! ctx.isStaged || ! ctx.scheduleRefused ) {
+		if ( ! ctx.isStaged ) {
+			return;
+		}
+
+		// A later successful schedule clears the refusal on the server, so
+		// the warning about it goes too, without waiting for a reload.
+		if ( ! schedule.scheduleRefused ) {
+			removeNotice( 'swpub-schedule-refused' );
 			return;
 		}
 
@@ -438,15 +445,17 @@ export function StagedNotices() {
 		 * the published post did not move, something about the pair itself
 		 * did.
 		 */
-		createNotice( 'warning', scheduleRefusedSentence( ctx ), {
+		createNotice( 'warning', scheduleRefusedSentence( effectiveCtx ), {
 			id: 'swpub-schedule-refused',
 			isDismissible: false,
 			actions:
-				'swpub_drift' === ctx.scheduleRefused.reason
+				'swpub_drift' === schedule.scheduleRefused.reason
 					? reviewPublishedHistory( ctx )
 					: [],
 		} );
-	}, [ ctx, createNotice ] );
+		// `effectiveCtx` is left out for the reason given on the first effect.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ ctx, schedule.scheduleRefused, createNotice, removeNotice ] );
 
 	return null;
 }

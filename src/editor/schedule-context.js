@@ -31,6 +31,11 @@ export function ScheduleProvider( { children } ) {
 	const [ schedule, setSchedule ] = useState( () => ( {
 		scheduledFor: ctx.scheduledFor || '',
 		scheduledForLabel: ctx.scheduledForLabel || '',
+
+		// Held here too: a successful schedule clears the recorded refusal
+		// server-side (`Scheduled_Publish::schedule()`), so the notices that
+		// read it need to see that happen without a reload.
+		scheduleRefused: ctx.scheduleRefused || null,
 	} ) );
 
 	return (

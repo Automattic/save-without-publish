@@ -387,4 +387,62 @@ test.describe( 'Publishing a staged copy at a set time', () => {
 		await expect( row ).toContainText( 'Staged changes' );
 		await expect( row ).toContainText( 'Schedule stopped' );
 	} );
+
+	test( 'rescheduling after a refused run clears the refusal warning in the same session', async ( {
+		page,
+	} ) => {
+		const soon = new Date( Date.now() + 5_000 ).toISOString();
+		scheduleFor( stagedCopyId, soon );
+
+		wp( [
+			'post',
+			'update',
+			String( liveId ),
+			'--post_category=1',
+			'--tags_input=drift',
+		] );
+
+		await new Promise( ( resolve ) => setTimeout( resolve, 7_000 ) );
+		runDueSchedules();
+
+		await openEditor( page, stagedCopyId );
+
+		await expect(
+			notice( page, 'The published post changed first' )
+		).toBeVisible();
+
+		await openSchedule( page );
+		await fillPicker( page, {
+			year: 2028,
+			month: '06',
+			day: 1,
+			hour12: 2,
+			minute: 15,
+			meridiem: 'PM',
+		} );
+		await schedulePopover( page )
+			.getByRole( 'button', { name: 'Schedule', exact: true } )
+			.click();
+
+		await expect( scheduleToggle( page ) ).toHaveText(
+			'June 1, 2028 2:15 pm'
+		);
+
+		// The server cleared the refusal with that schedule; a warning that
+		// the changes "were not published" beside a promise that they will
+		// be is the contradiction this guards against.
+		await expect(
+			notice( page, 'The published post changed first' )
+		).toHaveCount( 0 );
+
+		// The published post is still ahead of these edits, so the ordinary
+		// drift warning -- suppressed only while the refusal said it -- is
+		// back, in its category-and-tags wording.
+		await expect(
+			notice(
+				page,
+				'The published post was updated after these edits were staged'
+			)
+		).toBeVisible();
+	} );
 } );

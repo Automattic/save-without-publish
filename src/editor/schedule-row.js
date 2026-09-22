@@ -235,6 +235,9 @@ export function ScheduleRow() {
 					getSettings().formats.datetime,
 					instant
 				),
+
+				// Cleared on the server by the same successful call.
+				scheduleRefused: null,
 			} );
 		} catch ( error ) {
 			createErrorNotice(
@@ -257,7 +260,13 @@ export function ScheduleRow() {
 		try {
 			await cancelSchedule( ctx.stagedCopyId );
 
-			setSchedule( { scheduledFor: '', scheduledForLabel: '' } );
+			// Unscheduling leaves a recorded refusal in place server-side
+			// (`Scheduled_Publish::unschedule()`), so it stays here too.
+			setSchedule( ( current ) => ( {
+				...current,
+				scheduledFor: '',
+				scheduledForLabel: '',
+			} ) );
 		} catch ( error ) {
 			createErrorNotice(
 				error && error.message
