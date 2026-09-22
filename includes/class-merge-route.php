@@ -75,13 +75,27 @@ final class Merge_Route {
 	/**
 	 * Whether the current user may merge this staged copy.
 	 *
-	 * Authorization resolves against the live post, not the staged copy (KTD13), so
-	 * someone who can no longer edit the published post cannot publish into it.
-	 *
 	 * @param WP_REST_Request $request The request.
 	 * @return true|WP_Error True when allowed.
 	 */
 	public static function can_merge( WP_REST_Request $request ) {
+		return self::can_manage_staged( $request );
+	}
+
+	/**
+	 * Whether the current user may act on the staged copy a request names.
+	 *
+	 * Authorization resolves against the live post, not the staged copy (KTD13), so
+	 * someone who can no longer edit the published post cannot publish into it.
+	 *
+	 * Shared with `Schedule_Route` (VIPPROD-1247): scheduling a publish and
+	 * applying one are the same authority, so the two routes read the same
+	 * answer rather than each carrying its own copy of these three checks.
+	 *
+	 * @param WP_REST_Request $request The request. Reads `id`.
+	 * @return true|WP_Error True when allowed.
+	 */
+	public static function can_manage_staged( WP_REST_Request $request ) {
 		if ( ! is_enabled() ) {
 			return new WP_Error(
 				'swpub_disabled',

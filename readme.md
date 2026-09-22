@@ -127,6 +127,8 @@ Everything else, including status, slug, publish date, author, terms, and featur
 
 This is a deliberate limit rather than an unfinished one. The review surface is core's revision screen, and core revisions only store those three fields. Staging a term change would mean staging something the review cannot show and the pre-publish snapshot cannot roll back.
 
+A scheduled publish time (below) is not staged either, for the same reason the publish date itself is not: it lives beside the copy, in its own meta, never on a field the merge or the review surface has any idea what to do with.
+
 ## Publishing a staged change
 
 While a staged copy is open, the editor's own header buttons are renamed and re-aimed: **Publish** becomes **Publish changes** and publishes the change to the live post, and **Save draft** becomes **Save changes**, since a staged copy is not a draft of an unpublished post. Publishing does not ask first. The button says what it does, the Status row beside it reads **Staged**, and every merge writes the published post's previous content as a revision before writing the new one, so the act is undoable from core's own revision screen. What publishing did is said afterwards, on the published post it lands on.
@@ -144,6 +146,45 @@ Either way, they can confirm and overwrite. The confirmation names the exact pub
 Every merge writes the published post's previous content as a revision first, so any publish can be rolled back from the core revision screen.
 
 Not everything that can change the published post is caught. A term, meta, or featured-image change made through its own API -- `wp_set_post_terms()`, `update_post_meta()`, `set_post_thumbnail()` -- rather than a post save leaves the row untouched, so there is nothing here to see it move. That is not a gap in what a merge could overwrite: it never writes those fields either.
+
+### Publishing at a set time
+
+A schedule is a deferred **Publish changes**, by a named person, and nothing more: at the set time the same merge runs, as that person, refused for every reason it refuses a click. There is no second publishing path here to keep in step with the first.
+
+Whoever may publish the copy may schedule it -- the same authority `Capabilities::current_user_can_manage()` resolves everywhere else, checked against the published post rather than the copy (KTD13). The scheduled time lives in its own meta on the copy, never on its `post_date`: that field already means the moment staging began, which `Merge_Marker` records as `forked_at`, and it stays locked for exactly that reason -- scheduling a publish does not change what "staged" already means.
+
+Over REST, scheduling and cancelling are their own route:
+
+```
+POST   /swpub/v1/schedule/{id}   { at }
+200                              { scheduledFor, scheduledForLocal, scheduledBy }
+
+DELETE /swpub/v1/schedule/{id}
+200                              { scheduled: false }
+```
+
+`at` is ISO 8601; a value with no offset is treated as site-local, exactly as the posts controller's own `date` parameter is. Cancelling a copy that was not scheduled is not an error.
+
+**If the published post changed in between**, the default is the same one an unattended run always gets: abort, keep the copy, mark it, and say so -- there is nobody to ask, so nothing is confirmed on a schedule's behalf. The copy is not deleted and not retried; it stays exactly as staged, waiting for a person to review it, reschedule it, or publish it by hand. A site that would rather the staged words win regardless answers `swpub_scheduled_publish_overrides_drift`, which can discriminate by what actually changed -- publishing past a category or a featured image while still asking about a change to the words themselves:
+
+```php
+add_filter(
+    'swpub_scheduled_publish_overrides_drift',
+    function ( $override, $copy_id, $live_id, $kind ) {
+        return 'other' === $kind;
+    },
+    10,
+    4
+);
+```
+
+Returning `true` proceeds exactly as an editor's own confirmation would: the merge takes its snapshot and fires `swpub_drift_overridden`, named below.
+
+**A late run still publishes.** WP-Cron makes no promise about exact timing, and a schedule that missed its moment by a few minutes on a quiet site is not a schedule that should be abandoned. `swpub_scheduled_publish_ran` reports how late a run was; a site that wants a hard cutoff instead reads the scheduled time off the copy's meta inside its own `swpub_pre_merge` veto, which already gates every merge, scheduled or not.
+
+**A refusal is not retried.** Once a schedule cannot be kept -- the published post changed and nothing overrode it, the scheduler lost the capability, the pair is stranded -- it is cleared rather than left to fire again on the next cron tick. The reason is recorded on the copy and on `swpub_scheduled_publish_refused`.
+
+**If `WP_CLI` is running**, `wp swpub schedule <copy> --at=<datetime>` schedules as WP-CLI's own `--user` global, the same flag every command already reads. `wp swpub unschedule <copy>` cancels. `wp swpub publish <copy> [--confirm=<token>]` is the merge itself, from the command line, for a script that wants to publish without waiting on cron. `wp swpub run-due` fires every schedule whose time has come -- what a system cron line calls on a site running `DISABLE_WP_CRON`, and the right thing to run by hand after an incident to catch anything WP-Cron dropped. `wp swpub list` gains a `scheduled_for` column, and reports `schedule-refused` in its state column for a copy whose last scheduled run did not keep.
 
 ## Discarding a staged change
 
@@ -218,6 +259,8 @@ do_action( 'swpub_staged_via_backstop',  int $staged_copy_id, int $live_id, int 
 do_action( 'swpub_stage_refused',        int $live_id,        string $channel, int $user_id );
 do_action( 'swpub_write_blocked',        int $staged_copy_id, int $live_id, string $channel, int $user_id );
 do_action( 'swpub_staged_status_reverted', int $staged_copy_id, int $live_id, string $attempted_status, int $user_id );
+do_action( 'swpub_scheduled_publish_ran',     int $live_id, int $staged_copy_id, string $scheduled_for, int $late_by, int $user_id );
+do_action( 'swpub_scheduled_publish_refused', int $staged_copy_id, int $live_id, string $reason, ?WP_Error $error, int $user_id );
 do_action( 'swpub_published_via_carveout', int $live_id,      string $channel, int $user_id );
 do_action( 'swpub_staging_write_failed', int $live_id,        string $reason,  int $user_id );
 do_action( 'swpub_drift_overridden',     int $staged_copy_id, int $live_id, int $user_id, string $confirmed, string $drift_kind );
@@ -294,6 +337,7 @@ array(
     'drift_kind'     => 'content',              // 'content', 'other', or 'unknown' when it drifted
     'revisions'      => array( 15, 16, 17 ),    // staged revisions adopted
     'attachments'    => array( 44 ),            // media moved to the published post
+    'scheduled_for'  => '2026-09-22 09:00:00',  // GMT time this was scheduled to run at, or '' when it was not scheduled (VIPPROD-1247)
 )
 ```
 
@@ -317,6 +361,10 @@ apply_filters( 'swpub_enforce_programmatic_first_save', bool $enforce, int $live
 
 // Allow a merge. Return a WP_Error to veto it before anything is written.
 apply_filters( 'swpub_pre_merge', bool $allowed, int $live_id, int $staged_copy_id );
+
+// Let a scheduled publish proceed over drift. Default false: refuse, keep, and
+// mark the copy, the same as an unattended run with nobody to confirm past it.
+apply_filters( 'swpub_scheduled_publish_overrides_drift', bool $override, int $staged_copy_id, int $live_id, string $drift_kind );
 ```
 
 `swpub_can_publish_directly` answers in three states, because a site needs to be able to say yes as well as no:

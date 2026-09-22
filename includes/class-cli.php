@@ -66,6 +66,38 @@ final class CLI {
 				'shortdesc' => 'Resumes or reports an interrupted merge.',
 			)
 		);
+
+		WP_CLI::add_command(
+			'swpub schedule',
+			array( __CLASS__, 'command_schedule' ),
+			array(
+				'shortdesc' => 'Schedules a staged copy to publish at a set time (VIPPROD-1247).',
+			)
+		);
+
+		WP_CLI::add_command(
+			'swpub unschedule',
+			array( __CLASS__, 'command_unschedule' ),
+			array(
+				'shortdesc' => "Cancels a staged copy's scheduled publish (VIPPROD-1247).",
+			)
+		);
+
+		WP_CLI::add_command(
+			'swpub publish',
+			array( __CLASS__, 'command_publish' ),
+			array(
+				'shortdesc' => 'Publishes a staged copy immediately, from the command line (VIPPROD-1247).',
+			)
+		);
+
+		WP_CLI::add_command(
+			'swpub run-due',
+			array( __CLASS__, 'command_run_due' ),
+			array(
+				'shortdesc' => 'Fires every scheduled publish that is due now (VIPPROD-1247).',
+			)
+		);
 	}
 
 	/**
@@ -84,6 +116,7 @@ final class CLI {
 			$live      = Staged_Copy_Repository::find_live_for_staged_copy( $staged_copy->ID );
 			$stranding = Transitions::stranding( $staged_copy->ID );
 			$marker    = $live instanceof WP_Post ? Merge_Marker::get( $live->ID ) : null;
+			$sched     = Scheduled_Publish::scheduled( $staged_copy->ID );
 
 			$rows[] = array(
 				'staged_copy_id'  => $staged_copy->ID,
@@ -94,6 +127,7 @@ final class CLI {
 				'attempts'   => $marker ? (int) $marker['attempts'] : 0,
 				'staged_by'  => self::author_name( (int) $staged_copy->post_author ),
 				'staged_at'  => $staged_copy->post_modified_gmt,
+				'scheduled_for' => $sched ? $sched['at_gmt'] : '',
 			);
 		}
 
@@ -172,7 +206,7 @@ final class CLI {
 		\WP_CLI\Utils\format_items(
 			$assoc_args['format'] ?? 'table',
 			$rows,
-			array( 'staged_copy_id', 'live_id', 'live_title', 'state', 'phase', 'attempts', 'staged_by', 'staged_at' )
+			array( 'staged_copy_id', 'live_id', 'live_title', 'state', 'phase', 'attempts', 'staged_by', 'staged_at', 'scheduled_for' )
 		);
 	}
 
@@ -225,11 +259,203 @@ final class CLI {
 	}
 
 	/**
+	 * `wp swpub schedule <copy> --at=<datetime>`
+	 *
+	 * Runs as WP-CLI's own `--user` global, the same flag every WP-CLI
+	 * command already reads: `wp swpub schedule 123 --at="+2 minutes"
+	 * --user=admin`. That person becomes the acting user when the schedule
+	 * fires (VIPPROD-1247), exactly as scheduling from the editor would make
+	 * the person clicking the acting user.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <copy-id>
+	 * : The staged copy to schedule.
+	 *
+	 * --at=<datetime>
+	 * : When to publish, e.g. 2026-10-03T09:00:00. ISO 8601 only -- the same
+	 * parser the posts controller's own `date` parameter uses, which is
+	 * stricter than PHP's strtotime() and does not accept a relative phrase
+	 * such as "+2 minutes". A time with no offset is treated as site-local.
+	 *
+	 * @param array<int, string>    $args       Positional arguments.
+	 * @param array<string, string> $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public static function command_schedule( $args, $assoc_args ): void {
+		$copy_id = (int) ( $args[0] ?? 0 );
+		$at      = (string) ( $assoc_args['at'] ?? '' );
+
+		if ( $copy_id <= 0 ) {
+			WP_CLI::error( 'Pass a staged copy ID.' );
+			return;
+		}
+
+		if ( '' === $at ) {
+			WP_CLI::error( 'Pass --at=<datetime>.' );
+			return;
+		}
+
+		$user_id = get_current_user_id();
+
+		if ( $user_id <= 0 ) {
+			WP_CLI::error( 'Pass --user: a scheduled publish runs as the person who scheduled it.' );
+			return;
+		}
+
+		$result = Scheduled_Publish::schedule( $copy_id, $at, $user_id );
+
+		if ( is_wp_error( $result ) ) {
+			WP_CLI::error( $result->get_error_message() );
+			return;
+		}
+
+		WP_CLI::success(
+			sprintf(
+				'Copy %d scheduled to publish at %s GMT (%s local).',
+				$copy_id,
+				$result['at_gmt'],
+				$result['at_local']
+			)
+		);
+	}
+
+	/**
+	 * `wp swpub unschedule <copy>`
+	 *
+	 * ## OPTIONS
+	 *
+	 * <copy-id>
+	 * : The staged copy to unschedule.
+	 *
+	 * @param array<int, string>    $args       Positional arguments.
+	 * @param array<string, string> $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public static function command_unschedule( $args, $assoc_args ): void {
+		$copy_id = (int) ( $args[0] ?? 0 );
+
+		if ( $copy_id <= 0 ) {
+			WP_CLI::error( 'Pass a staged copy ID.' );
+			return;
+		}
+
+		Scheduled_Publish::unschedule( $copy_id );
+
+		WP_CLI::success( sprintf( 'Copy %d unscheduled.', $copy_id ) );
+	}
+
+	/**
+	 * `wp swpub publish <copy>`
+	 *
+	 * The merge, from the command line: applies immediately, as WP-CLI's own
+	 * `--user` global, with every refusal the editor's own click meets --
+	 * drift included, which `--confirm` answers the same way the editor's
+	 * confirmation does.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <copy-id>
+	 * : The staged copy to publish.
+	 *
+	 * [--confirm=<token>]
+	 * : The published state token to confirm past drift with, from a prior refusal's data.
+	 *
+	 * @param array<int, string>    $args       Positional arguments.
+	 * @param array<string, string> $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public static function command_publish( $args, $assoc_args ): void {
+		$copy_id = (int) ( $args[0] ?? 0 );
+		$confirm = isset( $assoc_args['confirm'] ) ? (string) $assoc_args['confirm'] : null;
+
+		if ( $copy_id <= 0 ) {
+			WP_CLI::error( 'Pass a staged copy ID.' );
+			return;
+		}
+
+		if ( get_current_user_id() <= 0 ) {
+			WP_CLI::error( 'Pass --user: a publish runs as the person publishing it.' );
+			return;
+		}
+
+		$result = Merge::apply( $copy_id, $confirm );
+
+		if ( is_wp_error( $result ) ) {
+			WP_CLI::error( $result->get_error_message() );
+			return;
+		}
+
+		WP_CLI::success(
+			sprintf(
+				'Published. Live post %d, snapshot revision %d, %d revision(s) adopted.',
+				$result['live_id'],
+				$result['snapshot_id'],
+				count( $result['revisions'] )
+			)
+		);
+	}
+
+	/**
+	 * `wp swpub run-due`
+	 *
+	 * Fires every schedule whose time has come, the way a system cron line
+	 * would on a site running `DISABLE_WP_CRON` (VIPPROD-1247). Also the
+	 * right thing to run by hand after an incident, to catch anything
+	 * WP-Cron itself dropped.
+	 *
+	 * @param array<int, string>    $args       Positional arguments.
+	 * @param array<string, string> $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public static function command_run_due( $args, $assoc_args ): void {
+		$outcomes = Scheduled_Publish::run_due();
+
+		if ( empty( $outcomes ) ) {
+			WP_CLI::success( 'No schedules are due.' );
+			return;
+		}
+
+		$counts = array(
+			'ran'     => 0,
+			'refused' => 0,
+			'skipped' => 0,
+		);
+
+		foreach ( $outcomes as $copy_id => $outcome ) {
+			WP_CLI::log(
+				sprintf(
+					'%d: %s%s',
+					$copy_id,
+					$outcome['outcome'],
+					'' !== $outcome['reason'] ? ' (' . $outcome['reason'] . ')' : ''
+				)
+			);
+
+			++$counts[ $outcome['outcome'] ];
+		}
+
+		WP_CLI::success(
+			sprintf(
+				'%d due: %d ran, %d refused, %d skipped.',
+				count( $outcomes ),
+				$counts['ran'],
+				$counts['refused'],
+				$counts['skipped']
+			)
+		);
+	}
+
+	/**
 	 * Every staged post, paged.
+	 *
+	 * Public so `Scheduled_Publish::run_due()` (VIPPROD-1247) can iterate the
+	 * same set `inventory()` does rather than running a second query with its
+	 * own idea of "every staged copy" to keep in step with this one.
 	 *
 	 * @return WP_Post[] The staged copies.
 	 */
-	private static function staged_copies(): array {
+	public static function staged_copies(): array {
 		$staged_copies = array();
 
 		for ( $page = 0; $page < self::MAX_PAGES; $page++ ) {
@@ -288,6 +514,10 @@ final class CLI {
 
 		if ( 'publish' !== $live->post_status ) {
 			return 'live-unpublished';
+		}
+
+		if ( null !== Scheduled_Publish::refusal( $staged_copy_id ) ) {
+			return 'schedule-refused';
 		}
 
 		return Drift::has_drifted( $staged_copy_id ) ? 'drifted' : 'healthy';

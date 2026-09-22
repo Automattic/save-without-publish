@@ -9,6 +9,7 @@ declare( strict_types = 1 );
 
 namespace SaveWithoutPublish;
 
+use WP_Error;
 use WP_Post;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -361,6 +362,84 @@ final class Events {
 		 * @param int    $user_id          User the write ran as. 0 when there is none, which cron is.
 		 */
 		do_action( 'swpub_staged_status_reverted', $staged_copy_id, $live_id, $attempted_status, get_current_user_id() );
+	}
+
+	/**
+	 * Announces that a scheduled publish applied (VIPPROD-1247).
+	 *
+	 * By the time this fires the merge has already completed: the staged
+	 * copy is gone and the published post holds its content. `swpub_merge_completed`
+	 * fires too, with `scheduled_for` in its payload, so a listener that only
+	 * cares what changed can subscribe to that one action for both a clicked
+	 * and a scheduled publish. This one exists for a listener that cares
+	 * specifically about scheduling -- how late a run was, or who scheduled it.
+	 *
+	 * @param int    $live_id       Published post ID that received the merge.
+	 * @param int    $staged_copy_id The staged copy, now deleted.
+	 * @param string $scheduled_for GMT time the publish was scheduled for.
+	 * @param int    $late_by       Seconds after the scheduled time this actually ran. 0 when on time or early.
+	 * @param int    $user_id       The user who scheduled it, set as the acting user for the merge.
+	 * @return void
+	 */
+	public static function scheduled_publish_ran( int $live_id, int $staged_copy_id, string $scheduled_for, int $late_by, int $user_id ): void {
+		/**
+		 * Fires when a staged copy's scheduled publish applied.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param int    $live_id        Published post ID that received the merge.
+		 * @param int    $staged_copy_id The staged copy, now deleted.
+		 * @param string $scheduled_for  GMT time the publish was scheduled for.
+		 * @param int    $late_by        Seconds after the scheduled time this actually ran.
+		 * @param int    $user_id        The user who scheduled it.
+		 */
+		do_action( 'swpub_scheduled_publish_ran', $live_id, $staged_copy_id, $scheduled_for, $late_by, $user_id );
+	}
+
+	/**
+	 * Announces that a scheduled publish was refused, and the copy kept
+	 * (VIPPROD-1247).
+	 *
+	 * Nothing is retried: the copy is unscheduled at the same time this
+	 * fires, so a site seeing this and doing nothing gets a copy that waits
+	 * for a human, not a schedule that fires again on the next tick.
+	 *
+	 * @param int            $staged_copy_id Staged copy post ID, kept.
+	 * @param int            $live_id        Published post ID, or 0 when it cannot be resolved.
+	 * @param string         $reason         Why it was refused: `not_staged`, `disabled`,
+	 *                                       `no_live_post`, `not_published`, `stranded`, `actor`,
+	 *                                       or the merge's own `WP_Error` code (most often `swpub_drift`).
+	 * @param WP_Error|null  $error          The merge's own refusal, when the reason came from one.
+	 * @return void
+	 */
+	public static function scheduled_publish_refused( int $staged_copy_id, int $live_id, string $reason, ?WP_Error $error ): void {
+		/**
+		 * Fires when a staged copy's scheduled publish was refused.
+		 *
+		 * Subscribe to it to find out when a schedule could not be kept:
+		 *
+		 *     add_action(
+		 *         'swpub_scheduled_publish_refused',
+		 *         function ( $staged_copy_id, $live_id, $reason, $error, $user_id ) {
+		 *             error_log( "swpub: scheduled publish of copy {$staged_copy_id} refused: {$reason}" );
+		 *         },
+		 *         10,
+		 *         5
+		 *     );
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param int            $staged_copy_id Staged copy post ID, kept.
+		 * @param int            $live_id        Published post ID, or 0 when it cannot be resolved.
+		 * @param string         $reason         Why it was refused.
+		 * @param WP_Error|null  $error          The merge's own refusal, when there was one.
+		 * @param int            $user_id        User the run was executing as when it was refused.
+		 *                                       0 under cron, which is when this usually fires: the
+		 *                                       acting user is always restored before this fires, so
+		 *                                       it never names the scheduler, only whoever (if anyone)
+		 *                                       triggered the run itself.
+		 */
+		do_action( 'swpub_scheduled_publish_refused', $staged_copy_id, $live_id, $reason, $error, get_current_user_id() );
 	}
 
 	/**

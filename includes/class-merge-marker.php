@@ -344,6 +344,9 @@ final class Merge_Marker {
 		 *     @type string $drift_kind  `'content'`, `'other'`, or `'unknown'`, when it drifted (VIPPROD-752).
 		 *     @type int[]  $revisions   Staged revisions adopted onto the live post.
 		 *     @type int[]  $attachments Attachments moved onto the live post.
+		 *     @type string $scheduled_for GMT time this merge was scheduled to run at, or `''`
+		 *                                 for a merge applied directly rather than by a schedule
+		 *                                 (VIPPROD-1247).
 		 * }
 		 */
 		do_action( 'swpub_merge_completed', $live_id, self::payload( $marker ) );
@@ -373,6 +376,7 @@ final class Merge_Marker {
 			'drift_kind'     => (string) ( $marker['drift_kind'] ?? '' ),
 			'revisions'      => array_values( (array) ( $marker['revisions'] ?? array() ) ),
 			'attachments'    => array_values( (array) ( $marker['attachments'] ?? array() ) ),
+			'scheduled_for'  => (string) ( $marker['scheduled_for'] ?? '' ),
 		);
 	}
 

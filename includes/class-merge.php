@@ -61,11 +61,16 @@ final class Merge {
 	/**
 	 * Applies a staged copy's content to its live post.
 	 *
-	 * @param int         $staged_copy_id Staged copy post ID.
-	 * @param string|null $override  Drift confirmation, naming the state the editor was shown.
+	 * @param int                  $staged_copy_id Staged copy post ID.
+	 * @param string|null          $override       Drift confirmation, naming the state the editor was shown.
+	 * @param array<string, mixed> $marker_extra   Extra facts merged onto the marker before the merge
+	 *                                              runs, and so onto the `swpub_merge_completed` payload
+	 *                                              (VIPPROD-1247) -- `scheduled_for` from a scheduled
+	 *                                              publish, so a listener can tell a scheduled merge from
+	 *                                              a click without a second event.
 	 * @return array<string, mixed>|WP_Error The live post ID and what was merged.
 	 */
-	public static function apply( int $staged_copy_id, ?string $override = null ) {
+	public static function apply( int $staged_copy_id, ?string $override = null, array $marker_extra = array() ) {
 		$staged_copy = get_post( $staged_copy_id );
 
 		if ( ! $staged_copy instanceof WP_Post || ! Status::is_staged( $staged_copy ) ) {
@@ -157,13 +162,16 @@ final class Merge {
 			Merge_Marker::start( $live->ID, $staged_copy_id );
 			Merge_Marker::record(
 				$live->ID,
-				array(
-					'staged_by'  => (int) $staged_copy->post_author,
-					'forked_at'  => (string) $staged_copy->post_date_gmt,
-					'merged_by'  => get_current_user_id(),
-					'drifted'    => $drifted,
-					'override'   => $drifted ? (string) $override : '',
-					'drift_kind' => $drift_kind,
+				array_merge(
+					array(
+						'staged_by'  => (int) $staged_copy->post_author,
+						'forked_at'  => (string) $staged_copy->post_date_gmt,
+						'merged_by'  => get_current_user_id(),
+						'drifted'    => $drifted,
+						'override'   => $drifted ? (string) $override : '',
+						'drift_kind' => $drift_kind,
+					),
+					$marker_extra
 				)
 			);
 

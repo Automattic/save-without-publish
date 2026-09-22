@@ -105,6 +105,7 @@ function bootstrap(): void {
 	Editor_Assets::init();
 	Merge_Resume::init();
 	Merge::init();
+	Scheduled_Publish::init();
 	Post_List::init();
 	Review_Link::init();
 	Transitions::init();
@@ -133,5 +134,6 @@ Write_Guard::init();
 Fork::init();
 Field_Lock::init();
 Merge_Route::init();
+Schedule_Route::init();
 Stage_Route::init();
 Rest_Response::init();
