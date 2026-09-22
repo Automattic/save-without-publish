@@ -511,6 +511,61 @@ function clearBackstopEvents() {
 }
 
 /**
+ * Schedules a staged copy to publish at a set time, through WP-CLI.
+ *
+ * Arranged this way rather than through the browser so a test asserting on
+ * what the editor renders is not also, incidentally, a test of the picker
+ * that arranged it.
+ *
+ * @param {number} copyId Staged copy post ID.
+ * @param {string} at     ISO 8601 datetime.
+ * @param {string} [user] WP-CLI user to schedule as. Defaults to admin.
+ * @return {void}
+ */
+function scheduleFor( copyId, at, user = 'admin' ) {
+	wp( [
+		'swpub',
+		'schedule',
+		String( copyId ),
+		`--at=${ at }`,
+		`--user=${ user }`,
+	] );
+}
+
+/**
+ * The GMT time a staged copy is scheduled to publish at.
+ *
+ * Reads the meta directly rather than `wp swpub list`, so a test can compare
+ * this against what the row rendered without parsing a table.
+ *
+ * @param {number} copyId Staged copy post ID.
+ * @return {string} MySQL GMT datetime, or '' when nothing is scheduled.
+ */
+function scheduledFor( copyId ) {
+	try {
+		return wp( [
+			'post',
+			'meta',
+			'get',
+			String( copyId ),
+			'_swpub_publish_at',
+		] );
+	} catch {
+		// No meta, which is what "not scheduled" looks like from here.
+		return '';
+	}
+}
+
+/**
+ * Fires every scheduled publish that is due now, the way cron would.
+ *
+ * @return {void}
+ */
+function runDueSchedules() {
+	wp( [ 'swpub', 'run-due' ] );
+}
+
+/**
  * Creates a category, or returns the existing one of that name.
  *
  * @param {string} name Category name.
@@ -577,4 +632,7 @@ module.exports = {
 	clearBackstopEvents,
 	createCategory,
 	chooseCategory,
+	scheduleFor,
+	scheduledFor,
+	runDueSchedules,
 };

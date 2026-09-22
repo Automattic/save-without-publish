@@ -194,6 +194,37 @@ final class Editor_Assets {
 				? Drift::history_url( $live->ID )
 				: '';
 
+			/*
+			 * Scheduling, read for the copy being edited (VIPPROD-1248). Both
+			 * a schedule and a refusal are shipped in the shape the row and
+			 * the notices need directly, rather than the raw meta: the row
+			 * needs an unambiguous instant for the date picker (`scheduledFor`,
+			 * ISO 8601 with an explicit `Z` -- `self::when()`'s GMT input is a
+			 * bare MySQL datetime, which a JS date library parses as the
+			 * browser's own local time without one) and a formatted sentence
+			 * for the notices (`scheduledForLabel`), which is resolved
+			 * server-side because only `wp_date()` knows the site's timezone,
+			 * its date format, and the locale's month names together.
+			 */
+			$schedule = Scheduled_Publish::scheduled( $post->ID );
+			$refusal  = Scheduled_Publish::refusal( $post->ID );
+
+			$context['scheduledFor']      = $schedule ? self::to_iso( $schedule['at_gmt'] ) : '';
+			$context['scheduledForLabel'] = $schedule ? self::when( $schedule['at_gmt'] ) : '';
+			$context['scheduledBy']       = $schedule ? self::display_name( $schedule['by'] ) : '';
+
+			/*
+			 * Named to match the pair above rather than the raw `at_gmt`/
+			 * `scheduled_for` the accessors return: `scheduledForLabel` is
+			 * always the formatted sentence-ready string here, never the raw
+			 * instant, so a reader cannot mistake this for the same shape as
+			 * the top-level `scheduledFor`.
+			 */
+			$context['scheduleRefused'] = $refusal ? array(
+				'reason'            => $refusal['reason'],
+				'scheduledForLabel' => self::when( $refusal['scheduled_for'] ),
+			) : null;
+
 			return $context;
 		}
 
@@ -251,8 +282,83 @@ final class Editor_Assets {
 			// informational: the same answer the staged copy's screen has, so
 			// anything reading the context sees one answer on either copy.
 			$context['reviewSurface'] = Review_Link::surface();
+
+			/*
+			 * The published post's own notice names when the copy will
+			 * publish itself (VIPPROD-1248), but nothing else about the
+			 * schedule: who scheduled it and why a run was refused are the
+			 * staged copy's own business, read on that screen instead.
+			 */
+			$schedule = Scheduled_Publish::scheduled( $staged_copy->ID );
+
+			$context['scheduledFor']      = $schedule ? self::to_iso( $schedule['at_gmt'] ) : '';
+			$context['scheduledForLabel'] = $schedule ? self::when( $schedule['at_gmt'] ) : '';
 		}
 
 		return $context;
+	}
+
+	/**
+	 * A GMT datetime, formatted for the site to read (VIPPROD-1248).
+	 *
+	 * `wp_date()` rather than `date_i18n()`: it is the one of the two that
+	 * takes a timezone argument and resolves the site's, which is what core's
+	 * own Publish row also resolves to. Formatted here rather than in the
+	 * editor bundle because only this call knows the site's timezone, its
+	 * configured date and time formats, and the locale's month names all at
+	 * once; rebuilding that in JS from a bare GMT string would print a date
+	 * that reads differently from every other date already on the screen.
+	 *
+	 * @param string $gmt MySQL datetime, GMT.
+	 * @return string The formatted date and time, or '' when there is nothing to format.
+	 */
+	private static function when( string $gmt ): string {
+		if ( '' === $gmt ) {
+			return '';
+		}
+
+		$timestamp = strtotime( $gmt . ' GMT' );
+
+		if ( false === $timestamp ) {
+			return '';
+		}
+
+		return (string) wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
+	}
+
+	/**
+	 * A GMT datetime, as an ISO 8601 string a JS date library parses
+	 * correctly (VIPPROD-1248).
+	 *
+	 * The stored value is a bare MySQL datetime with no timezone marker.
+	 * `moment()`, which the block editor's own date picker is built on,
+	 * parses a string in that shape as the browser's local time rather than
+	 * UTC -- silently, with no error -- so a value that is really GMT would
+	 * be read as being in whatever zone the visitor's machine happens to be
+	 * in. The explicit `Z` is what removes that ambiguity for any date
+	 * library, not just this plugin's own reading of it.
+	 *
+	 * @param string $gmt MySQL datetime, GMT.
+	 * @return string The same instant, as `Y-m-d\TH:i:sZ`, or '' when there
+	 *                is nothing to convert.
+	 */
+	private static function to_iso( string $gmt ): string {
+		if ( '' === $gmt ) {
+			return '';
+		}
+
+		return str_replace( ' ', 'T', $gmt ) . 'Z';
+	}
+
+	/**
+	 * A user's display name, or an empty string when there is none to show.
+	 *
+	 * @param int $user_id User ID.
+	 * @return string The name.
+	 */
+	private static function display_name( int $user_id ): string {
+		$user = get_userdata( $user_id );
+
+		return $user ? $user->display_name : '';
 	}
 }

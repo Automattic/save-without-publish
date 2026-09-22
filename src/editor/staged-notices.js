@@ -41,6 +41,115 @@ const publishedPhrase = () =>
 	__( 'the published post as it is now', 'save-without-publish' );
 
 /**
+ * Says when this staged copy is due to publish itself, if it is (VIPPROD-1247).
+ *
+ * Not offered on a stranded copy: `Scheduled_Publish::schedule()` refuses to
+ * schedule one in the first place, so `ctx.scheduledFor` is only ever set here
+ * through the narrow window between a schedule being stranded and the next
+ * cron tick catching it -- and the stranded sentences already say the
+ * published post is gone or unpublished, which a promise to publish "on"
+ * would contradict rather than add to.
+ *
+ * @param {Object} ctx The staging context.
+ * @return {string} The sentence, or '' when there is nothing to add.
+ */
+function scheduledSentence( ctx ) {
+	if ( ctx.stranded || ! ctx.scheduledFor ) {
+		return '';
+	}
+
+	return sprintf(
+		/* translators: %s: the date and time these changes are due to publish. */
+		__(
+			'These changes are scheduled to publish on %s.',
+			'save-without-publish'
+		),
+		ctx.scheduledForLabel
+	);
+}
+
+/**
+ * The sentence explaining why a scheduled publish did not happen
+ * (VIPPROD-1247).
+ *
+ * Every reason ends the same way in substance -- nothing published, nothing
+ * lost -- because that is true whichever one fired. What differs is *why*,
+ * and only the reasons an editor can actually meet in practice get their own
+ * words; anything else falls through to a sentence that is still accurate,
+ * if less specific.
+ *
+ * @param {Object} ctx The staging context.
+ * @return {string} The sentence.
+ */
+function scheduleRefusedSentence( ctx ) {
+	const when = ctx.scheduleRefused.scheduledForLabel;
+
+	switch ( ctx.scheduleRefused.reason ) {
+		case 'swpub_drift':
+			return sprintf(
+				/* translators: %s: the date and time these changes were due to publish. */
+				__(
+					'These changes were due to publish on %s. The published post changed first, so they were not published and nothing was overwritten.',
+					'save-without-publish'
+				),
+				when
+			);
+
+		case 'actor':
+			return sprintf(
+				/* translators: %s: the date and time these changes were due to publish. */
+				__(
+					'These changes were due to publish on %s, but the person who scheduled them can no longer publish this post.',
+					'save-without-publish'
+				),
+				when
+			);
+
+		case 'stranded':
+		case 'not_published':
+		case 'no_live_post':
+			return sprintf(
+				/* translators: %s: the date and time these changes were due to publish. */
+				__(
+					'These changes were due to publish on %s. The published post is no longer available to publish to.',
+					'save-without-publish'
+				),
+				when
+			);
+
+		case 'disabled':
+			return sprintf(
+				/* translators: %s: the date and time these changes were due to publish. */
+				__(
+					'These changes were due to publish on %s. Staging was switched off at the time, so they were not published.',
+					'save-without-publish'
+				),
+				when
+			);
+
+		case 'merge_stranded':
+			return sprintf(
+				/* translators: %s: the date and time these changes were due to publish. */
+				__(
+					'These changes were due to publish on %s, but a publish that did not finish is still in the way.',
+					'save-without-publish'
+				),
+				when
+			);
+
+		default:
+			return sprintf(
+				/* translators: %s: the date and time these changes were due to publish. */
+				__(
+					'These changes were due to publish on %s and were not published.',
+					'save-without-publish'
+				),
+				when
+			);
+	}
+}
+
+/**
  * Says what state this staged copy is in, and why.
  *
  * The placeholder is the same phrase in both editors, and a link in both, but by
@@ -166,28 +275,37 @@ export function StagedNotices() {
 		}
 
 		const markup = linkedSentence( ctx );
+		const base = markup ?? statusSentence( ctx );
+		const scheduled = scheduledSentence( ctx );
 
-		createNotice(
-			ctx.stranded ? 'warning' : 'info',
-			markup ?? statusSentence( ctx ),
-			{
-				id: 'swpub-staged',
+		/*
+		 * Appended to the same notice rather than posted as a second one: it
+		 * is the same fact about the same state, and two info notices
+		 * stacked is how a screen stops being read. Escaped the same way
+		 * everything else `linkedSentence()` interpolates is escaped, since
+		 * the whole string is rendered as raw HTML whenever `markup` is set.
+		 */
+		const content = scheduled
+			? `${ base } ${ markup ? escapeHTML( scheduled ) : scheduled }`
+			: base;
 
-				// Only where this notice built the markup itself, above.
-				__unstableHTML: !! markup,
+		createNotice( ctx.stranded ? 'warning' : 'info', content, {
+			id: 'swpub-staged',
 
-				// Not dismissible: staged work is a published post carrying a
-				// change nobody has decided on yet, and it stays undecided until
-				// someone publishes or discards it. A notice that can be closed
-				// is one that stops saying so on the second page load.
-				isDismissible: false,
+			// Only where this notice built the markup itself, above.
+			__unstableHTML: !! markup,
 
-				// Offered here, not on the Status row (one word, one control):
-				// a title or excerpt change is invisible on the in-editor
-				// revisions view, which diffs blocks (VIPPROD-753, F2).
-				actions: compareAsText( ctx ),
-			}
-		);
+			// Not dismissible: staged work is a published post carrying a
+			// change nobody has decided on yet, and it stays undecided until
+			// someone publishes or discards it. A notice that can be closed
+			// is one that stops saying so on the second page load.
+			isDismissible: false,
+
+			// Offered here, not on the Status row (one word, one control):
+			// a title or excerpt change is invisible on the in-editor
+			// revisions view, which diffs blocks (VIPPROD-753, F2).
+			actions: compareAsText( ctx ),
+		} );
 
 		if ( markup ) {
 			verifyNoticeLink();
@@ -235,7 +353,19 @@ export function StagedNotices() {
 	}, [ ctx.justPublished, ctx.liveView, ctx.viewLabel, createNotice ] );
 
 	useEffect( () => {
-		if ( ! ctx.isStaged || ! ctx.drifted || ctx.stranded ) {
+		/*
+		 * Suppressed when a scheduled run was refused for this exact drift:
+		 * `swpub-schedule-refused` below says the more specific version of
+		 * the same fact, with the time attached, and two notices about one
+		 * change on the published post is not a second warning, it is the
+		 * first one said twice.
+		 */
+		if (
+			! ctx.isStaged ||
+			! ctx.drifted ||
+			ctx.stranded ||
+			'swpub_drift' === ctx.scheduleRefused?.reason
+		) {
 			return;
 		}
 
@@ -269,6 +399,29 @@ export function StagedNotices() {
 				actions: reviewPublishedHistory( ctx ),
 			}
 		);
+	}, [ ctx, createNotice ] );
+
+	useEffect( () => {
+		if ( ! ctx.isStaged || ! ctx.scheduleRefused ) {
+			return;
+		}
+
+		/*
+		 * The drift case carries the review action the drift notice would
+		 * have offered, since that notice is the one suppressed above --
+		 * an editor who reads this and wants to see what changed still
+		 * needs the way there. Every other reason has nothing to review:
+		 * the published post did not move, something about the pair itself
+		 * did.
+		 */
+		createNotice( 'warning', scheduleRefusedSentence( ctx ), {
+			id: 'swpub-schedule-refused',
+			isDismissible: false,
+			actions:
+				'swpub_drift' === ctx.scheduleRefused.reason
+					? reviewPublishedHistory( ctx )
+					: [],
+		} );
 	}, [ ctx, createNotice ] );
 
 	return null;

@@ -12,6 +12,7 @@ namespace SaveWithoutPublish\Tests;
 use SaveWithoutPublish\Capabilities;
 use SaveWithoutPublish\Merge_Marker;
 use SaveWithoutPublish\Post_List;
+use SaveWithoutPublish\Scheduled_Publish;
 use SaveWithoutPublish\Staged_Copy_Repository;
 use WP_Post;
 use WP_UnitTestCase;
@@ -107,6 +108,45 @@ class Test_Post_List extends WP_UnitTestCase {
 		// off it.
 		$this->assertSame( 'Staged changes', $states['swpub'] );
 		$this->assertSame( 'Cannot be published', $states['swpub_stranded'] );
+	}
+
+	/**
+	 * A staged copy with an active schedule reads distinctly (VIPPROD-1248).
+	 */
+	public function test_a_scheduled_staged_copy_is_labelled_distinctly(): void {
+		$at = gmdate( 'Y-m-d\TH:i:s\Z', time() + HOUR_IN_SECONDS );
+
+		Scheduled_Publish::schedule( $this->staged_copy_id, $at, get_current_user_id() );
+
+		$states = apply_filters( 'display_post_states', array(), get_post( $this->live_id ) );
+
+		$this->assertSame( 'Staged changes', $states['swpub'] );
+		$this->assertSame( 'Scheduled', $states['swpub_scheduled'] );
+		$this->assertArrayNotHasKey( 'swpub_schedule_stopped', $states );
+	}
+
+	/**
+	 * A staged copy whose last scheduled run was refused reads distinctly,
+	 * and no longer as scheduled (VIPPROD-1248).
+	 */
+	public function test_a_schedule_refused_staged_copy_is_labelled_distinctly(): void {
+		update_post_meta(
+			$this->staged_copy_id,
+			Scheduled_Publish::REFUSED_META,
+			array(
+				'reason'        => 'swpub_drift',
+				'code'          => 'swpub_drift',
+				'message'       => '',
+				'scheduled_for' => '2026-08-13 09:00:00',
+				'attempted_at'  => '2026-08-13 09:00:05',
+			)
+		);
+
+		$states = apply_filters( 'display_post_states', array(), get_post( $this->live_id ) );
+
+		$this->assertSame( 'Staged changes', $states['swpub'] );
+		$this->assertSame( 'Schedule stopped', $states['swpub_schedule_stopped'] );
+		$this->assertArrayNotHasKey( 'swpub_scheduled', $states );
 	}
 
 	/**

@@ -3,7 +3,8 @@
  *
  * Five things: it says so, naming the three locked fields and stating that
  * everything else cannot be staged and goes live at once when saved from here
- * (VIPPROD-1230); it stops the canvas from being typed into (R55),
+ * (VIPPROD-1230), and naming when the copy is due to publish itself, if it
+ * is (VIPPROD-1247); it stops the canvas from being typed into (R55),
  * it stops the title the same way, it takes the excerpt field off the screen,
  * and it disables saving while a locked field is dirty anyway (VIPPROD-1171,
  * VIPPROD-1121).
@@ -83,6 +84,31 @@ function who( ctx ) {
 				'This post has staged changes waiting to be published.',
 				'save-without-publish'
 		  );
+}
+
+/**
+ * Says when the staged copy will publish itself, if it will (VIPPROD-1247).
+ *
+ * "Those changes" rather than "these": `who()`'s sentence is about this
+ * post, and the changes it names belong to the copy, not to the screen the
+ * notice renders on.
+ *
+ * @param {Object} ctx The staging context.
+ * @return {string} The sentence, or '' when nothing is scheduled.
+ */
+function scheduled( ctx ) {
+	if ( ! ctx.scheduledFor ) {
+		return '';
+	}
+
+	return sprintf(
+		/* translators: %s: the date and time the staged changes are due to publish. */
+		__(
+			'Those changes are scheduled to publish on %s.',
+			'save-without-publish'
+		),
+		ctx.scheduledForLabel
+	);
 }
 
 /**
@@ -446,10 +472,16 @@ export function ExistingStagedCopyNotice() {
 
 		createNotice(
 			'warning',
-			`${ who( ctx ) } ${ __(
-				'The title, content, and excerpt are locked here until those changes are published or discarded. Everything else cannot be staged and saves straight to the published post: a change to the slug, publish date, author, categories, tags, or featured image goes live at once.',
-				'save-without-publish'
-			) }`,
+			[
+				who( ctx ),
+				scheduled( ctx ),
+				__(
+					'The title, content, and excerpt are locked here until those changes are published or discarded. Everything else cannot be staged and saves straight to the published post: a change to the slug, publish date, author, categories, tags, or featured image goes live at once.',
+					'save-without-publish'
+				),
+			]
+				.filter( Boolean )
+				.join( ' ' ),
 			{
 				id: 'swpub-existing',
 
