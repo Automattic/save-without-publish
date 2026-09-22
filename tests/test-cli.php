@@ -92,6 +92,7 @@ class Test_CLI extends WP_UnitTestCase {
 		$this->assertSame( 'Meridian Active, Summer collection', $row['live_title'] );
 		$this->assertSame( 'healthy', $row['state'] );
 		$this->assertSame( '', $row['phase'] );
+		$this->assertSame( '', $row['scheduled_for'], 'An unscheduled copy should report no scheduled time (VIPPROD-1247).' );
 	}
 
 	/**
