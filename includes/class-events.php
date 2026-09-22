@@ -263,12 +263,18 @@ final class Events {
 	}
 
 	/**
-	 * Announces that a write was refused because a staged copy already holds this post.
+	 * Announces that a write was refused to protect a staged copy's containment.
 	 *
-	 * Nothing was written on either side. The published post is unchanged and so
-	 * is the staged copy, which is the point: the write was assembled against the
-	 * published words and would have reverted every staged change it did not know
-	 * about.
+	 * Two triggers, both refusals with nothing written on either side:
+	 *
+	 * - A write to the *published* post while a staged copy already holds its
+	 *   next change. The write was assembled against the published words and
+	 *   would have reverted every staged change it did not know about.
+	 * - A write to the *staged copy itself* that would give it any status other
+	 *   than staged or trash (VIPPROD-1246). Left alone, that write would take
+	 *   the copy out of containment entirely -- publishing it as an ordinary
+	 *   post of its own, at its own slug, while the post it stages sits
+	 *   untouched and both pointers still stand.
 	 *
 	 * This is the event an integration watches to find out that this plugin is
 	 * standing between it and a post it expects to own. It fires on every
@@ -276,15 +282,18 @@ final class Events {
 	 * subscribing to it sees the whole picture rather than the admin's share of it.
 	 *
 	 * @param int    $staged_copy_id Staged copy holding the post's next change.
-	 * @param int    $live_id        Published post ID the write targeted.
+	 * @param int    $live_id        Published post ID the write targeted. 0 when
+	 *                                the copy's own status write was refused and
+	 *                                the published post it stages no longer exists.
 	 * @param string $channel        Transport the write arrived on.
 	 * @return void
 	 */
 	public static function write_blocked( int $staged_copy_id, int $live_id, string $channel ): void {
 		/**
-		 * Fires when a write to a post with a staged copy was refused.
+		 * Fires when a write was refused to protect a staged copy's containment.
 		 *
-		 * Subscribe to it to find the integrations a staged copy is blocking:
+		 * Subscribe to it to find the integrations a staged copy is blocking, and
+		 * any write trying to take a copy out of containment by its status:
 		 *
 		 *     add_action(
 		 *         'swpub_write_blocked',
@@ -298,11 +307,60 @@ final class Events {
 		 * @since 0.1.0
 		 *
 		 * @param int    $staged_copy_id Staged copy holding the post's next change.
-		 * @param int    $live_id        Published post ID the write targeted.
+		 * @param int    $live_id        Published post ID the write targeted. 0 when
+		 *                                the copy's own status write was refused and
+		 *                                the published post it stages no longer exists.
 		 * @param string $channel        Transport the write arrived on. Best-effort.
 		 * @param int    $user_id        User whose write was refused. 0 when there is none.
 		 */
 		do_action( 'swpub_write_blocked', $staged_copy_id, $live_id, $channel, get_current_user_id() );
+	}
+
+	/**
+	 * Announces that a staged copy was put back after something published it
+	 * out from under the guard (VIPPROD-1246).
+	 *
+	 * The twin of `swpub_write_blocked`, for the one path that cannot be
+	 * refused. `wp_publish_post()` writes `post_status` to the row directly and
+	 * never reaches the hook the refusal lives on, so the copy is put back
+	 * rather than stopped. By the time this fires the status is already staged
+	 * again and the published post was never involved.
+	 *
+	 * It fires where a refusal would have, so a site watching for one is
+	 * watching for both.
+	 *
+	 * @param int    $staged_copy_id   The staged copy that was put back.
+	 * @param int    $live_id          The published post it stages. 0 when that post is gone.
+	 * @param string $attempted_status The status something gave it.
+	 * @return void
+	 */
+	public static function staged_status_reverted( int $staged_copy_id, int $live_id, string $attempted_status ): void {
+		/**
+		 * Fires when a staged copy's status was put back after being changed
+		 * outside `wp_insert_post()`.
+		 *
+		 * The status write this undoes is the one refusal cannot reach:
+		 * `wp_publish_post()`, which cron calls to publish a scheduled post and
+		 * which any plugin may call directly. Subscribe to it to find whatever
+		 * is reaching for staged copies:
+		 *
+		 *     add_action(
+		 *         'swpub_staged_status_reverted',
+		 *         function ( $staged_copy_id, $live_id, $attempted_status, $user_id ) {
+		 *             error_log( "swpub: copy {$staged_copy_id} was given {$attempted_status}; put back" );
+		 *         },
+		 *         10,
+		 *         4
+		 *     );
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param int    $staged_copy_id   The staged copy that was put back.
+		 * @param int    $live_id          The published post it stages. 0 when that post is gone.
+		 * @param string $attempted_status The status something gave it.
+		 * @param int    $user_id          User the write ran as. 0 when there is none, which cron is.
+		 */
+		do_action( 'swpub_staged_status_reverted', $staged_copy_id, $live_id, $attempted_status, get_current_user_id() );
 	}
 
 	/**
