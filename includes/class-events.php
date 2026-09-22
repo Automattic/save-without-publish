@@ -317,6 +317,53 @@ final class Events {
 	}
 
 	/**
+	 * Announces that a staged copy was put back after something published it
+	 * out from under the guard (VIPPROD-1246).
+	 *
+	 * The twin of `swpub_write_blocked`, for the one path that cannot be
+	 * refused. `wp_publish_post()` writes `post_status` to the row directly and
+	 * never reaches the hook the refusal lives on, so the copy is put back
+	 * rather than stopped. By the time this fires the status is already staged
+	 * again and the published post was never involved.
+	 *
+	 * It fires where a refusal would have, so a site watching for one is
+	 * watching for both.
+	 *
+	 * @param int    $staged_copy_id   The staged copy that was put back.
+	 * @param int    $live_id          The published post it stages. 0 when that post is gone.
+	 * @param string $attempted_status The status something gave it.
+	 * @return void
+	 */
+	public static function staged_status_reverted( int $staged_copy_id, int $live_id, string $attempted_status ): void {
+		/**
+		 * Fires when a staged copy's status was put back after being changed
+		 * outside `wp_insert_post()`.
+		 *
+		 * The status write this undoes is the one refusal cannot reach:
+		 * `wp_publish_post()`, which cron calls to publish a scheduled post and
+		 * which any plugin may call directly. Subscribe to it to find whatever
+		 * is reaching for staged copies:
+		 *
+		 *     add_action(
+		 *         'swpub_staged_status_reverted',
+		 *         function ( $staged_copy_id, $live_id, $attempted_status, $user_id ) {
+		 *             error_log( "swpub: copy {$staged_copy_id} was given {$attempted_status}; put back" );
+		 *         },
+		 *         10,
+		 *         4
+		 *     );
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param int    $staged_copy_id   The staged copy that was put back.
+		 * @param int    $live_id          The published post it stages. 0 when that post is gone.
+		 * @param string $attempted_status The status something gave it.
+		 * @param int    $user_id          User the write ran as. 0 when there is none, which cron is.
+		 */
+		do_action( 'swpub_staged_status_reverted', $staged_copy_id, $live_id, $attempted_status, get_current_user_id() );
+	}
+
+	/**
 	 * Announces that a write could not be staged, so nothing was written at all.
 	 *
 	 * The counterpart to the fail-closed abort: the live post is untouched and so

@@ -1587,6 +1587,120 @@ class Test_Write_Guard_Staged_Copy_Status extends WP_UnitTestCase {
 	}
 
 	/**
+	 * `wp_publish_post()` writes the row with its own query and never reaches
+	 * the hook the refusal lives on, so the copy is put back instead.
+	 *
+	 * This is the call cron makes for a scheduled post, and the one the
+	 * VIPPROD-1223 investigation used to demonstrate the bug.
+	 */
+	public function test_wp_publish_post_on_the_copy_is_put_back(): void {
+		$live_before = $this->row( $this->live_id );
+
+		$reverted = array();
+
+		add_action(
+			'swpub_staged_status_reverted',
+			static function ( $staged_copy_id, $live_id, $attempted, $user_id ) use ( &$reverted ): void {
+				$reverted[] = array(
+					'staged_copy_id' => (int) $staged_copy_id,
+					'live_id'        => (int) $live_id,
+					'attempted'      => (string) $attempted,
+					'user_id'        => (int) $user_id,
+				);
+			},
+			10,
+			4
+		);
+
+		wp_publish_post( $this->staged_copy_id );
+
+		$this->assertSame(
+			Status::NAME,
+			$this->stored( $this->staged_copy_id, 'post_status' ),
+			'The staged copy was left published as a post of its own.'
+		);
+		$this->assertSame( $live_before, $this->row( $this->live_id ), 'The published post was written to.' );
+
+		$this->assertSame(
+			$this->staged_copy_id,
+			(int) get_post_meta( $this->live_id, Staged_Copy_Repository::STAGED_COPY_META, true ),
+			'The forward pointer moved.'
+		);
+
+		$this->assertCount( 1, $reverted );
+		$this->assertSame( $this->staged_copy_id, $reverted[0]['staged_copy_id'] );
+		$this->assertSame( $this->live_id, $reverted[0]['live_id'] );
+		$this->assertSame( 'publish', $reverted[0]['attempted'] );
+	}
+
+	/**
+	 * The correction reaches the rest of the request, not just the row.
+	 *
+	 * `wp_publish_post()` sets `post_status` on the object it then hands to
+	 * `save_post` and friends. A listener reading that object has to be told
+	 * the copy is staged, because by then it is.
+	 */
+	public function test_the_object_handed_to_later_hooks_reads_as_staged(): void {
+		$seen = array();
+
+		add_action(
+			'save_post',
+			static function ( $post_id, $post ) use ( &$seen ): void {
+				$seen[] = (string) $post->post_status;
+			},
+			10,
+			2
+		);
+
+		wp_publish_post( $this->staged_copy_id );
+
+		$this->assertNotEmpty( $seen, 'save_post never fired, so this proves nothing.' );
+		$this->assertSame(
+			array( Status::NAME ),
+			array_unique( $seen ),
+			'A listener was told the staged copy is published after it had been put back.'
+		);
+	}
+
+	/**
+	 * The staged copy stays out of reach, which is what the status is for.
+	 */
+	public function test_the_copy_is_not_publicly_queryable_afterwards(): void {
+		wp_publish_post( $this->staged_copy_id );
+
+		$found = get_posts(
+			array(
+				'post_type'        => 'post',
+				'post_status'      => 'publish',
+				'suppress_filters' => false,
+				'fields'           => 'ids',
+			)
+		);
+
+		$this->assertNotContains( $this->staged_copy_id, array_map( 'intval', $found ) );
+		$this->assertContains( $this->live_id, array_map( 'intval', $found ) );
+	}
+
+	/**
+	 * Trashing still reaches the discard, on this path as on the other.
+	 */
+	public function test_trashing_the_copy_is_still_allowed(): void {
+		$reverted = false;
+
+		add_action(
+			'swpub_staged_status_reverted',
+			static function () use ( &$reverted ): void {
+				$reverted = true;
+			}
+		);
+
+		wp_trash_post( $this->staged_copy_id );
+
+		$this->assertFalse( $reverted, 'Trashing was treated as an escape.' );
+		$this->assertSame( 'trash', $this->stored( $this->staged_copy_id, 'post_status' ) );
+	}
+
+	/**
 	 * `wp_delete_post()` never reaches `wp_insert_post()`, so it is unaffected;
 	 * asserted directly rather than assumed.
 	 */

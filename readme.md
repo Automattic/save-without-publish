@@ -45,7 +45,7 @@ Three things follow that are easy to miss:
 - **It is scoped to three fields, not to the post.** A write that touches no staged field (terms, meta, slug, a featured image, a sticky toggle) applies to the published post exactly as core, with no staging, no refusal, and no events. That is deliberate, and load-bearing: those fields cannot live on a staged copy at all, so the published post is the only place to change them. A write carrying both kinds is refused whole rather than half-applied.
 - **The published post is never edited from a distance.** This rule used to divert instead of refuse: the write's staged fields were redirected into the copy and answered 200. It was withdrawn because the value being diverted is composed against the *published* row. Someone editing the published post is reading published words, so their save carries the published body with one change in it, and that body has never seen the staged edits. Writing it into the copy reverted all of them. Since `post_content` is a single field, one edited paragraph replaced the whole staged body. Making the divert safe would mean merging two bodies of text, which is a diff tool this plugin does not have.
 - **A refusal changes nothing, so it cannot register as drift.** The published post's `post_modified` is untouched, so a refused write never makes the next publish ask about a change that did not happen.
-- **The staged copy cannot be given any other status, by any transport.** Trash discards it, through the same posts-list action as always; nothing else publishes it except the merge. A write that tries -- `wp_update_post()`, WP-CLI, a plugin's own scheduling -- is refused whole, the same as a write to the published post, and announced on `swpub_write_blocked`.
+- **The staged copy cannot be left in any other status, by any transport.** Trash discards it, through the same posts-list action as always; nothing else publishes it except the merge. A write that tries is refused whole and announced on `swpub_write_blocked`, the same as a write to the published post. One path is repaired rather than refused: `wp_publish_post()` writes the status column directly and never reaches the hook the refusal lives on, so a copy it publishes is put back and `swpub_staged_status_reverted` says so. That is the function cron runs for a scheduled post, and it is public API any plugin may call.
 
 ### Before there is a copy, the first save decides
 
@@ -217,6 +217,7 @@ do_action( 'swpub_write_staged',         int $staged_copy_id, int $live_id, stri
 do_action( 'swpub_staged_via_backstop',  int $staged_copy_id, int $live_id, int $user_id );
 do_action( 'swpub_stage_refused',        int $live_id,        string $channel, int $user_id );
 do_action( 'swpub_write_blocked',        int $staged_copy_id, int $live_id, string $channel, int $user_id );
+do_action( 'swpub_staged_status_reverted', int $staged_copy_id, int $live_id, string $attempted_status, int $user_id );
 do_action( 'swpub_published_via_carveout', int $live_id,      string $channel, int $user_id );
 do_action( 'swpub_staging_write_failed', int $live_id,        string $reason,  int $user_id );
 do_action( 'swpub_drift_overridden',     int $staged_copy_id, int $live_id, int $user_id, string $confirmed, string $drift_kind );
@@ -241,6 +242,19 @@ add_action(
 	'swpub_write_blocked',
 	function ( $staged_copy_id, $live_id, $channel, $user_id ) {
 		error_log( "swpub: write to {$live_id} via {$channel} refused; copy {$staged_copy_id}" );
+	},
+	10,
+	4
+);
+```
+
+`swpub_staged_status_reverted` fires when a staged copy's status was put back after something changed it outside `wp_insert_post()`. It is the twin of `swpub_write_blocked` for the one path a refusal cannot reach: `wp_publish_post()` writes the status column with a query of its own, so the copy is repaired rather than stopped, and by the time this fires it is staged again and the published post was never involved. Cron calls that function for a scheduled post, so `$user_id` is `0` on that route. Subscribe to it to find whatever is reaching for staged copies:
+
+```php
+add_action(
+	'swpub_staged_status_reverted',
+	function ( $staged_copy_id, $live_id, $attempted_status, $user_id ) {
+		error_log( "swpub: copy {$staged_copy_id} was given {$attempted_status}; put back" );
 	},
 	10,
 	4

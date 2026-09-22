@@ -80,6 +80,14 @@ final class Transitions {
 			return;
 		}
 
+		// The post that just left the staged status is the staged copy itself,
+		// so this is the other direction entirely and answers before the rest.
+		if ( Status::NAME === (string) $old_status ) {
+			self::restore_staged_status( (string) $new_status, $post );
+
+			return;
+		}
+
 		if ( Status::is_staged( $post ) ) {
 			return;
 		}
@@ -204,6 +212,76 @@ final class Transitions {
 				wp_delete_post( $post_id, true );
 			}
 		}
+	}
+
+	/**
+	 * Puts a staged copy back when something took it out of the staged status
+	 * without going through `wp_insert_post()` (VIPPROD-1246).
+	 *
+	 * `Write_Guard` refuses this at `wp_insert_post_empty_content`, which covers
+	 * every write that routes through `wp_insert_post()` -- the block editor,
+	 * the classic editor, REST, XML-RPC, WP-CLI, a plugin's `wp_update_post()`.
+	 * `wp_publish_post()` is the one that does not: it writes `post_status` to
+	 * the row with a query of its own and never reaches that hook. That is the
+	 * function cron's `check_and_publish_future_post()` calls, and it is public
+	 * API a plugin may call directly, so without this a staged copy becomes an
+	 * ordinary published post at its own `swpub-staged-<id>` slug, while the
+	 * post it stages sits untouched and both pointers still point at it.
+	 *
+	 * So this is repair rather than refusal, and the difference is honest: the
+	 * row has already been written by the time a status transition is
+	 * announced, so the status is put back rather than stopped. Refusal remains
+	 * the primary mechanism and every write that can be refused still is. What
+	 * is left here is the narrow window where core changed a column behind the
+	 * guard's back.
+	 *
+	 * The repair is a direct query for the same reason the damage was one:
+	 * `wp_update_post()` from inside a status transition would re-enter the
+	 * whole save chain, announce a second transition, and write a revision
+	 * recording a state that existed for a fraction of one request. One column
+	 * was changed, so one column is changed back.
+	 *
+	 * The passed object is corrected as well, because it is the same instance
+	 * `wp_publish_post()` goes on to hand to `save_post`, `wp_insert_post`, and
+	 * `wp_after_insert_post`. Left alone it would tell every listener in the
+	 * rest of that request that the copy is published, after this has already
+	 * put it back.
+	 *
+	 * Trash is the one status allowed through, as everywhere else:
+	 * `discard_trashed_staged_copy()` above turns it into a discard, which is a
+	 * deliberate act rather than an escape.
+	 *
+	 * Not gated on `is_enabled()`, matching the stranding path above: turning
+	 * staging off stops new staging, and the readme's promise is that existing
+	 * copies stay contained while it is off.
+	 *
+	 * @param string  $new_status The status something just gave the copy.
+	 * @param WP_Post $post       The staged copy, as core is carrying it.
+	 * @return void
+	 */
+	private static function restore_staged_status( string $new_status, WP_Post $post ): void {
+		global $wpdb;
+
+		if ( 'trash' === $new_status ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Puts one column back the way core's own direct query changed it; wp_update_post() here would re-enter the save chain from inside its own transition. The cache is dropped immediately below.
+		$wpdb->update(
+			$wpdb->posts,
+			array( 'post_status' => Status::NAME ),
+			array( 'ID' => $post->ID )
+		);
+
+		clean_post_cache( $post->ID );
+
+		$post->post_status = Status::NAME;
+
+		Events::staged_status_reverted(
+			$post->ID,
+			(int) get_post_meta( $post->ID, Staged_Copy_Repository::LIVE_META, true ),
+			$new_status
+		);
 	}
 
 	/**

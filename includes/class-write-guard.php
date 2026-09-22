@@ -590,7 +590,7 @@ final class Write_Guard {
 	public static function would_divert( array $postarr ): bool {
 		return in_array(
 			self::classify( $postarr )['decision'],
-			array( self::CONTAIN, self::ESTABLISH, self::REFUSE, self::BLOCK ),
+			array( self::CONTAIN, self::ESTABLISH, self::REFUSE, self::BLOCK, self::BLOCK_STAGED_STATUS ),
 			true
 		);
 	}
