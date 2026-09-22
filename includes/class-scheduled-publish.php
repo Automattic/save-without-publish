@@ -90,6 +90,15 @@ final class Scheduled_Publish {
 	private const GRACE = 60;
 
 	/**
+	 * Seconds to put a deferred run off by.
+	 *
+	 * Long enough that a merge holding this pair has finished by the time
+	 * the event comes round again, short enough that a schedule waiting on
+	 * one lands close to its time.
+	 */
+	private const DEFER = 300;
+
+	/**
 	 * Registers hooks.
 	 *
 	 * @return void
@@ -300,8 +309,15 @@ final class Scheduled_Publish {
 		$timestamp = strtotime( $sched['at_gmt'] . ' GMT' );
 
 		if ( false !== $timestamp && $timestamp > time() + self::GRACE ) {
-			// A stale event from before a reschedule. The real one is still
-			// queued for the new time; this one is not it.
+			// Fired ahead of its own time. Re-armed rather than skipped,
+			// because cron consumes a single event before the hook runs
+			// (`wp-cron.php` unschedules, then dispatches), so returning
+			// here without re-arming would leave the copy believing it is
+			// scheduled with nothing left to fire it. Core's own
+			// `check_and_publish_future_post()` handles the same case the
+			// same way.
+			self::rearm( $copy_id, $timestamp );
+
 			return self::skipped( 'not_due' );
 		}
 
@@ -309,19 +325,19 @@ final class Scheduled_Publish {
 
 		if ( ! $copy instanceof WP_Post || ! Status::is_staged( $copy ) ) {
 			// Published or discarded by hand before the schedule caught up.
-			// There is no copy to mark, but the event and its meta are
-			// cleared and the attempt is recorded.
-			return self::refused( $copy_id, 0, 'not_staged', null, $sched );
+			// There may be no copy left to mark, but the event and its meta
+			// are cleared and the attempt is recorded.
+			return self::refused( $copy_id, self::live_id_for( $copy_id ), 'not_staged', null, $sched );
 		}
 
 		if ( ! is_enabled() ) {
-			return self::refused( $copy_id, 0, 'disabled', null, $sched );
+			return self::refused( $copy_id, self::live_id_for( $copy_id ), 'disabled', null, $sched );
 		}
 
 		$live = Staged_Copy_Repository::find_live_for_staged_copy( $copy_id );
 
 		if ( ! $live instanceof WP_Post ) {
-			return self::refused( $copy_id, 0, 'no_live_post', null, $sched );
+			return self::refused( $copy_id, self::live_id_for( $copy_id ), 'no_live_post', null, $sched );
 		}
 
 		if ( 'publish' !== $live->post_status ) {
@@ -340,9 +356,25 @@ final class Scheduled_Publish {
 			return self::refused( $copy_id, $live->ID, 'stranded', null, $sched );
 		}
 
-		if ( null !== Merge_Marker::get( $live->ID ) ) {
-			// Merge_Resume or another run already owns this pair. Leave the
-			// schedule alone; whichever merge is in flight will finish it.
+		$marker = Merge_Marker::get( $live->ID );
+
+		if ( null !== $marker ) {
+			if ( Merge_Marker::is_stranded( $marker ) ) {
+				// A merge past its attempt budget. Only a person with the
+				// CLI can clear that, so the schedule cannot be kept and is
+				// refused rather than deferred -- deferring would re-arm
+				// against a state nothing here can resolve, for as long as
+				// the pair stayed broken.
+				return self::refused( $copy_id, $live->ID, 'merge_stranded', null, $sched );
+			}
+
+			// A merge is genuinely in flight: either it is about to finish
+			// and delete this copy, making the schedule moot, or
+			// `Merge_Resume` will. Deferred rather than skipped outright,
+			// for the same reason as above -- the event is already spent by
+			// the time this runs, so a bare skip would strand the schedule.
+			self::rearm( $copy_id, time() + self::DEFER );
+
 			return self::skipped( 'merge_in_progress' );
 		}
 
@@ -418,9 +450,12 @@ final class Scheduled_Publish {
 
 		if ( is_wp_error( $result ) ) {
 			if ( 'swpub_merge_in_progress' === $result->get_error_code() ) {
-				// Lost the single-flight claim to a concurrent run. That run
-				// will finish the merge; this schedule has nothing left to do
-				// and nothing to be refused for.
+				// Lost the single-flight claim to a concurrent run, which is
+				// transient by definition. Deferred, not refused: if that run
+				// publishes, the next event finds no schedule and does
+				// nothing; if it failed, this one still has its chance.
+				self::rearm( $copy_id, time() + self::DEFER );
+
 				return self::skipped( 'merge_in_progress' );
 			}
 
@@ -491,6 +526,45 @@ final class Scheduled_Publish {
 		}
 
 		wp_clear_scheduled_hook( self::HOOK, array( (int) $post_id ) );
+	}
+
+	/**
+	 * The published post a copy stages, read straight off the reverse
+	 * pointer.
+	 *
+	 * Deliberately not `Staged_Copy_Repository::find_live_for_staged_copy()`,
+	 * which validates the pair and answers null for a copy that is no longer
+	 * staged -- exactly the cases this is for. A refusal should still be able
+	 * to name the post it was about, and the raw pointer is the only thing
+	 * left that can.
+	 *
+	 * @param int $copy_id Staged copy post ID.
+	 * @return int The published post ID, or 0 when nothing records one.
+	 */
+	private static function live_id_for( int $copy_id ): int {
+		return (int) get_post_meta( $copy_id, Staged_Copy_Repository::LIVE_META, true );
+	}
+
+	/**
+	 * Puts the event back for a run that could not happen yet.
+	 *
+	 * Cron spends a single event before the hook it fires runs
+	 * (`wp-cron.php` unschedules, then dispatches), so a deferral has to
+	 * arm a new one or the schedule is lost while its meta still says it is
+	 * scheduled -- the one failure this whole feature cannot tolerate, since
+	 * nothing would say the publish is never coming.
+	 *
+	 * The schedule's own meta is deliberately left alone: the time the
+	 * editor asked for is still the time they asked for, and it is what the
+	 * next run reads to decide it is due.
+	 *
+	 * @param int $copy_id   Staged copy post ID.
+	 * @param int $timestamp When to try again.
+	 * @return void
+	 */
+	private static function rearm( int $copy_id, int $timestamp ): void {
+		wp_clear_scheduled_hook( self::HOOK, array( $copy_id ) );
+		wp_schedule_single_event( $timestamp, self::HOOK, array( $copy_id ) );
 	}
 
 	/**

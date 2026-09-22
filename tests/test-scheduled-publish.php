@@ -462,11 +462,14 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A stale event -- one that fires before its schedule's own time,
-	 * because the copy was rescheduled later -- is skipped and the real
-	 * schedule is left standing.
+	 * A run that fires ahead of its own time re-arms itself rather than
+	 * consuming the schedule.
+	 *
+	 * Cron spends a single event before the hook runs, so a bare skip here
+	 * would leave the copy reading as scheduled with nothing left to fire
+	 * it -- a publish that silently never happens.
 	 */
-	public function test_a_stale_event_before_the_real_schedule_is_skipped(): void {
+	public function test_a_run_ahead_of_its_time_re_arms_itself(): void {
 		$future = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS );
 
 		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, $future );
@@ -476,15 +479,20 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		$this->assertSame( 'skipped', $outcome['outcome'] );
 		$this->assertSame( 'not_due', $outcome['reason'] );
-		$this->assertSame( $future, get_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, true ), 'The real schedule was cleared by the stale one.' );
+		$this->assertSame( $future, get_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, true ), 'The schedule itself was disturbed.' );
 		$this->assertSame( Status::NAME, get_post_field( 'post_status', $this->staged_copy_id ) );
+
+		$this->assertSame(
+			strtotime( $future . ' GMT' ),
+			wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) ),
+			'The run was not re-armed for its real time, so nothing will ever fire it.'
+		);
 	}
 
 	/**
-	 * A merge already in flight on the live post is left alone; the schedule
-	 * is neither run nor cleared.
+	 * A merge genuinely in flight defers the run rather than losing it.
 	 */
-	public function test_fire_during_a_merge_in_progress_is_skipped(): void {
+	public function test_fire_during_a_merge_in_progress_defers(): void {
 		$due = gmdate( 'Y-m-d H:i:s', time() - 5 );
 
 		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, $due );
@@ -498,6 +506,57 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$this->assertSame( 'merge_in_progress', $outcome['reason'] );
 		$this->assertSame( $due, get_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, true ) );
 		$this->assertSame( array(), $this->captured( 'swpub_scheduled_publish_refused' ) );
+
+		$next = wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) );
+
+		$this->assertIsInt( $next, 'The deferred run was not re-armed, so nothing will ever fire it.' );
+		$this->assertGreaterThan( time(), $next );
+	}
+
+	/**
+	 * A merge stranded past its attempt budget cannot be waited out, so the
+	 * schedule is refused rather than deferred against a state nothing here
+	 * can resolve.
+	 */
+	public function test_fire_refuses_against_a_stranded_merge(): void {
+		$due = gmdate( 'Y-m-d H:i:s', time() - 5 );
+
+		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, $due );
+		update_post_meta( $this->staged_copy_id, Scheduled_Publish::BY_META, $this->scheduler_id );
+
+		Merge_Marker::start( $this->live_id, $this->staged_copy_id );
+		Merge_Marker::strand( $this->live_id );
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'refused', $outcome['outcome'] );
+		$this->assertSame( 'merge_stranded', $outcome['reason'] );
+		$this->assertNull( Scheduled_Publish::scheduled( $this->staged_copy_id ) );
+		$this->assertFalse( wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) ), 'A refusal must not leave an event behind to loop on.' );
+		$this->assertCount( 1, $this->captured( 'swpub_scheduled_publish_refused' ) );
+	}
+
+	/**
+	 * Losing the single-flight claim to a concurrent merge defers rather
+	 * than refusing: that state is transient by definition.
+	 */
+	public function test_losing_the_merge_claim_defers(): void {
+		$due = gmdate( 'Y-m-d H:i:s', time() - 5 );
+
+		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, $due );
+		update_post_meta( $this->staged_copy_id, Scheduled_Publish::BY_META, $this->scheduler_id );
+
+		// Exactly what Merge::claim() does, taken from outside so the merge
+		// finds the claim already held.
+		wp_cache_add( 'merge_' . $this->live_id, 1, 'swpub', 300 );
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'skipped', $outcome['outcome'] );
+		$this->assertSame( 'merge_in_progress', $outcome['reason'] );
+		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
+		$this->assertSame( $due, get_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, true ) );
+		$this->assertIsInt( wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) ) );
 	}
 
 	// ---------------------------------------------------------------
@@ -720,7 +779,11 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$refused = $this->captured( 'swpub_scheduled_publish_refused' );
 
 		$this->assertCount( 1, $refused );
-		$this->assertSame( 0, $refused[0][1], 'live_id should be 0 when there is no copy left to resolve it from.' );
+		$this->assertSame(
+			$this->live_id,
+			$refused[0][1],
+			'A refusal should still name the post it was about; the reverse pointer outlives the staged status.'
+		);
 	}
 
 	// ---------------------------------------------------------------
