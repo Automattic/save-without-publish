@@ -16,7 +16,8 @@
 .components-panel__row.swpub-staged-row,
 .components-panel__row.swpub-stage-row,
 .components-panel__row.swpub-status-row,
-.components-panel__row.swpub-published-row {
+.components-panel__row.swpub-published-row,
+.components-panel__row.swpub-schedule-row {
 	// Core's rows are spaced by their container's gap, not by their own margin.
 	margin-top: 0;
 

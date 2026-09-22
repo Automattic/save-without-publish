@@ -145,6 +145,30 @@ final class Post_List {
 			$states['swpub_stranded'] = _x( 'Cannot be published', 'post status', 'save-without-publish' );
 		}
 
+		/*
+		 * A second state rather than a longer first one (VIPPROD-1248), the
+		 * same way `swpub_stranded` above is: core joins every state in this
+		 * array with its own separator, so "Staged changes" stays one
+		 * sentence a translator can work with on its own, and this is a
+		 * fact about the schedule, not a rewording of what is staged.
+		 *
+		 * Mutually exclusive by construction: `Scheduled_Publish::schedule()`
+		 * clears any recorded refusal the moment a new schedule is set, so a
+		 * copy is never both at once.
+		 */
+		$staged_copy = Staged_Copy_Repository::find_for_live( $post->ID );
+
+		if ( $staged_copy instanceof WP_Post ) {
+			if ( null !== Scheduled_Publish::scheduled( $staged_copy->ID ) ) {
+				$states['swpub_scheduled'] = _x( 'Scheduled', 'post status', 'save-without-publish' );
+			} elseif ( null !== Scheduled_Publish::refusal( $staged_copy->ID ) ) {
+				// "Stopped" rather than "refused" or "failed": from this list,
+				// the fact worth saying is that it is not going to happen on
+				// its own any more, not that something went wrong.
+				$states['swpub_schedule_stopped'] = _x( 'Schedule stopped', 'post status', 'save-without-publish' );
+			}
+		}
+
 		return $states;
 	}
 

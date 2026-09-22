@@ -12,6 +12,8 @@ import { DiscardStaged } from './discard';
 import { ExistingStagedCopyNotice } from './existing-staged-copy';
 import { PublishChanges } from './publish-changes';
 import { PublishedRow } from './published-row';
+import { ScheduleProvider } from './schedule-context';
+import { ScheduleRow } from './schedule-row';
 import { StageChanges } from './stage-changes';
 import { StagedNotices } from './staged-notices';
 import { StagedRow } from './staged-row';
@@ -21,24 +23,25 @@ import { StagedStatusRow } from './status-row';
  * Registers the editor plugin.
  *
  * The Summary rows are listed in the order they should read: the document's
- * status first, then what is staged against it, then where the published post
- * is, and the destructive control last.
+ * status first, then what is staged against it and when it will publish
+ * itself, then where the published post is, and the destructive control last.
  *
  * @return {void}
  */
 export function registerEditorPlugin() {
 	registerPlugin( 'save-without-publish', {
 		render: () => (
-			<>
+			<ScheduleProvider>
 				<StagedNotices />
 				<StagedStatusRow />
 				<StageChanges />
 				<StagedRow />
+				<ScheduleRow />
 				<PublishedRow />
 				<DiscardStaged />
 				<PublishChanges />
 				<ExistingStagedCopyNotice />
-			</>
+			</ScheduleProvider>
 		),
 	} );
 }
