@@ -23,6 +23,7 @@ import { store as noticesStore } from '@wordpress/notices';
 
 import { context } from './context';
 import { cancelSchedule, scheduleAt } from './schedule';
+import { useSchedule } from './schedule-context';
 
 /**
  * The server's `scheduledFor`, as a `Date`.
@@ -77,6 +78,30 @@ function is12HourTime() {
 }
 
 /**
+ * The picker's own default when nothing is scheduled yet.
+ *
+ * Not "now": `DateTimePicker` needs some `currentDate` the instant it
+ * renders, and this row cannot leave that as `undefined` (see
+ * `ScheduleDropdown` below) -- but "now" is also a value Schedule can
+ * commit unchanged, and doing so is a click that schedules a publish for
+ * the next cron tick rather than opening a picker an editor is expected to
+ * set. The next full hour is far enough out that committing the default
+ * outright is never mistaken for "immediately", while still reading as
+ * "soon" rather than as a date someone picked on purpose.
+ *
+ * @return {Date} The next full hour, in the browser's own clock -- the same
+ *                clock `DateTimePicker` always renders in.
+ */
+function defaultScheduleTime() {
+	const next = new Date();
+
+	next.setMinutes( 0, 0, 0 );
+	next.setHours( next.getHours() + 1 );
+
+	return next;
+}
+
+/**
  * The picker and its actions, inside the dropdown.
  *
  * A component of its own rather than inline JSX, because it carries the one
@@ -102,14 +127,19 @@ function ScheduleDropdown( {
 	onClear,
 } ) {
 	/*
-	 * Defaults to now, not to nothing. `DateTimePicker` shows "now" the
-	 * moment it renders with no `currentDate` at all -- moment's own default
-	 * for an undefined value -- so a picker left as `undefined` here would
-	 * show a real date while the Schedule button stayed disabled under it
-	 * until something was touched, disagreeing with what an editor is
-	 * looking at.
+	 * Defaults to a real date, not to nothing: `DateTimePicker` needs a
+	 * `currentDate` the moment it renders, and leaving this `undefined`
+	 * would show a real date (moment's own default) while the Schedule
+	 * button stayed disabled under it until something was touched,
+	 * disagreeing with what an editor is looking at. Defaults to the next
+	 * full hour rather than to `new Date()` itself, so that clicking
+	 * Schedule without touching anything commits a time an editor can
+	 * recognize as a default, not one that reads as "right now"
+	 * (`defaultScheduleTime()`).
 	 */
-	const [ picked, setPicked ] = useState( initialDate || new Date() );
+	const [ picked, setPicked ] = useState(
+		initialDate || defaultScheduleTime()
+	);
 
 	return (
 		<div className="swpub-schedule-row__content">
@@ -153,13 +183,7 @@ function ScheduleDropdown( {
 export function ScheduleRow() {
 	const ctx = context();
 	const { createErrorNotice } = useDispatch( noticesStore );
-
-	const [ scheduledFor, setScheduledFor ] = useState( () =>
-		fromContext( ctx.scheduledFor )
-	);
-	const [ scheduledForLabel, setScheduledForLabel ] = useState(
-		ctx.scheduledForLabel
-	);
+	const { schedule, setSchedule } = useSchedule();
 	const [ pending, setPending ] = useState( false );
 
 	/*
@@ -167,11 +191,17 @@ export function ScheduleRow() {
 	 * the published post leaves publish, before anything here has asked the
 	 * server. Offering the control anyway would offer a click that the
 	 * server refuses every time (`swpub_stranded`), on a fact this page
-	 * already knows. Not a hook, so it is safe after the two calls above.
+	 * already knows. Not a hook, so it is safe after the calls above.
 	 */
 	if ( ! ctx.isStaged || ctx.stranded ) {
 		return null;
 	}
+
+	// The shared value is a bare ISO string plus its label -- the same shape
+	// the page-load context ships -- so this row still works with `Date`
+	// objects the way it always has, converted once on the way out.
+	const scheduledFor = fromContext( schedule.scheduledFor );
+	const scheduledForLabel = schedule.scheduledForLabel;
 
 	async function commit( picked ) {
 		setPending( true );
@@ -195,10 +225,17 @@ export function ScheduleRow() {
 			 */
 			const instant = fromPicker( picked );
 
-			setScheduledFor( instant );
-			setScheduledForLabel(
-				dateI18n( getSettings().formats.datetime, instant )
-			);
+			// Stored as an ISO string, the same shape the page-load context
+			// ships (see `ScheduleProvider`), so `StagedNotices` -- which
+			// reads this same shared value -- needs no second shape to
+			// understand.
+			setSchedule( {
+				scheduledFor: instant.toISOString(),
+				scheduledForLabel: dateI18n(
+					getSettings().formats.datetime,
+					instant
+				),
+			} );
 		} catch ( error ) {
 			createErrorNotice(
 				error && error.message
@@ -220,8 +257,7 @@ export function ScheduleRow() {
 		try {
 			await cancelSchedule( ctx.stagedCopyId );
 
-			setScheduledFor( '' );
-			setScheduledForLabel( '' );
+			setSchedule( { scheduledFor: '', scheduledForLabel: '' } );
 		} catch ( error ) {
 			createErrorNotice(
 				error && error.message

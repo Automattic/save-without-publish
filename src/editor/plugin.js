@@ -12,6 +12,7 @@ import { DiscardStaged } from './discard';
 import { ExistingStagedCopyNotice } from './existing-staged-copy';
 import { PublishChanges } from './publish-changes';
 import { PublishedRow } from './published-row';
+import { ScheduleProvider } from './schedule-context';
 import { ScheduleRow } from './schedule-row';
 import { StageChanges } from './stage-changes';
 import { StagedNotices } from './staged-notices';
@@ -30,7 +31,7 @@ import { StagedStatusRow } from './status-row';
 export function registerEditorPlugin() {
 	registerPlugin( 'save-without-publish', {
 		render: () => (
-			<>
+			<ScheduleProvider>
 				<StagedNotices />
 				<StagedStatusRow />
 				<StageChanges />
@@ -40,7 +41,7 @@ export function registerEditorPlugin() {
 				<DiscardStaged />
 				<PublishChanges />
 				<ExistingStagedCopyNotice />
-			</>
+			</ScheduleProvider>
 		),
 	} );
 }

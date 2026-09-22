@@ -15,6 +15,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import { verify } from './canary';
 import { context } from './context';
 import { compareAsText, reviewPublishedHistory, toRead } from './routes';
+import { useSchedule } from './schedule-context';
 
 /**
  * The sentence a staged copy opens with, as a format string.
@@ -269,14 +270,24 @@ export function StagedNotices() {
 	const ctx = context();
 	const { createNotice } = useDispatch( noticesStore );
 
+	/*
+	 * `ctx` is the page-load snapshot and never changes; the schedule can,
+	 * every time `ScheduleRow` schedules, changes, or clears one in this
+	 * same session (`ScheduleProvider`). Merged here rather than read from
+	 * `ctx` directly, so the sentence below says what the row currently
+	 * shows, not what the page happened to load with.
+	 */
+	const { schedule } = useSchedule();
+	const effectiveCtx = { ...ctx, ...schedule };
+
 	useEffect( () => {
 		if ( ! ctx.isStaged ) {
 			return;
 		}
 
-		const markup = linkedSentence( ctx );
-		const base = markup ?? statusSentence( ctx );
-		const scheduled = scheduledSentence( ctx );
+		const markup = linkedSentence( effectiveCtx );
+		const base = markup ?? statusSentence( effectiveCtx );
+		const scheduled = scheduledSentence( effectiveCtx );
 
 		/*
 		 * Appended to the same notice rather than posted as a second one: it
@@ -310,7 +321,20 @@ export function StagedNotices() {
 		if ( markup ) {
 			verifyNoticeLink();
 		}
-	}, [ ctx, createNotice ] );
+		/*
+		 * `effectiveCtx` is deliberately left out: it is a new object every
+		 * render, built fresh above from `ctx` and `schedule` -- naming it
+		 * here would run this effect on every render instead of only when
+		 * one of the values it is built from actually changes, which is
+		 * exactly what the two `schedule` fields below are for.
+		 */
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [
+		ctx,
+		schedule.scheduledFor,
+		schedule.scheduledForLabel,
+		createNotice,
+	] );
 
 	// What publishing did, said once, on the screen it lands on. This used to be
 	// a modal asking permission before the merge, which said the same sentence

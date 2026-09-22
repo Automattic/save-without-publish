@@ -206,6 +206,64 @@ test.describe( 'Publishing a staged copy at a set time', () => {
 		).toBeVisible();
 	} );
 
+	test( 'the staged-state notice follows a schedule changed in the same session', async ( {
+		page,
+	} ) => {
+		scheduleFor( stagedCopyId, '2027-03-15T10:30:00Z' );
+
+		await openEditor( page, stagedCopyId );
+
+		await expect(
+			notice(
+				page,
+				'These changes are scheduled to publish on March 15, 2027 10:30 am.'
+			)
+		).toBeVisible();
+
+		// Cleared without a reload -- the row and the notice both read the
+		// same in-session state, or the notice keeps naming a time the row
+		// no longer shows.
+		await openSchedule( page );
+		await schedulePopover( page )
+			.getByRole( 'button', { name: 'Clear', exact: true } )
+			.click();
+
+		await expect( scheduleToggle( page ) ).toHaveText( 'Immediately' );
+		await expect(
+			notice(
+				page,
+				'These changes are scheduled to publish on March 15, 2027 10:30 am.'
+			)
+		).toHaveCount( 0 );
+
+		// Rescheduled to a different time, still without a reload -- the
+		// notice must move with it, not keep the value it had at page load.
+		await openSchedule( page );
+
+		await fillPicker( page, {
+			year: 2028,
+			month: '06',
+			day: 1,
+			hour12: 2,
+			minute: 15,
+			meridiem: 'PM',
+		} );
+
+		await schedulePopover( page )
+			.getByRole( 'button', { name: 'Schedule', exact: true } )
+			.click();
+
+		await expect( scheduleToggle( page ) ).toHaveText(
+			'June 1, 2028 2:15 pm'
+		);
+		await expect(
+			notice(
+				page,
+				'These changes are scheduled to publish on June 1, 2028 2:15 pm.'
+			)
+		).toBeVisible();
+	} );
+
 	test( 'clearing removes the schedule from the row and the server', async ( {
 		page,
 	} ) => {
