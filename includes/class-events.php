@@ -263,12 +263,18 @@ final class Events {
 	}
 
 	/**
-	 * Announces that a write was refused because a staged copy already holds this post.
+	 * Announces that a write was refused to protect a staged copy's containment.
 	 *
-	 * Nothing was written on either side. The published post is unchanged and so
-	 * is the staged copy, which is the point: the write was assembled against the
-	 * published words and would have reverted every staged change it did not know
-	 * about.
+	 * Two triggers, both refusals with nothing written on either side:
+	 *
+	 * - A write to the *published* post while a staged copy already holds its
+	 *   next change. The write was assembled against the published words and
+	 *   would have reverted every staged change it did not know about.
+	 * - A write to the *staged copy itself* that would give it any status other
+	 *   than staged or trash (VIPPROD-1246). Left alone, that write would take
+	 *   the copy out of containment entirely -- publishing it as an ordinary
+	 *   post of its own, at its own slug, while the post it stages sits
+	 *   untouched and both pointers still stand.
 	 *
 	 * This is the event an integration watches to find out that this plugin is
 	 * standing between it and a post it expects to own. It fires on every
@@ -276,15 +282,18 @@ final class Events {
 	 * subscribing to it sees the whole picture rather than the admin's share of it.
 	 *
 	 * @param int    $staged_copy_id Staged copy holding the post's next change.
-	 * @param int    $live_id        Published post ID the write targeted.
+	 * @param int    $live_id        Published post ID the write targeted. 0 when
+	 *                                the copy's own status write was refused and
+	 *                                the published post it stages no longer exists.
 	 * @param string $channel        Transport the write arrived on.
 	 * @return void
 	 */
 	public static function write_blocked( int $staged_copy_id, int $live_id, string $channel ): void {
 		/**
-		 * Fires when a write to a post with a staged copy was refused.
+		 * Fires when a write was refused to protect a staged copy's containment.
 		 *
-		 * Subscribe to it to find the integrations a staged copy is blocking:
+		 * Subscribe to it to find the integrations a staged copy is blocking, and
+		 * any write trying to take a copy out of containment by its status:
 		 *
 		 *     add_action(
 		 *         'swpub_write_blocked',
@@ -298,7 +307,9 @@ final class Events {
 		 * @since 0.1.0
 		 *
 		 * @param int    $staged_copy_id Staged copy holding the post's next change.
-		 * @param int    $live_id        Published post ID the write targeted.
+		 * @param int    $live_id        Published post ID the write targeted. 0 when
+		 *                                the copy's own status write was refused and
+		 *                                the published post it stages no longer exists.
 		 * @param string $channel        Transport the write arrived on. Best-effort.
 		 * @param int    $user_id        User whose write was refused. 0 when there is none.
 		 */

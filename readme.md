@@ -45,6 +45,7 @@ Three things follow that are easy to miss:
 - **It is scoped to three fields, not to the post.** A write that touches no staged field (terms, meta, slug, a featured image, a sticky toggle) applies to the published post exactly as core, with no staging, no refusal, and no events. That is deliberate, and load-bearing: those fields cannot live on a staged copy at all, so the published post is the only place to change them. A write carrying both kinds is refused whole rather than half-applied.
 - **The published post is never edited from a distance.** This rule used to divert instead of refuse: the write's staged fields were redirected into the copy and answered 200. It was withdrawn because the value being diverted is composed against the *published* row. Someone editing the published post is reading published words, so their save carries the published body with one change in it, and that body has never seen the staged edits. Writing it into the copy reverted all of them. Since `post_content` is a single field, one edited paragraph replaced the whole staged body. Making the divert safe would mean merging two bodies of text, which is a diff tool this plugin does not have.
 - **A refusal changes nothing, so it cannot register as drift.** The published post's `post_modified` is untouched, so a refused write never makes the next publish ask about a change that did not happen.
+- **The staged copy cannot be given any other status, by any transport.** Trash discards it, through the same posts-list action as always; nothing else publishes it except the merge. A write that tries -- `wp_update_post()`, WP-CLI, a plugin's own scheduling -- is refused whole, the same as a write to the published post, and announced on `swpub_write_blocked`.
 
 ### Before there is a copy, the first save decides
 
@@ -233,7 +234,7 @@ do_action( 'swpub_meta_keys_dropped',    int $staged_copy_id, array $keys, int $
 
 `swpub_stage_refused` fires when a write that would have staged was refused instead, currently only on the `quickedit` channel. Nothing was written on either side.
 
-`swpub_write_blocked` fires when a write to a post that already has a staged copy was refused. Nothing was written on either side: the published post is unchanged and so is the copy, which is the point. This is the event to watch to find out which of your integrations a staged copy is standing in front of, and it fires on every transport, including one with no authenticated user behind it:
+`swpub_write_blocked` fires on two refusals, both with nothing written on either side. A write to a published post that already has a staged copy is the first, and the published post is unchanged and so is the copy, which is the point. A write giving the staged copy itself any status but staged or trash is the second: left alone, that write would take the copy out of containment entirely, publishing it as an ordinary post of its own while the post it stages sits untouched. `$live_id` is `0` on this second trigger only when the published post it staged is already gone. This is the event to watch to find out which of your integrations a staged copy is standing in front of, and it fires on every transport, including one with no authenticated user behind it:
 
 ```php
 add_action(

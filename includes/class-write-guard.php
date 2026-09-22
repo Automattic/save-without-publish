@@ -25,6 +25,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * after that, to either the published post or through any transport, is refused
  * until the copy is published or discarded.
  *
+ * A third, added later and narrower (VIPPROD-1246): the copy itself may not be
+ * given any status but staged or trash. Neither of the two rules above protects
+ * this, because both judge a write to the *published* post; a write straight to
+ * the copy's own status was never a write either rule had reason to see.
+ *
  * The guarantee moved here from the REST seam because a seam is a transport, and
  * a transport-shaped guarantee is only true on that transport: Quick Edit, the
  * classic editor, XML-RPC, and a plain `wp_update_post()` all published straight
@@ -135,6 +140,18 @@ final class Write_Guard {
 	 * A staged copy already holds this post's next change, so the write is refused.
 	 */
 	private const BLOCK = 'block';
+
+	/**
+	 * A staged copy is being given a status other than staged or trash, so the
+	 * write is refused (VIPPROD-1246).
+	 *
+	 * Distinct from `BLOCK`, which refuses a write to a *published* post because
+	 * a copy exists for it. This refuses a write to the *copy itself* that would
+	 * take it out of containment -- the one status transition R55's refusal
+	 * never had to consider, because nothing routed a status write to a staged
+	 * copy until something outside the editor did.
+	 */
+	private const BLOCK_STAGED_STATUS = 'block_staged_status';
 
 	/**
 	 * The write publishes on the named programmatic seam, and says so.
@@ -326,6 +343,24 @@ final class Write_Guard {
 			return true;
 		}
 
+		if ( self::BLOCK_STAGED_STATUS === $verdict['decision'] ) {
+			$live_id = $verdict['live'] instanceof WP_Post ? $verdict['live']->ID : 0;
+
+			Events::write_blocked(
+				$verdict['staged_copy']->ID,
+				$live_id,
+				$verdict['channel']
+			);
+
+			/*
+			 * Same abort mechanism as the BLOCK branch above, and the same
+			 * `empty_content` caveat: this hook cannot carry a better error
+			 * through. `swpub_write_blocked` carries the real reason, whatever
+			 * status this write was trying to give the copy.
+			 */
+			return true;
+		}
+
 		if ( self::ESTABLISH === $verdict['decision'] ) {
 			$staged_copy = Staged_Copy_Repository::establish( $verdict['live'] );
 
@@ -415,6 +450,45 @@ final class Write_Guard {
 		$live = get_post( $live_id );
 
 		if ( ! $live instanceof WP_Post ) {
+			return $verdict;
+		}
+
+		/*
+		 * A staged copy may leave the staged status for exactly two reasons:
+		 * trash (`Transitions::discard_trashed_staged_copy()` turns that into a
+		 * discard at shutdown) and deletion, which is not a status write at all.
+		 * Anything else -- `publish`, `future`, `draft`, `pending`, `private` --
+		 * would let the copy become an ordinary post of its own, still carrying
+		 * both pointers, while the published post it stages sits untouched
+		 * (VIPPROD-1246). Nothing downstream of this file catches that: the
+		 * REST-only `Field_Lock` never sees a WP-CLI or plugin write, and the
+		 * containment below only judges a write to a *published* post.
+		 *
+		 * Checked here, unconditionally, rather than folded into the revisions
+		 * gate that follows: that gate answers whether staging applies to the
+		 * *published* post's type, which is a different question from whether
+		 * this row -- already a staged copy -- may be given another status. A
+		 * staged copy's own type necessarily supports revisions already, since
+		 * that is `Staged_Copy_Repository::can_establish()`'s own precondition,
+		 * so the two checks never disagree; this one simply does not depend on
+		 * the other to be correct.
+		 *
+		 * `$live` here is the row `$postarr['ID']` names, which in this branch
+		 * is the staged copy itself, not the published post -- the same
+		 * variable, the opposite post.
+		 */
+		if ( Status::is_staged( $live ) ) {
+			$target_status = isset( $postarr['post_status'] ) ? (string) $postarr['post_status'] : '';
+
+			if ( '' === $target_status || Status::NAME === $target_status || 'trash' === $target_status ) {
+				return $verdict;
+			}
+
+			$verdict['staged_copy'] = $live;
+			$verdict['live']        = Staged_Copy_Repository::find_live_for_staged_copy( $live->ID );
+			$verdict['channel']     = self::channel();
+			$verdict['decision']    = self::BLOCK_STAGED_STATUS;
+
 			return $verdict;
 		}
 
