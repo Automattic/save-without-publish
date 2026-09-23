@@ -82,6 +82,53 @@ final class Admin_Surfaces {
 		add_filter( 'admin_body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'arrival_notice' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'refused_save_notice' ) );
+		add_action( 'add_meta_boxes', array( __CLASS__, 'remove_unstageable_meta_boxes' ), PHP_INT_MAX, 2 );
+	}
+
+	/**
+	 * Takes the classic editor's controls for fields that cannot be staged
+	 * off a staged copy's screen (VIPPROD-1228).
+	 *
+	 * The block editor's twin of this is `src/editor/unstageable-fields.js`;
+	 * this is cheaper, because the classic editor has no equivalent of
+	 * `removeEditorPanel()` -- core registers every one of these boxes
+	 * unconditionally, in `register_and_do_post_meta_boxes()`, before this
+	 * hook fires, so `remove_meta_box()` here is the standard way any plugin
+	 * takes one off the screen.
+	 *
+	 * The Publish box's date and visibility links are left standing: they sit
+	 * inside `submitdiv` alongside Save/Publish itself, which this plugin
+	 * does not touch (readme, "Publishing at a set time"). A save carrying
+	 * either one is already refused, with the sentence `Admin_Surfaces`
+	 * already posts for any classic refusal on this screen.
+	 *
+	 * The context each `remove_meta_box()` call passes has to match how core
+	 * registered the box, or nothing is removed: `remove_meta_box()` only
+	 * looks inside the one context it is told, it does not search all three.
+	 *
+	 * @param string       $post_type The screen's post type.
+	 * @param WP_Post|null $post      The post being edited, or null off an
+	 *                                edit screen.
+	 * @return void
+	 */
+	public static function remove_unstageable_meta_boxes( $post_type, $post ): void {
+		if ( ! $post instanceof WP_Post || ! Status::is_staged( $post ) ) {
+			return;
+		}
+
+		foreach ( array( 'slugdiv', 'authordiv', 'commentstatusdiv', 'commentsdiv' ) as $id ) {
+			remove_meta_box( $id, $post_type, 'normal' );
+		}
+
+		foreach ( array( 'postimagediv', 'pageparentdiv', 'formatdiv' ) as $id ) {
+			remove_meta_box( $id, $post_type, 'side' );
+		}
+
+		foreach ( Field_Lock::locked_taxonomies( $post_type ) as $taxonomy ) {
+			$id = is_taxonomy_hierarchical( $taxonomy ) ? "{$taxonomy}div" : "tagsdiv-{$taxonomy}";
+
+			remove_meta_box( $id, $post_type, 'side' );
+		}
 	}
 
 	/**

@@ -615,15 +615,16 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		// And core prints Status first. This row replaces core's, so it sits
 		// where core's sat rather than after every other row, which is where
 		// the slot renders fills. Compared by position because the row is put
-		// there by `order`, which leaves the DOM alone.
+		// there by `order`, which leaves the DOM alone. Measured against the
+		// Publish at row -- a fill with no `order` of its own, rendered after
+		// this one in the slot -- rather than core's Publish date row, which
+		// a staged copy no longer shows at all (VIPPROD-1228).
 		const status = await row.boundingBox();
-		const publish = await page
-			.locator( '.editor-post-panel__row' )
-			.filter( { hasText: 'Publish' } )
-			.first()
+		const publishAt = await page
+			.locator( '.swpub-schedule-row' )
 			.boundingBox();
 
-		expect( status.y ).toBeLessThan( publish.y );
+		expect( status.y ).toBeLessThan( publishAt.y );
 
 		// Core's own Status row is superseded, not duplicated. Hidden rather
 		// than removed, because core is what re-renders it.

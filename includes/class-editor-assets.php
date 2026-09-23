@@ -225,6 +225,15 @@ final class Editor_Assets {
 				'scheduledForLabel' => self::when( $refusal['scheduled_for'] ),
 			) : null;
 
+			/*
+			 * Every taxonomy the write guard locks on this copy (VIPPROD-1228),
+			 * so the editor can take each one's panel off the screen the same
+			 * way it takes core's two off -- a site's or plugin's own taxonomy
+			 * included, without hard-coding `category`/`post_tag` here and
+			 * risking the two lists drifting apart.
+			 */
+			$context['lockedTaxonomies'] = Field_Lock::locked_taxonomies( $post->post_type );
+
 			return $context;
 		}
 

@@ -23,6 +23,13 @@
  * it stages (`Capabilities::map_staged_copy_caps`), so anyone who can open this
  * screen can open that one, and `liveEdit` is empty only where the plugin could
  * not name the published post at all.
+ *
+ * The help line names where those fields went (VIPPROD-1228), now that
+ * `unstageable-fields.js` has taken their controls off this screen. A fixed
+ * list rather than a report of what was actually hidden here, so it reads the
+ * same on every staged copy whatever panels a given site happens to register:
+ * the fields are not stageable regardless of whether this particular screen
+ * had a control for one of them to hide.
  */
 
 import { Button } from '@wordpress/components';
@@ -30,6 +37,25 @@ import { PluginPostStatusInfo } from '@wordpress/editor';
 import { __ } from '@wordpress/i18n';
 
 import { context } from './context';
+
+/**
+ * The sentence.
+ *
+ * A sibling paragraph under the row rather than a prop on it: core's row
+ * markup (`PostPanelRow`) has no help-text slot to reach for, and
+ * `PluginPostStatusInfo` renders whatever is passed as children directly
+ * inside its own `PanelRow`, so a second element after the row's own two
+ * columns is what this class (`swpub-published-row__help`) styles small and
+ * muted, the way a field's help text usually reads.
+ *
+ * @return {string} The sentence.
+ */
+function movedFieldsHelp() {
+	return __(
+		'Slug, publish date, author, categories, tags, featured image, and discussion are set on the published post.',
+		'save-without-publish'
+	);
+}
 
 /**
  * Renders the row.
@@ -72,6 +98,7 @@ export function PublishedRow() {
 					size="compact"
 				/>
 			</div>
+			<p className="swpub-published-row__help">{ movedFieldsHelp() }</p>
 		</PluginPostStatusInfo>
 	);
 }
