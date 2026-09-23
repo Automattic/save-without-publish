@@ -263,13 +263,16 @@ test.describe( 'Undo those changes', () => {
 		await openEditor( page, liveId );
 		await showDocumentPanel( page );
 
-		// The slug, changed on the one screen where it is still a live
-		// control: nothing has staged yet, so nothing here is hidden.
-		await page.locator( '.editor-post-url__panel-toggle' ).click();
-		await page
-			.getByRole( 'textbox', { name: 'Slug', exact: true } )
-			.fill( 'a-slug-nobody-will-remember' );
-		await page.keyboard.press( 'Escape' );
+		// The slug, changed through the store rather than core's slug field:
+		// that field only renders where permalinks are pretty
+		// (`isPermalinkEditable()`), and CI's site runs on plain ones. What
+		// the refusal and the undo key on is the edit set, not which control
+		// produced it -- the same reasoning as `dirtyTitle()`.
+		await page.evaluate( () => {
+			window.wp.data
+				.dispatch( 'core/editor' )
+				.editPost( { slug: 'a-slug-nobody-will-remember' } );
+		} );
 
 		// And the words, alongside it -- the change that should stage.
 		const paragraph = canvasOf( page )
