@@ -18,6 +18,7 @@ import { StageChanges } from './stage-changes';
 import { StagedNotices } from './staged-notices';
 import { StagedRow } from './staged-row';
 import { StagedStatusRow } from './status-row';
+import { UnstageableFields } from './unstageable-fields';
 
 /**
  * Registers the editor plugin.
@@ -38,6 +39,7 @@ export function registerEditorPlugin() {
 				<StagedRow />
 				<ScheduleRow />
 				<PublishedRow />
+				<UnstageableFields />
 				<DiscardStaged />
 				<PublishChanges />
 				<ExistingStagedCopyNotice />

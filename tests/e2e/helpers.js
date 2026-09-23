@@ -566,6 +566,65 @@ function runDueSchedules() {
 }
 
 /**
+ * A custom, REST-exposed taxonomy, registered as a must-use plugin so it
+ * exists before the browser ever loads the editor (VIPPROD-1228).
+ *
+ * Proves `lockedTaxonomies` comes from the server's own enumeration
+ * (`Field_Lock::locked_taxonomies()`) rather than a list of core's two
+ * hard-coded into the editor bundle: a taxonomy this suite invents and one a
+ * site or plugin registers are indistinguishable to that enumeration, so if
+ * one hides on a staged copy, both do.
+ */
+const TEST_TAXONOMY = `<?php
+add_action(
+	'init',
+	function () {
+		register_taxonomy(
+			'swpub_test_topic',
+			'post',
+			array(
+				'label'        => 'Topics',
+				'labels'       => array( 'menu_name' => 'Topics' ),
+				'public'       => true,
+				'show_in_rest' => true,
+				'hierarchical' => false,
+			)
+		);
+	}
+);
+`;
+
+/**
+ * Installs the taxonomy. Idempotent, so a spec can call it in `beforeAll`
+ * without worrying whether a previous run left it registered.
+ *
+ * @return {void}
+ */
+function installTestTaxonomy() {
+	const encoded = Buffer.from( TEST_TAXONOMY, 'utf8' ).toString( 'base64' );
+
+	wp( [
+		'eval',
+		`wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/swpub-e2e-test-taxonomy.php', base64_decode( '${ encoded }' ) );`,
+	] );
+}
+
+/**
+ * Removes it. Unlike the event recorder, which every spec file relies on for
+ * the whole run, this taxonomy is invented for one file's tests and left
+ * registered it would be one more thing a later spec's assertions have to
+ * account for.
+ *
+ * @return {void}
+ */
+function removeTestTaxonomy() {
+	wp( [
+		'eval',
+		"@unlink( WPMU_PLUGIN_DIR . '/swpub-e2e-test-taxonomy.php' );",
+	] );
+}
+
+/**
  * Creates a category, or returns the existing one of that name.
  *
  * @param {string} name Category name.
@@ -635,4 +694,6 @@ module.exports = {
 	scheduleFor,
 	scheduledFor,
 	runDueSchedules,
+	installTestTaxonomy,
+	removeTestTaxonomy,
 };

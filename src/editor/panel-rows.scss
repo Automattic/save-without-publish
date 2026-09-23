@@ -53,6 +53,9 @@
 
 .components-panel__row.swpub-published-row {
 	order: -1;
+
+	// Its help line (VIPPROD-1228) wraps onto a line of its own; see below.
+	flex-wrap: wrap;
 }
 
 /**
@@ -69,6 +72,26 @@
 		flex-grow: 1;
 		justify-content: center;
 	}
+}
+
+/**
+ * The Published post row's help line (VIPPROD-1228).
+ *
+ * `PluginPostStatusInfo` wraps every fill's children in one `PanelRow`,
+ * which lays its children out as a single flex row -- the label-and-control
+ * pair this row already had is one such pair, so a third child sits beside
+ * them on the same line unless something forces a wrap. `flex-wrap: wrap`
+ * plus `flex-basis: 100%` on the help line is that wrap point: the label and
+ * control stay on their own line, sized as they always were, and the help
+ * text starts a new one under them. The `flex-wrap` half sits with the
+ * row's `order` above.
+ */
+.swpub-published-row__help {
+	flex-basis: 100%;
+	margin: 4px 0 0;
+	color: #757575;
+	font-size: 12px;
+	line-height: 1.4;
 }
 
 /**
@@ -93,5 +116,42 @@
  * hide it than to show it twice.
  */
 .editor-post-summary:has(.swpub-discard-row) .editor-post-trash {
+	display: none;
+}
+
+/**
+ * The Summary rows for fields that cannot be staged, on a staged copy
+ * (VIPPROD-1228).
+ *
+ * Same scoping as the two rules above, and the same reason: this sheet loads
+ * whether or not the bundle did, so an unscoped hide would delete a real,
+ * live control on the one page load where nothing here actually ran.
+ *
+ * `unstageable-fields.js` takes the rest of these rows off with
+ * `removeEditorPanel()` -- Featured image, Discussion, Page Attributes,
+ * every locked taxonomy -- because core gates those by a panel name this
+ * stylesheet has no need to duplicate. What is left here is what core does
+ * not gate that way: Publish (date) and Slug carry a class this can key on;
+ * Author and Format do not (checked against the rendered DOM, not guessed
+ * from source), so those two key on the toggle button's own `aria-label`
+ * instead -- translated text, and the weaker of the two selector kinds
+ * already in this file. Template is both: a block theme renders it as a
+ * `DropdownMenu` (the class), a classic theme as a plain `Dropdown` with no
+ * class at all, and both give the toggle the same `aria-label`.
+ * `unstageable-fields.js`'s canary watches the `aria-label` selectors going
+ * stale.
+ */
+.editor-post-summary:has(.swpub-status-row)
+	.editor-post-panel__row:has(.editor-post-schedule__panel-dropdown),
+.editor-post-summary:has(.swpub-status-row)
+	.editor-post-panel__row:has(.editor-post-url__panel-dropdown),
+.editor-post-summary:has(.swpub-status-row)
+	.editor-post-panel__row:has(.components-dropdown-menu__toggle),
+.editor-post-summary:has(.swpub-status-row)
+	.editor-post-panel__row:has([aria-label="Template options"]),
+.editor-post-summary:has(.swpub-status-row)
+	.editor-post-panel__row:has([aria-label^="Change author:"]),
+.editor-post-summary:has(.swpub-status-row)
+	.editor-post-panel__row:has([aria-label^="Change format:"]) {
 	display: none;
 }

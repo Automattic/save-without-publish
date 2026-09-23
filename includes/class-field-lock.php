@@ -267,6 +267,24 @@ final class Field_Lock {
 	}
 
 	/**
+	 * Every taxonomy this class locks on a staged copy, by taxonomy name
+	 * (VIPPROD-1228).
+	 *
+	 * A thin public wrapper around `taxonomy_params()` rather than widening
+	 * that method's own visibility: this keeps the one enumeration the write
+	 * guard trusts, while giving the editor bundle names it can actually use
+	 * -- `taxonomy-panel-<slug>` is keyed by taxonomy name, not by the REST
+	 * base `taxonomy_params()` indexes on, and a site's own taxonomy can
+	 * register either the same or different from the other.
+	 *
+	 * @param string $post_type Post type name.
+	 * @return string[] Taxonomy names.
+	 */
+	public static function locked_taxonomies( string $post_type ): array {
+		return array_values( self::taxonomy_params( $post_type ) );
+	}
+
+	/**
 	 * Every REST-exposed taxonomy of a post type, keyed by the REST param
 	 * name each is exposed under (VIPPROD-755).
 	 *

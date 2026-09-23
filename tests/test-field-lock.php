@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 
 namespace SaveWithoutPublish\Tests;
 
+use SaveWithoutPublish\Field_Lock;
 use SaveWithoutPublish\Merge;
 use SaveWithoutPublish\Staged_Copy_Repository;
 use SaveWithoutPublish\Status;
@@ -613,5 +614,50 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 		$headers = $response->get_headers();
 		$this->assertArrayHasKey( 'X-SWPub-Meta-Dropped', $headers );
 		$this->assertSame( self::SEO_META_KEY, $headers['X-SWPub-Meta-Dropped'] );
+	}
+
+	/**
+	 * Covers VIPPROD-1228. `locked_taxonomies()` is the editor bundle's own
+	 * source for which taxonomy panels to take off a staged copy's screen, so
+	 * it has to agree with what the write guard actually locks -- both core's
+	 * two and a plugin's own -- or the editor would leave a control on
+	 * screen for a taxonomy the server refuses to save.
+	 */
+	public function test_locked_taxonomies_lists_every_rest_taxonomy_of_the_post_type(): void {
+		register_taxonomy(
+			'swpub_test_tax',
+			'post',
+			array(
+				'show_in_rest' => true,
+				'hierarchical' => false,
+			)
+		);
+
+		$taxonomies = Field_Lock::locked_taxonomies( 'post' );
+
+		$this->assertContains( 'category', $taxonomies );
+		$this->assertContains( 'post_tag', $taxonomies );
+		$this->assertContains( 'swpub_test_tax', $taxonomies );
+
+		unregister_taxonomy( 'swpub_test_tax' );
+	}
+
+	/**
+	 * A taxonomy that never reached REST was never something a client could
+	 * submit against a staged copy either, so it is not one this locks or
+	 * hides -- there is nothing here for either side to disagree about.
+	 */
+	public function test_locked_taxonomies_excludes_a_taxonomy_not_exposed_to_rest(): void {
+		register_taxonomy(
+			'swpub_test_hidden_tax',
+			'post',
+			array( 'show_in_rest' => false )
+		);
+
+		$taxonomies = Field_Lock::locked_taxonomies( 'post' );
+
+		$this->assertNotContains( 'swpub_test_hidden_tax', $taxonomies );
+
+		unregister_taxonomy( 'swpub_test_hidden_tax' );
 	}
 }

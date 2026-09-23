@@ -301,6 +301,52 @@ function arrivalUrl( editUrl ) {
 }
 
 /**
+ * Puts each refused field back to its saved value (VIPPROD-1228).
+ *
+ * `getCurrentPost()` is the post in its last known *saved* state, not
+ * including whatever is locally edited -- unlike `getEditedPostAttribute()`,
+ * which would hand back the very value this is trying to undo. That is
+ * exactly "put back what was there": an editor who staged a text change
+ * alongside an accidental slug edit no longer has to remember the slug that
+ * was there before.
+ *
+ * The record already holds a term-ID array for every taxonomy, under
+ * whichever REST base it registered, so a locked taxonomy resets the same
+ * way `slug` or `author` does -- one `editPost()` call, one field at a time,
+ * no special case for the shape of the value.
+ *
+ * @param {string[]} refused The field names to reset.
+ * @return {void}
+ */
+function undoRefused( refused ) {
+	const data = registry();
+	const editor = data && data.dispatch( 'core/editor' );
+	const select = data && data.select( 'core/editor' );
+
+	if ( ! editor || ! select ) {
+		return;
+	}
+
+	const saved = select.getCurrentPost();
+
+	if ( ! saved ) {
+		return;
+	}
+
+	const edits = {};
+
+	refused.forEach( ( field ) => {
+		edits[ field ] = saved[ field ];
+	} );
+
+	editor.editPost( edits );
+
+	// The refusal has been answered; left up, it would go on telling the
+	// editor to undo a change that is no longer there.
+	data.dispatch( 'core/notices' ).removeNotice( 'swpub-unstageable-edit' );
+}
+
+/**
  * Refuses a save carrying changes a staged copy cannot hold (R51).
  *
  * The client twin of the staging route's own refusal, and it has to be a
@@ -312,6 +358,11 @@ function arrivalUrl( editUrl ) {
  * posts its own generic failure notice for the rejection this produces --
  * `dismissCoreSaveFailure()` is what keeps that from burying the sentence
  * above under "Updating failed."
+ *
+ * The notice's one action, Undo those changes, is what removes the actual
+ * complaint behind this ticket: an editor who changed the slug along with
+ * the words no longer has to remember what the slug was before they can
+ * save at all.
  *
  * @param {string[]} refused The field names that cannot be staged.
  * @return {Error} The refusal.
@@ -331,7 +382,19 @@ function refuse( refused ) {
 				),
 				named.join( ', ' )
 			),
-			{ id: 'swpub-unstageable-edit', isDismissible: true }
+			{
+				id: 'swpub-unstageable-edit',
+				isDismissible: true,
+				actions: [
+					{
+						label: __(
+							'Undo those changes',
+							'save-without-publish'
+						),
+						onClick: () => undoRefused( refused ),
+					},
+				],
+			}
 		);
 	}
 
