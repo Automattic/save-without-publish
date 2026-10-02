@@ -1,5 +1,7 @@
-# Planning and review artifacts — local only, never committed
-/docs/
+# Planning and review artifacts — local only, never committed.
+# The rest of docs/ is committed: the Integration Center listing and tester pages live there.
+/docs/plans/
+/docs/demo/
 CLAUDE.md
 
 # Claude Code local session state

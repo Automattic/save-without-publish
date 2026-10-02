@@ -43,7 +43,7 @@ jobs:
       - name: Assemble the plugin directory
         run: |
           mkdir -p dist/save-without-publish
-          cp -R save-without-publish.php includes build readme.md LICENSE dist/save-without-publish/
+          cp -R save-without-publish.php includes build README.md LICENSE dist/save-without-publish/
 
       - name: Zip
         run: cd dist && zip -rq "../save-without-publish-${GITHUB_REF_NAME}.zip" save-without-publish
