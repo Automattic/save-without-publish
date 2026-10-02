@@ -37,6 +37,26 @@ jobs:
       - name: Run PHPCS
         run: composer phpcs
 
+  # The VIP Integration Center conformance checker, which gates whether the
+  # plugin can ship through the Integration Center. It is static: it reads the
+  # manifest, composer.json, the docs and these workflows, so it needs nothing
+  # installed. A fresh checkout holds only committed files, which is exactly
+  # what `npm run validate:integration` reproduces locally with git archive.
+  # Keep the version in step with scripts/validate-integration.sh.
+  validate:
+    name: Integration conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Run the conformance checker
+        run: npx --yes @automattic/vip-integration@0.1.2 validate
+
   build:
     name: Build assets
     runs-on: ubuntu-latest
