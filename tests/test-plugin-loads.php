@@ -20,10 +20,13 @@ class Test_Plugin_Loads extends WP_UnitTestCase {
 
 	/**
 	 * The plugin file loads and defines its namespaced version constant.
+	 *
+	 * Which version is the manifest test's job (header, constant, package.json
+	 * and manifest agree); pinning it here too made a fifth place to bump.
 	 */
 	public function test_plugin_is_loaded(): void {
 		$this->assertTrue( defined( 'SaveWithoutPublish\\VERSION' ) );
-		$this->assertSame( '0.1.0', \SaveWithoutPublish\VERSION );
+		$this->assertMatchesRegularExpression( '/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/', \SaveWithoutPublish\VERSION );
 	}
 
 	/**
