@@ -50,7 +50,7 @@ runtime_config:
 # No telemetry section: the plugin records none.
 
 release:
-  plugin_version: 0.1.0
+  plugin_version: 0.2.0-alpha.1
   version_strategy: semantic_versioning
   migration_required: false
   changelog: >-

@@ -3,7 +3,7 @@
  * Plugin Name:       Save without Publish
  * Plugin URI:        https://github.com/Automattic/save-without-publish
  * Description:       Edit a published post as a private staged copy. The live post keeps serving until you publish the change.
- * Version:           0.1.0
+ * Version:           0.2.0-alpha.1
  * Requires at least: 6.8
  * Requires PHP:      8.2
  * Author:            Automattic
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0-alpha.1';
 
 const PLUGIN_FILE = __FILE__;
 
