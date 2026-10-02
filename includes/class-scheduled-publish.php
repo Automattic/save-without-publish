@@ -396,9 +396,13 @@ final class Scheduled_Publish {
 				/**
 				 * Filters whether a scheduled publish proceeds over drift.
 				 *
-				 * Default false: the run refuses exactly as `Drift::check()`
-				 * refuses an editor who has not confirmed. The copy is kept,
-				 * marked, and unscheduled, so a human decides.
+				 * The default is the site's `scheduled_publish_overrides_drift`
+				 * config for this kind of drift (see `Config`), and false when
+				 * that is unset, unrecognised, or the constant is not defined.
+				 * False refuses exactly as `Drift::check()` refuses an editor
+				 * who has not confirmed: the copy is kept, marked, and
+				 * unscheduled, so a human decides. A callback on this filter
+				 * receives that default and has the last word.
 				 *
 				 * Return true to let the schedule proceed anyway -- the
 				 * staged words win, and the merge fires `swpub_drift_overridden`
@@ -417,14 +421,14 @@ final class Scheduled_Publish {
 				 *
 				 * @since 0.1.0
 				 *
-				 * @param bool   $override Whether to proceed. Default false.
+				 * @param bool   $override Whether to proceed. Default: the config's answer for `$kind`, false when unset.
 				 * @param int    $copy_id  Staged copy post ID.
 				 * @param int    $live_id  Published post ID.
 				 * @param string $kind     `content`, `other`, or `unknown` (VIPPROD-752).
 				 */
 				$overrides = (bool) apply_filters(
 					'swpub_scheduled_publish_overrides_drift',
-					false,
+					Config::current()->drift_override_default( $kind ),
 					$copy_id,
 					$live->ID,
 					$kind

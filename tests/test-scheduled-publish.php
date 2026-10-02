@@ -9,6 +9,7 @@ declare( strict_types = 1 );
 
 namespace SaveWithoutPublish\Tests;
 
+use SaveWithoutPublish\Config;
 use SaveWithoutPublish\Drift;
 use SaveWithoutPublish\Merge_Marker;
 use SaveWithoutPublish\Scheduled_Publish;
@@ -887,6 +888,138 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		$this->assertSame( 'refused', $outcome['outcome'], 'content-kind drift should not have been overridden.' );
 		$this->assertSame( 'swpub_drift', $outcome['reason'] );
+	}
+
+	// ---------------------------------------------------------------
+	// fire() -- drift, site config (VIPPROD-1352)
+	//
+	// A constant cannot be un-defined, so each case that defines one runs in
+	// its own process. The cases above never define it, which is what proves
+	// an unconfigured site behaves exactly as before.
+	// ---------------------------------------------------------------
+
+	/**
+	 * Schedules the copy as already due, for the config cases.
+	 */
+	private function schedule_due(): void {
+		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, gmdate( 'Y-m-d H:i:s', time() - 5 ) );
+		update_post_meta( $this->staged_copy_id, Scheduled_Publish::BY_META, $this->scheduler_id );
+	}
+
+	/**
+	 * `non_content` publishes past a change the merge never writes.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_config_non_content_publishes_past_other_drift(): void {
+		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'non_content' ) );
+
+		$this->schedule_due();
+		$this->drift_other();
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'ran', $outcome['outcome'] );
+		$this->assertCount( 1, $this->captured( 'swpub_drift_overridden' ) );
+	}
+
+	/**
+	 * `non_content` still stops for a change to the words.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_config_non_content_still_refuses_content_drift(): void {
+		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'non_content' ) );
+
+		$this->schedule_due();
+		$this->drift_content( 'A change nobody staged.' );
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'refused', $outcome['outcome'] );
+		$this->assertSame( 'swpub_drift', $outcome['reason'] );
+		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
+		$this->assertSame( array(), $this->captured( 'swpub_drift_overridden' ) );
+	}
+
+	/**
+	 * `always` publishes the staged words over a change to the words, and says so.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_config_always_publishes_over_content_drift(): void {
+		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'always' ) );
+
+		$this->schedule_due();
+		$this->drift_content( 'A change nobody staged.' );
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'ran', $outcome['outcome'] );
+		$this->assertSame( 'Launches on October 3.', get_post_field( 'post_content', $this->live_id ) );
+		$this->assertNull( get_post( $this->staged_copy_id ) );
+		$this->assertCount( 1, $this->captured( 'swpub_drift_overridden' ) );
+	}
+
+	/**
+	 * A constant that is defined but holds nothing usable changes nothing.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_config_that_is_incomplete_or_invalid_still_refuses(): void {
+		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'sometimes' ) );
+
+		$this->schedule_due();
+		$this->drift_content( 'A change nobody staged.' );
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'refused', $outcome['outcome'] );
+		$this->assertSame( 'swpub_drift', $outcome['reason'] );
+	}
+
+	/**
+	 * A site's own filter beats the config when the config says always.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_a_site_filter_returning_false_beats_config_always(): void {
+		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'always' ) );
+
+		add_filter( 'swpub_scheduled_publish_overrides_drift', '__return_false' );
+
+		$this->schedule_due();
+		$this->drift_content( 'A change nobody staged.' );
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'refused', $outcome['outcome'] );
+		$this->assertSame( array(), $this->captured( 'swpub_drift_overridden' ) );
+	}
+
+	/**
+	 * A site's own filter beats the config when the config says never.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_a_site_filter_returning_true_beats_config_never(): void {
+		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'never' ) );
+
+		add_filter( 'swpub_scheduled_publish_overrides_drift', '__return_true' );
+
+		$this->schedule_due();
+		$this->drift_content( 'A change nobody staged.' );
+
+		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
+
+		$this->assertSame( 'ran', $outcome['outcome'] );
+		$this->assertCount( 1, $this->captured( 'swpub_drift_overridden' ) );
 	}
 
 	// ---------------------------------------------------------------

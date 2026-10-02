@@ -48,4 +48,12 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound">
 		<exclude-pattern>/tests/</exclude-pattern>
 	</rule>
+	<!--
+	A constant cannot be un-defined, so the config tests define the platform's
+	constant in a separate process, by `Config::CONSTANT_NAME` rather than a
+	second copy of its name. The sniff cannot resolve that to a prefixed name.
+	-->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.VariableConstantNameFound">
+		<exclude-pattern>/tests/</exclude-pattern>
+	</rule>
 </ruleset>
