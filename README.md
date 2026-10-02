@@ -169,7 +169,7 @@ DELETE /swpub/v1/schedule/{id}
 
 `at` is ISO 8601; a value with no offset is treated as site-local, exactly as the posts controller's own `date` parameter is. Cancelling a copy that was not scheduled is not an error.
 
-**If the published post changed in between**, the default is the same one an unattended run always gets: abort, keep the copy, mark it, and say so -- there is nobody to ask, so nothing is confirmed on a schedule's behalf. The copy is not deleted and not retried; it stays exactly as staged, waiting for a person to review it, reschedule it, or publish it by hand. A site that would rather the staged words win regardless answers `swpub_scheduled_publish_overrides_drift`, which can discriminate by what actually changed -- publishing past a category or a featured image while still asking about a change to the words themselves:
+**If the published post changed in between**, the default is the same one an unattended run always gets: abort, keep the copy, mark it, and say so -- there is nobody to ask, so nothing is confirmed on a schedule's behalf. The copy is not deleted and not retried; it stays exactly as staged, waiting for a person to review it, reschedule it, or publish it by hand. A site that would rather the staged words win regardless sets the `scheduled_publish_overrides_drift` config once for everyone ([docs/vip-integration.md](docs/vip-integration.md#runtime-config)), or answers `swpub_scheduled_publish_overrides_drift`, which wins over the config and can discriminate by what actually changed -- publishing past a category or a featured image while still asking about a change to the words themselves:
 
 ```php
 add_filter(
@@ -368,8 +368,10 @@ apply_filters( 'swpub_enforce_programmatic_first_save', bool $enforce, int $live
 // Allow a merge. Return a WP_Error to veto it before anything is written.
 apply_filters( 'swpub_pre_merge', bool $allowed, int $live_id, int $staged_copy_id );
 
-// Let a scheduled publish proceed over drift. Default false: refuse, keep, and
-// mark the copy, the same as an unattended run with nobody to confirm past it.
+// Let a scheduled publish proceed over drift. The default is the site's
+// scheduled_publish_overrides_drift config (docs/vip-integration.md), and false
+// when that is unset: refuse, keep, and mark the copy, the same as an unattended
+// run with nobody to confirm past it.
 apply_filters( 'swpub_scheduled_publish_overrides_drift', bool $override, int $staged_copy_id, int $live_id, string $drift_kind );
 ```
 
@@ -522,6 +524,7 @@ npm run lint:js
 npm run test:php     # PHPUnit
 npm run test:e2e     # Playwright, against the running wp-env
 npm test             # both
+npm run validate:integration  # the VIP Integration Center conformance check
 ```
 
 The two suites cover different things and neither replaces the other.
@@ -530,7 +533,9 @@ PHPUnit covers what a browser cannot reach: capability mapping, containment, ide
 
 End-to-end tests need `npm run env:start` first, and `npx playwright install chromium` once.
 
-CI runs both suites on every push and pull request against the latest WordPress release, so a red run points at the plugin change rather than at core. A weekly scheduled run tests trunk, which `.wp-env.json` tracks locally, so a core change that will break the plugin is seen before it ships. Failed Playwright runs upload their screenshots, traces, and HTML report as a workflow artifact.
+CI runs PHPUnit on PHP 8.2 to 8.5 against WordPress 6.9 and the latest release on every push and pull request, and Playwright against the latest release, so a red run points at the plugin change rather than at core. A weekly scheduled run tests trunk, which `.wp-env.json` tracks locally, and 6.8, so a core change that will break the plugin is seen before it ships. Failed Playwright runs upload their screenshots, traces, and HTML report as a workflow artifact.
+
+The plugin is also built to ship through the VIP Integration Center. [docs/vip-integration.md](docs/vip-integration.md) covers the manifest, the one runtime config setting, and the platform handoff; [docs/integration-center.md](docs/integration-center.md) is the listing and [docs/alpha-testers.md](docs/alpha-testers.md) is for testers.
 
 ### What the editor still has no API for
 
