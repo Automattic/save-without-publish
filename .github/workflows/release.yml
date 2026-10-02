@@ -26,6 +26,13 @@ jobs:
             echo "Tag $GITHUB_REF_NAME says $tag, plugin header says $header." >&2
             exit 1
           fi
+          # The Integration Center registers the plugin from this manifest, so
+          # a tag that disagrees with it would hand the platform the wrong version.
+          manifest="$(sed -n 's/^  plugin_version: *//p' vip-manifest.yaml | tr -d '[:space:]')"
+          if [ "$manifest" != "$tag" ]; then
+            echo "Tag $GITHUB_REF_NAME says $tag, vip-manifest.yaml says $manifest." >&2
+            exit 1
+          fi
 
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4

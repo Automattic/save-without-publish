@@ -1,0 +1,59 @@
+# Handoff manifest for Save without Publish.
+#
+# The one file WordPress VIP reads to register and load the integration. Check
+# it with `npm run validate:integration` (see docs/vip-integration.md).
+#
+# Keep it in step with the plugin: release.plugin_version must equal the plugin
+# header, the VERSION constant and package.json, and runtime_config must match
+# includes/class-config.php. tests/test-manifest.php enforces both.
+
+manifest_version: 1
+manifest_kind: vip-integration-handoff
+
+integration:
+  slug: save-without-publish
+  display_name: Save without Publish
+  summary: >-
+    Edit a published post as a private staged copy. The published post keeps
+    serving until someone publishes the change.
+  partner:
+    name: Automattic
+    support_contact: https://github.com/Automattic/save-without-publish/issues
+
+documentation:
+  public_url: https://github.com/Automattic/save-without-publish/blob/main/docs/integration-center.md
+  support_url: https://github.com/Automattic/save-without-publish/blob/main/docs/alpha-testers.md
+
+runtime:
+  wordpress_plugin:
+    folder: save-without-publish
+    entry_file: save-without-publish.php
+    php_namespace: SaveWithoutPublish
+    scope: site
+
+runtime_config:
+  constant_name: VIP_SAVE_WITHOUT_PUBLISH_CONFIG
+  fields:
+    - key: scheduled_publish_overrides_drift
+      label: When a scheduled publish finds the published post changed
+      type: enum
+      values: [never, non_content, always]
+      default: never
+      required: false
+      help: >-
+        "never" stops the scheduled publish and keeps the staged copy for a person
+        to review (the default). "non_content" publishes anyway when only fields
+        that cannot be staged changed (terms, featured image, slug, meta), and
+        still stops if the words changed. "always" publishes the staged words over
+        any change.
+
+# No telemetry section: the plugin records none.
+
+release:
+  plugin_version: 0.1.0
+  version_strategy: semantic_versioning
+  migration_required: false
+  changelog: >-
+    First Integration Center release. Stages edits to a published post's title,
+    content and excerpt on a private copy, then publishes them on demand or at a
+    scheduled time.
