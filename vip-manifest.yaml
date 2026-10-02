@@ -44,8 +44,8 @@ runtime_config:
         "never" stops the scheduled publish and keeps the staged copy for a person
         to review (the default). "non_content" publishes anyway when only fields
         that cannot be staged changed (terms, featured image, slug, meta), and
-        still stops if the words changed. "always" publishes the staged words over
-        any change.
+        still stops if the words changed or the change cannot be classified.
+        "always" publishes the staged words over any change.
 
 # No telemetry section: the plugin records none.
 

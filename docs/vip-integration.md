@@ -45,7 +45,7 @@ Nothing is required. The plugin behaves exactly as it does without the Integrati
 | `scheduled_publish_overrides_drift` | `never`, `non_content`, `always` | `never` | What a scheduled publish does when the published post changed after the change was staged. |
 
 - **`never`** stops the scheduled publish and keeps the staged copy for a person to review. This is what the plugin has always done.
-- **`non_content`** publishes anyway when what changed is a field the publish never writes (a term, the featured image, the slug, meta), and still stops if the title, content or excerpt changed.
+- **`non_content`** publishes anyway when what changed is a field the publish never writes (a term, the featured image, the slug, meta), and still stops if the title, content or excerpt changed, or if the plugin cannot tell what changed (possible only for a copy staged by a build that did not yet record what the published post looked like).
 - **`always`** publishes the staged words over any change, and records that it did so (the `swpub_drift_overridden` action fires, as it does when an editor confirms an overwrite).
 
 Example valid config:

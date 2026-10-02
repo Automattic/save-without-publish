@@ -20,7 +20,8 @@ root="$(git rev-parse --show-toplevel)"
 dir="$(mktemp -d)"
 trap 'rm -rf "$dir"' EXIT
 
-if ! git -C "$root" diff --quiet HEAD -- . ':!docs/plans' ':!docs/demo'; then
+# Untracked files count too: a new doc that is not committed is not checked.
+if [ -n "$(git -C "$root" status --porcelain)" ]; then
 	echo "Note: uncommitted changes are not checked. Commit them first." >&2
 fi
 

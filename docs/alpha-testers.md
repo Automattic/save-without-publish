@@ -33,7 +33,7 @@ Test with a normal administrator or editor account as well as a super admin, bec
 
 On a staged copy, the editor takes these controls off the screen, and its **Published post** row links to where they live. If a save does try to change one, it is refused with a message that names the field. The block editor offers **Undo those changes**, which puts the field back so the rest of your save can go through.
 
-Custom fields behave differently from the others, and you should know how. A change to a custom field on a staged copy is not refused with a message. It is dropped, and nothing on screen says so. Publishing a staged copy only ever writes the title, content and excerpt, so a custom field edited on a staged copy never reaches the published post. Edit custom fields on the published post.
+Custom fields behave differently from the others, and you should know how. A change to a custom field on a staged copy is not refused with a message, and nothing on screen tells you it will not be published. Depending on how the field saves, the change is either thrown away or kept on the staged copy alone. Either way it never reaches the published post, because publishing a staged copy only ever writes the title, content and excerpt. That includes ACF fields and anything else in a meta box. Edit custom fields on the published post.
 
 The reverse also holds: while a staged copy exists, you can still change the slug, categories, featured image and the rest on the published post, and those changes go live immediately. The published post's notice says so.
 
