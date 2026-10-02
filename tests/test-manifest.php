@@ -122,19 +122,12 @@ class Test_Manifest extends WP_UnitTestCase {
 
 	/**
 	 * The manifest has no telemetry section because the plugin records none.
-	 * If that changes, the section and rule 9 of the checker come into play.
+	 *
+	 * Rule 9 of the checker is what notices if that stops being true, and it
+	 * reads every PHP file, this one included, so this test does not name the
+	 * telemetry API itself.
 	 */
-	public function test_the_plugin_records_no_telemetry(): void {
+	public function test_the_manifest_declares_no_telemetry(): void {
 		$this->assertStringNotContainsString( "\ntelemetry:", $this->read( 'vip-manifest.yaml' ) );
-
-		$paths = array( 'save-without-publish.php' );
-
-		foreach ( (array) glob( $this->root() . '/includes/*.php' ) as $file ) {
-			$paths[] = 'includes/' . basename( $file );
-		}
-
-		foreach ( $paths as $path ) {
-			$this->assertStringNotContainsString( 'VIP\\Telemetry', $this->read( $path ), $path . ' should not record telemetry.' );
-		}
 	}
 }
