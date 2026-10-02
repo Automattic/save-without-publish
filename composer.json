@@ -6,6 +6,11 @@
 	"require": {
 		"php": ">=8.2"
 	},
+	"autoload": {
+		"classmap": [
+			"includes/"
+		]
+	},
 	"require-dev": {
 		"automattic/vipwpcs": "^3.0",
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
@@ -24,8 +29,18 @@
 	"scripts": {
 		"phpcs": "phpcs",
 		"phpcbf": "phpcbf",
-		"test": "phpunit",
+		"test": [
+			"@test:unit",
+			"@test:e2e"
+		],
+		"test:unit": "phpunit",
+		"test:e2e": "npm run test:e2e",
 		"test:partial-failure": "phpunit --group partial-failure",
 		"test:concurrency": "phpunit --group concurrency"
+	},
+	"scripts-descriptions": {
+		"test": "Run PHPUnit and Playwright. PHPUnit needs the WordPress test library (use npm run test:php, which runs it in wp-env) and e2e needs a running wp-env (npm run env:start)",
+		"test:unit": "Run PHPUnit only",
+		"test:e2e": "Run Playwright only (needs a running wp-env)"
 	}
 }
