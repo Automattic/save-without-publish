@@ -50,10 +50,12 @@ runtime_config:
 # No telemetry section: the plugin records none.
 
 release:
-  plugin_version: 0.2.0-alpha.1
+  plugin_version: 0.3.0-alpha.1
   version_strategy: semantic_versioning
-  migration_required: false
+  migration_required: true
   changelog: >-
-    First Integration Center release. Stages edits to a published post's title,
-    content and excerpt on a private copy, then publishes them on demand or at a
-    scheduled time.
+    Renamed from Save without Publish to Staged Edits. Every hook, capability,
+    REST route, WP-CLI command and the config constant takes the new name, with
+    no aliases for the old ones. Stored data (the staged post status, meta keys,
+    scheduled publishes and capability grants) is renamed automatically on the
+    first request after upgrading, and cannot be read by an earlier version.
