@@ -18,11 +18,11 @@ integration:
     serving until someone publishes the change.
   partner:
     name: Automattic
-    support_contact: https://github.com/Automattic/save-without-publish/issues
+    support_contact: https://github.com/Automattic/staged-edits/issues
 
 documentation:
-  public_url: https://github.com/Automattic/save-without-publish/blob/main/docs/integration-center.md
-  support_url: https://github.com/Automattic/save-without-publish/blob/main/docs/alpha-testers.md
+  public_url: https://github.com/Automattic/staged-edits/blob/main/docs/integration-center.md
+  support_url: https://github.com/Automattic/staged-edits/blob/main/docs/alpha-testers.md
 
 runtime:
   wordpress_plugin:

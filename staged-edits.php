@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Staged Edits
- * Plugin URI:        https://github.com/Automattic/save-without-publish
+ * Plugin URI:        https://github.com/Automattic/staged-edits
  * Description:       Edit a published post as a private staged copy. The live post keeps serving until you publish the change.
  * Version:           0.3.0-alpha.1
  * Requires at least: 6.8
