@@ -30,7 +30,7 @@ import { UnstageableFields } from './unstageable-fields';
  * @return {void}
  */
 export function registerEditorPlugin() {
-	registerPlugin( 'save-without-publish', {
+	registerPlugin( 'staged-edits', {
 		render: () => (
 			<ScheduleProvider>
 				<StagedNotices />

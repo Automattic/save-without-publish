@@ -49,7 +49,7 @@ import { addQueryArgs } from '@wordpress/url';
  * because they are not read the same way. The in-editor view takes one
  * revision and diffs it against whichever came before, so its URL is the
  * copy's own edit link (`editorRevisionBase`) with the freshest id added.
- * Not the address bar: on arrival that still carries the `swpub_forked`
+ * Not the address bar: on arrival that still carries the `staged_edits_forked`
  * flag, which would ride into the review and have it announce the fork
  * again. The classic screen (WordPress below 7.0, `ctx.reviewSurface`)
  * takes both ends by name, so it is rebuilt from them directly: the
@@ -175,9 +175,7 @@ export function reviewStaged( ctx, url ) {
 		return [];
 	}
 
-	return [
-		toRead( __( 'Review staged changes', 'save-without-publish' ), target ),
-	];
+	return [ toRead( __( 'Review staged changes', 'staged-edits' ), target ) ];
 }
 
 /**
@@ -204,7 +202,7 @@ export function compareAsText( ctx ) {
 
 	return [
 		toReadInNotice(
-			__( 'Compare as text', 'save-without-publish' ),
+			__( 'Compare as text', 'staged-edits' ),
 			ctx.compareTextUrl
 		),
 	];
@@ -223,7 +221,7 @@ export function editStaged( ctx ) {
 
 	return [
 		toOpen(
-			__( 'Edit staged changes', 'save-without-publish' ),
+			__( 'Edit staged changes', 'staged-edits' ),
 			ctx.stagedCopyEdit
 		),
 	];
@@ -242,10 +240,7 @@ export function reviewPublishedHistory( ctx ) {
 
 	return [
 		toReadInNotice(
-			__(
-				'Review what changed on the published post',
-				'save-without-publish'
-			),
+			__( 'Review what changed on the published post', 'staged-edits' ),
 			ctx.historyUrl
 		),
 	];

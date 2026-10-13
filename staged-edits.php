@@ -1,28 +1,28 @@
 <?php
 /**
- * Plugin Name:       Save without Publish
+ * Plugin Name:       Staged Edits
  * Plugin URI:        https://github.com/Automattic/save-without-publish
  * Description:       Edit a published post as a private staged copy. The live post keeps serving until you publish the change.
- * Version:           0.2.0-alpha.1
+ * Version:           0.3.0-alpha.1
  * Requires at least: 6.8
  * Requires PHP:      8.2
  * Author:            Automattic
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       save-without-publish
+ * Text Domain:       staged-edits
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const VERSION = '0.2.0-alpha.1';
+const VERSION = '0.3.0-alpha.1';
 
 const PLUGIN_FILE = __FILE__;
 
@@ -46,7 +46,7 @@ require_once __DIR__ . '/includes/class-events.php';
  */
 function is_enabled(): bool {
 	/**
-	 * Filters whether Save without Publish stages edits to published posts.
+	 * Filters whether Staged Edits stages edits to published posts.
 	 *
 	 * Returning false makes saves behave exactly as core does. Existing staged copies
 	 * stay registered and contained; they simply cannot be created or merged.
@@ -55,7 +55,7 @@ function is_enabled(): bool {
 	 *
 	 * @param bool $enabled Whether staging is active. Default true.
 	 */
-	return (bool) apply_filters( 'swpub_is_enabled', true );
+	return (bool) apply_filters( 'staged_edits_is_enabled', true );
 }
 
 /**
@@ -86,7 +86,7 @@ function staged_post_types(): array {
 	 *
 	 * @param string[] $types Post type names.
 	 */
-	return (array) apply_filters( 'swpub_post_types', array_values( $types ) );
+	return (array) apply_filters( 'staged_edits_post_types', array_values( $types ) );
 }
 
 /**

@@ -21,12 +21,12 @@ import { __ } from '@wordpress/i18n';
 /**
  * The hook a site subscribes to in order to count these.
  */
-const CANARY_ACTION = 'swpub.canary';
+const CANARY_ACTION = 'stagedEdits.canary';
 
 /**
  * The notice's ID, so a second failure replaces the first rather than stacking.
  */
-const NOTICE_ID = 'swpub-degraded';
+const NOTICE_ID = 'staged-edits-degraded';
 
 /**
  * How long a check may keep answering "wrong" before it is believed.
@@ -81,7 +81,7 @@ function reportDegraded( id ) {
 	notices.createWarningNotice(
 		__(
 			'Some of this screen may show WordPress defaults; your changes still stage safely.',
-			'save-without-publish'
+			'staged-edits'
 		),
 		{
 			id: NOTICE_ID,

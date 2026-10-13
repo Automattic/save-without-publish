@@ -7,14 +7,14 @@
  * is deliberately plain: the manifest is flat enough that a YAML parser would
  * be a dependency for four lookups.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Config;
+use StagedEdits\Config;
 use WP_UnitTestCase;
 
 /**
@@ -67,14 +67,14 @@ class Test_Manifest extends WP_UnitTestCase {
 	public function test_the_version_is_the_same_everywhere(): void {
 		$this->assertSame(
 			1,
-			preg_match( '/^ \* Version:\s*(\S+)/m', $this->read( 'save-without-publish.php' ), $header ),
+			preg_match( '/^ \* Version:\s*(\S+)/m', $this->read( 'staged-edits.php' ), $header ),
 			'The plugin header should carry a Version.'
 		);
 
 		$package = json_decode( $this->read( 'package.json' ), true );
 
 		$this->assertIsArray( $package );
-		$this->assertSame( $header[1], \SaveWithoutPublish\VERSION, 'Header and VERSION constant.' );
+		$this->assertSame( $header[1], \StagedEdits\VERSION, 'Header and VERSION constant.' );
 		$this->assertSame( $header[1], $package['version'], 'Header and package.json.' );
 		$this->assertSame( $header[1], $this->scalar( 'plugin_version' ), 'Header and manifest release.plugin_version.' );
 	}
@@ -106,12 +106,12 @@ class Test_Manifest extends WP_UnitTestCase {
 	 * The manifest points at the plugin that exists.
 	 */
 	public function test_runtime_identity_matches_the_plugin(): void {
-		$entry = $this->read( 'save-without-publish.php' );
+		$entry = $this->read( 'staged-edits.php' );
 
 		$this->assertSame( 1, preg_match( '/^namespace\s+([^;]+);/m', $entry, $namespace ) );
 		$this->assertSame( $namespace[1], $this->scalar( 'php_namespace' ) );
 
-		$this->assertSame( 'save-without-publish.php', $this->scalar( 'entry_file' ) );
+		$this->assertSame( 'staged-edits.php', $this->scalar( 'entry_file' ) );
 		$this->assertFileExists( $this->root() . '/' . $this->scalar( 'entry_file' ) );
 		$this->assertSame( 1, preg_match( '/^ \* Text Domain:\s*(\S+)/m', $entry, $domain ) );
 		$this->assertSame( $domain[1], $this->scalar( 'folder' ), 'The folder VIP installs into is the plugin slug.' );

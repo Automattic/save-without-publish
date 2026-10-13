@@ -11,7 +11,7 @@
  *
  * The save lock exists because the other three do not cover every way a
  * locked field can end up dirty. A save carrying one still reaches the write
- * path, which refuses it (`swpub_live_locked`), so without the lock the
+ * path, which refuses it (`staged_edits_live_locked`), so without the lock the
  * primary button would sit there promising a save that cannot succeed.
  * Locking it with core's own `lockPostSaving` -- the same mechanism
  * `PostPublishButton` already reads to grey itself out -- means the button
@@ -57,7 +57,7 @@ import { compareAsText, editStaged } from './routes';
  * Namespaced for the same reason `stage.js`'s autosave lock is: core keys
  * locks by string and every plugin's locks share one register.
  */
-const SAVE_LOCK = 'swpub/live-locked';
+const SAVE_LOCK = 'staged-edits/live-locked';
 
 /**
  * The name core's own excerpt panel registers as.
@@ -76,13 +76,13 @@ function who( ctx ) {
 				/* translators: %s: display name of the editor who staged the change. */
 				__(
 					'This post has staged changes by %s, waiting to be published.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				ctx.stagedBy
 		  )
 		: __(
 				'This post has staged changes waiting to be published.',
-				'save-without-publish'
+				'staged-edits'
 		  );
 }
 
@@ -103,10 +103,7 @@ function scheduled( ctx ) {
 
 	return sprintf(
 		/* translators: %s: the date and time the staged changes are due to publish. */
-		__(
-			'Those changes are scheduled to publish on %s.',
-			'save-without-publish'
-		),
+		__( 'Those changes are scheduled to publish on %s.', 'staged-edits' ),
 		ctx.scheduledForLabel
 	);
 }
@@ -217,8 +214,8 @@ function useLockedSave( ctx ) {
  * @return {string} The selector to use.
  */
 function titleSelector() {
-	return true === window.swpubTestBreakTitleSelector
-		? '.swpub-title-not-found'
+	return true === window.stagedEditsTestBreakTitleSelector
+		? '.staged-edits-title-not-found'
 		: '.editor-post-title__input';
 }
 
@@ -477,13 +474,13 @@ export function ExistingStagedCopyNotice() {
 				scheduled( ctx ),
 				__(
 					'The title, content, and excerpt are locked here until those changes are published or discarded. Everything else cannot be staged and saves straight to the published post: a change to the slug, publish date, author, categories, tags, or featured image goes live at once.',
-					'save-without-publish'
+					'staged-edits'
 				),
 			]
 				.filter( Boolean )
 				.join( ' ' ),
 			{
-				id: 'swpub-existing',
+				id: 'staged-edits-existing',
 
 				// Not dismissible: it describes which fields on this screen will
 				// not save, which stays true for as long as the staged copy

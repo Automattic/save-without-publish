@@ -48,13 +48,13 @@ export function StagedRow() {
 	}
 
 	return (
-		<PluginPostStatusInfo className="swpub-staged-row">
+		<PluginPostStatusInfo className="staged-edits-staged-row">
 			<div className="editor-post-panel__row-label">
-				{ __( 'Staged changes', 'save-without-publish' ) }
+				{ __( 'Staged changes', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				<Button
-					className="swpub-staged-row__button"
+					className="staged-edits-staged-row__button"
 					href={ review.url }
 					onClick={ review.onClick }
 					/*
@@ -65,7 +65,7 @@ export function StagedRow() {
 					 * keeps the full sentence, so the control is announced by
 					 * the same name it has everywhere else it is offered.
 					 */
-					text={ __( 'Review', 'save-without-publish' ) }
+					text={ __( 'Review', 'staged-edits' ) }
 					aria-label={ review.label }
 					variant="tertiary"
 					size="compact"

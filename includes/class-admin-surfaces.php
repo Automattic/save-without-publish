@@ -2,12 +2,12 @@
 /**
  * The admin surfaces that are not the block editor, saying what the data layer did.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 use WP_Screen;
@@ -55,7 +55,7 @@ final class Admin_Surfaces {
 	 * thing. The name is older than the vocabulary; the parameter is what other
 	 * links already carry.
 	 */
-	private const ARRIVAL_ARG = 'swpub_forked';
+	private const ARRIVAL_ARG = 'staged_edits_forked';
 
 	/**
 	 * Marks a classic redirect as following a refused save (R55).
@@ -64,7 +64,7 @@ final class Admin_Surfaces {
 	 * opposite things: one means the change was staged and the editor was moved to
 	 * it, the other means nothing was written and the editor is still here.
 	 */
-	private const BLOCKED_ARG = 'swpub_blocked';
+	private const BLOCKED_ARG = 'staged_edits_blocked';
 
 	/**
 	 * Registers hooks.
@@ -251,8 +251,8 @@ final class Admin_Surfaces {
 	private static function refusal_message( int $live_id ): string {
 		return sprintf(
 			/* translators: %s: the words "the editor", linked to the post's edit screen. */
-			__( 'This change was not saved. Changes to a published post are staged, so open the post in %s to stage it.', 'save-without-publish' ),
-			self::linked( __( 'the editor', 'save-without-publish' ), (string) get_edit_post_link( $live_id, 'raw' ) )
+			__( 'This change was not saved. Changes to a published post are staged, so open the post in %s to stage it.', 'staged-edits' ),
+			self::linked( __( 'the editor', 'staged-edits' ), (string) get_edit_post_link( $live_id, 'raw' ) )
 		);
 	}
 
@@ -275,8 +275,8 @@ final class Admin_Surfaces {
 	private static function locked_message( int $staged_copy_id ): string {
 		return sprintf(
 			/* translators: %s: the words "the staged changes", linked to the staged copy's edit screen. */
-			__( 'This change was not saved. This post has staged changes waiting to be published, and the title is edited in %s until they are published or discarded.', 'save-without-publish' ),
-			self::linked( __( 'the staged changes', 'save-without-publish' ), (string) get_edit_post_link( $staged_copy_id, 'raw' ) )
+			__( 'This change was not saved. This post has staged changes waiting to be published, and the title is edited in %s until they are published or discarded.', 'staged-edits' ),
+			self::linked( __( 'the staged changes', 'staged-edits' ), (string) get_edit_post_link( $staged_copy_id, 'raw' ) )
 		);
 	}
 
@@ -315,7 +315,7 @@ final class Admin_Surfaces {
 	/**
 	 * Says that the save was refused, and where the change belongs instead.
 	 *
-	 * The classic editor's twin of the block editor's `swpub-live-locked` notice,
+	 * The classic editor's twin of the block editor's `staged-edits-live-locked` notice,
 	 * and it carries the same two facts in the same order: nothing was saved, and
 	 * the staged copy is where those fields are edited.
 	 *
@@ -341,12 +341,12 @@ final class Admin_Surfaces {
 
 		printf(
 			'<div class="notice notice-error"><p>%1$s %2$s</p></div>',
-			esc_html__( 'This change was not saved.', 'save-without-publish' ),
+			esc_html__( 'This change was not saved.', 'staged-edits' ),
 			wp_kses_post(
 				sprintf(
 					/* translators: %s: the words "the staged changes", linked to the staged copy's edit screen. */
-					__( 'This post has staged changes waiting to be published, and its title, content, and excerpt are edited in %s until they are published or discarded.', 'save-without-publish' ),
-					self::linked( __( 'the staged changes', 'save-without-publish' ), (string) get_edit_post_link( $staged_copy->ID, 'raw' ) )
+					__( 'This post has staged changes waiting to be published, and its title, content, and excerpt are edited in %s until they are published or discarded.', 'staged-edits' ),
+					self::linked( __( 'the staged changes', 'staged-edits' ), (string) get_edit_post_link( $staged_copy->ID, 'raw' ) )
 				)
 			)
 		);
@@ -371,7 +371,7 @@ final class Admin_Surfaces {
 			return $classes;
 		}
 
-		return trim( $classes . ' swpub-staged' );
+		return trim( $classes . ' staged-edits-staged' );
 	}
 
 	/**
@@ -438,7 +438,7 @@ final class Admin_Surfaces {
 		printf(
 			'<div class="notice notice-info"><p>%s</p><p>%s</p>%s</div>',
 			wp_kses_post( self::status_sentence( $live ) ),
-			esc_html__( 'Publish these changes from the block editor.', 'save-without-publish' ),
+			esc_html__( 'Publish these changes from the block editor.', 'staged-edits' ),
 			wp_kses_post( self::routes( $staged_copy, $live ) )
 		);
 	}
@@ -457,7 +457,7 @@ final class Admin_Surfaces {
 		if ( ! $live instanceof WP_Post || 'publish' !== $live->post_status ) {
 			return esc_html__(
 				'The post these changes were staged against is no longer published. They are kept here, and can be published once it is published again.',
-				'save-without-publish'
+				'staged-edits'
 			);
 		}
 
@@ -474,15 +474,15 @@ final class Admin_Surfaces {
 		if ( $just_arrived ) {
 			return sprintf(
 				/* translators: %s: the words "the published post", linked to that post on the front end. */
-				__( 'Your edit was staged instead of updating %s. It keeps serving what it serves now until you publish these changes.', 'save-without-publish' ),
-				self::linked( __( 'the published post', 'save-without-publish' ), $permalink )
+				__( 'Your edit was staged instead of updating %s. It keeps serving what it serves now until you publish these changes.', 'staged-edits' ),
+				self::linked( __( 'the published post', 'staged-edits' ), $permalink )
 			);
 		}
 
 		return sprintf(
 			/* translators: %s: the words "the published post as it is now", linked to that post on the front end. */
-			__( 'You are staging edits to a published post. Until you publish them, readers still see %s.', 'save-without-publish' ),
-			self::linked( __( 'the published post as it is now', 'save-without-publish' ), $permalink )
+			__( 'You are staging edits to a published post. Until you publish them, readers still see %s.', 'staged-edits' ),
+			self::linked( __( 'the published post as it is now', 'staged-edits' ), $permalink )
 		);
 	}
 
@@ -532,7 +532,7 @@ final class Admin_Surfaces {
 			$links[] = sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( $compare_url ),
-				esc_html__( 'Review staged changes', 'save-without-publish' )
+				esc_html__( 'Review staged changes', 'staged-edits' )
 			);
 		}
 
@@ -540,7 +540,7 @@ final class Admin_Surfaces {
 			$links[] = sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( Post_List::discard_url( $live->ID ) ),
-				esc_html__( 'Discard staged changes', 'save-without-publish' )
+				esc_html__( 'Discard staged changes', 'staged-edits' )
 			);
 		}
 

@@ -156,7 +156,7 @@ test.describe( 'The posts list', () => {
 		page,
 	} ) => {
 		await page.goto(
-			`/wp-admin/admin-post.php?action=swpub_discard&swpub_post=${ liveId }&_wpnonce=not-a-real-nonce&swpub_confirmed=1`
+			`/wp-admin/admin-post.php?action=staged_edits_discard&staged_edits_post=${ liveId }&_wpnonce=not-a-real-nonce&staged_edits_confirmed=1`
 		);
 
 		// Row actions are ordinary links, so an irreversible force-delete must

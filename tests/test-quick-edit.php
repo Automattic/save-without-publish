@@ -2,19 +2,19 @@
 /**
  * Quick Edit refusal and Classic Editor arrival tests for U3 (R44, R50).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
 use Exception;
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Admin_Surfaces;
-use SaveWithoutPublish\Post_List;
-use SaveWithoutPublish\Review_Link;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Capabilities;
+use StagedEdits\Admin_Surfaces;
+use StagedEdits\Post_List;
+use StagedEdits\Review_Link;
+use StagedEdits\Staged_Copy_Repository;
 use WP_Post;
 use WP_UnitTestCase;
 
@@ -99,10 +99,10 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 		$this->captured = array();
 
 		add_action(
-			'swpub_stage_refused',
+			'staged_edits_stage_refused',
 			function ( $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
-					'event'   => 'swpub_stage_refused',
+					'event'   => 'staged_edits_stage_refused',
 					'live_id' => (int) $live_id,
 					'channel' => (string) $channel,
 					'user_id' => (int) $user_id,
@@ -113,10 +113,10 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 		);
 
 		add_action(
-			'swpub_write_blocked',
+			'staged_edits_write_blocked',
 			function ( $staged_copy_id, $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
-					'event'          => 'swpub_write_blocked',
+					'event'          => 'staged_edits_write_blocked',
 					'staged_copy_id' => (int) $staged_copy_id,
 					'live_id'        => (int) $live_id,
 					'channel'        => (string) $channel,
@@ -128,10 +128,10 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 		);
 
 		add_action(
-			'swpub_write_staged',
+			'staged_edits_write_staged',
 			function ( $staged_copy_id, $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
-					'event'          => 'swpub_write_staged',
+					'event'          => 'staged_edits_write_staged',
 					'staged_copy_id' => (int) $staged_copy_id,
 					'live_id'        => (int) $live_id,
 					'channel'        => (string) $channel,
@@ -143,10 +143,10 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 		);
 
 		add_action(
-			'swpub_published_via_carveout',
+			'staged_edits_published_via_carveout',
 			function ( $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
-					'event'   => 'swpub_published_via_carveout',
+					'event'   => 'staged_edits_published_via_carveout',
 					'live_id' => (int) $live_id,
 					'channel' => (string) $channel,
 					'user_id' => (int) $user_id,
@@ -281,7 +281,7 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 		$this->assertSame(
 			array(
 				array(
-					'event'   => 'swpub_stage_refused',
+					'event'   => 'staged_edits_stage_refused',
 					'live_id' => $this->live_id,
 					'channel' => 'quickedit',
 					'user_id' => $this->editor_id,
@@ -337,7 +337,7 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 	 * this write on every transport. Quick Edit refuses it a hook earlier so the
 	 * row can say something, which is what KD15 asks for.
 	 *
-	 * The event is `swpub_write_blocked`, not `swpub_stage_refused`. The two mean
+	 * The event is `staged_edits_write_blocked`, not `staged_edits_stage_refused`. The two mean
 	 * different things and a site counting them needs them apart: one is a write
 	 * that would have staged and had nowhere to show it, the other is a write to a
 	 * post whose staged copy already owns the field.
@@ -360,7 +360,7 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 		$this->assertSame( 'Meridian Active, Summer collection', $this->stored( $staged_copy->ID, 'post_title' ) );
 
 		$this->assertCount( 1, $this->captured );
-		$this->assertSame( 'swpub_write_blocked', $this->captured[0]['event'] );
+		$this->assertSame( 'staged_edits_write_blocked', $this->captured[0]['event'] );
 		$this->assertSame( $staged_copy->ID, $this->captured[0]['staged_copy_id'] );
 		$this->assertSame( 'quickedit', $this->captured[0]['channel'] );
 		$this->assertSame( $this->publisher_id, $this->captured[0]['user_id'] );
@@ -454,7 +454,7 @@ class Test_Quick_Edit extends WP_UnitTestCase {
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ) );
 
 		$this->assertCount( 1, $this->captured );
-		$this->assertSame( 'swpub_stage_refused', $this->captured[0]['event'] );
+		$this->assertSame( 'staged_edits_stage_refused', $this->captured[0]['event'] );
 		$this->assertSame( 'quickedit', $this->captured[0]['channel'] );
 	}
 
@@ -595,7 +595,7 @@ class Test_Classic_Arrival extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Post::class, $staged_copy );
 		$this->assertStringContainsString( 'post=' . $staged_copy->ID, $location );
-		$this->assertStringContainsString( 'swpub_forked=1', $location );
+		$this->assertStringContainsString( 'staged_edits_forked=1', $location );
 
 		clean_post_cache( $this->live_id );
 
@@ -628,7 +628,7 @@ class Test_Classic_Arrival extends WP_UnitTestCase {
 		$staged_copy = Staged_Copy_Repository::find_for_live( $this->live_id );
 
 		$_GET['post']         = (string) $staged_copy->ID;
-		$_GET['swpub_forked'] = '1';
+		$_GET['staged_edits_forked'] = '1';
 
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- `post.php` sets this global before `admin_notices` fires, and the notice reads the post being edited from it. Unset again below.
 		$GLOBALS['post'] = $staged_copy;
@@ -673,7 +673,7 @@ class Test_Classic_Arrival extends WP_UnitTestCase {
 		$staged_copy = Staged_Copy_Repository::find_for_live( $this->live_id );
 
 		$_GET['post']         = (string) $staged_copy->ID;
-		$_GET['swpub_forked'] = '1';
+		$_GET['staged_edits_forked'] = '1';
 
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- `post.php` sets this global before `admin_notices` fires, and the notice reads the post being edited from it. Unset again below.
 		$GLOBALS['post'] = $staged_copy;

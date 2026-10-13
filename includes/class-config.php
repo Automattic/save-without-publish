@@ -2,19 +2,19 @@
 /**
  * The runtime config VIP defines for this integration.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Reads `VIP_SAVE_WITHOUT_PUBLISH_CONFIG`, the one constant the platform sets.
+ * Reads `VIP_STAGED_EDITS_CONFIG`, the one constant the platform sets.
  *
  * Every read of the constant goes through here, and nothing here is required:
  * an undefined constant, a value that is not an array, and a setting that is
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * The one setting is `scheduled_publish_overrides_drift`. It does not decide a
  * scheduled publish itself: it is the starting answer to the
- * `swpub_scheduled_publish_overrides_drift` filter, so a site's own filter
+ * `staged_edits_scheduled_publish_overrides_drift` filter, so a site's own filter
  * still has the last word.
  */
 final class Config {
@@ -32,7 +32,7 @@ final class Config {
 	/**
 	 * The constant VIP defines before the plugin loads: a plain array.
 	 */
-	public const CONSTANT_NAME = 'VIP_SAVE_WITHOUT_PUBLISH_CONFIG';
+	public const CONSTANT_NAME = 'VIP_STAGED_EDITS_CONFIG';
 
 	/**
 	 * Keys the plugin cannot work without. None: every setting is optional.

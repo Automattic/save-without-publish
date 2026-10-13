@@ -2,7 +2,7 @@
 /**
  * A config with the one setting at its default. Behaves as if no config were defined.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );

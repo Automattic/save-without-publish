@@ -53,18 +53,18 @@ export function StagedStatusRow() {
 		return null;
 	}
 
-	const label = __( 'Staged', 'save-without-publish' );
+	const label = __( 'Staged', 'staged-edits' );
 	const [ review ] = reviewStaged( ctx, reviewUrl );
 
 	return (
-		<PluginPostStatusInfo className="swpub-status-row">
+		<PluginPostStatusInfo className="staged-edits-status-row">
 			<div className="editor-post-panel__row-label">
-				{ __( 'Status', 'save-without-publish' ) }
+				{ __( 'Status', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				{ review ? (
 					<Button
-						className="swpub-status-row__button"
+						className="staged-edits-status-row__button"
 						href={ review.url }
 						icon={ stagedIcon }
 						onClick={ review.onClick }
@@ -77,10 +77,7 @@ export function StagedStatusRow() {
 						 */
 						aria-label={ sprintf(
 							/* translators: %s: the post's status, always "Staged" here. */
-							__(
-								'%s: review staged changes',
-								'save-without-publish'
-							),
+							__( '%s: review staged changes', 'staged-edits' ),
 							label
 						) }
 						variant="tertiary"
@@ -90,7 +87,9 @@ export function StagedStatusRow() {
 					// Nothing comparable staged yet, so the state is stated and
 					// not offered: a link to a comparison that does not exist
 					// yet is worse than the word on its own.
-					<span className="swpub-status-row__value">{ label }</span>
+					<span className="staged-edits-status-row__value">
+						{ label }
+					</span>
 				) }
 			</div>
 		</PluginPostStatusInfo>

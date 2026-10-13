@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<ruleset name="Save without Publish">
+<ruleset name="Staged Edits">
 	<description>VIP coding standards are a gate on every change, not a cleanup pass (R25).</description>
 
 	<file>.</file>
@@ -21,7 +21,7 @@
 	<rule ref="WordPress.WP.I18n">
 		<properties>
 			<property name="text_domain" type="array">
-				<element value="save-without-publish"/>
+				<element value="staged-edits"/>
 			</property>
 		</properties>
 	</rule>
@@ -29,8 +29,8 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<properties>
 			<property name="prefixes" type="array">
-				<element value="SaveWithoutPublish"/>
-				<element value="swpub"/>
+				<element value="StagedEdits"/>
+				<element value="staged_edits"/>
 			</property>
 		</properties>
 	</rule>

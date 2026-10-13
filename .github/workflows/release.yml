@@ -20,7 +20,7 @@ jobs:
 
       - name: Check the tag matches the plugin header version
         run: |
-          header="$(sed -n 's/^ \* Version: *//p' save-without-publish.php | tr -d '[:space:]')"
+          header="$(sed -n 's/^ \* Version: *//p' staged-edits.php | tr -d '[:space:]')"
           tag="${GITHUB_REF_NAME#v}"
           if [ "$header" != "$tag" ]; then
             echo "Tag $GITHUB_REF_NAME says $tag, plugin header says $header." >&2
@@ -49,17 +49,17 @@ jobs:
       # dev file the way a .distignore denylist can when someone forgets a line.
       - name: Assemble the plugin directory
         run: |
-          mkdir -p dist/save-without-publish
-          cp -R save-without-publish.php includes build README.md LICENSE dist/save-without-publish/
+          mkdir -p dist/staged-edits
+          cp -R staged-edits.php includes build README.md LICENSE dist/staged-edits/
 
       - name: Zip
-        run: cd dist && zip -rq "../save-without-publish-${GITHUB_REF_NAME}.zip" save-without-publish
+        run: cd dist && zip -rq "../staged-edits-${GITHUB_REF_NAME}.zip" staged-edits
 
       - name: Hand the zip to the publish job
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: plugin-zip
-          path: save-without-publish-*.zip
+          path: staged-edits-*.zip
           if-no-files-found: error
           retention-days: 1
 
@@ -80,7 +80,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "save-without-publish-${GITHUB_REF_NAME}.zip" \
+            "staged-edits-${GITHUB_REF_NAME}.zip" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes

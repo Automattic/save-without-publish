@@ -2,12 +2,12 @@
 /**
  * Drift detection and the one-time override.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;
@@ -159,8 +159,8 @@ final class Drift {
 
 		if ( ! $live instanceof WP_Post ) {
 			return new WP_Error(
-				'swpub_no_live_post',
-				__( 'The published post this stages no longer exists.', 'save-without-publish' ),
+				'staged_edits_no_live_post',
+				__( 'The published post this stages no longer exists.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -170,8 +170,8 @@ final class Drift {
 		if ( null !== $override && '' !== $override ) {
 			if ( ! self::is_token( $override ) ) {
 				return new WP_Error(
-					'swpub_bad_override',
-					__( 'The confirmation did not name a valid published state.', 'save-without-publish' ),
+					'staged_edits_bad_override',
+					__( 'The confirmation did not name a valid published state.', 'staged-edits' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -200,7 +200,7 @@ final class Drift {
 		}
 
 		return new WP_Error(
-			'swpub_drift',
+			'staged_edits_drift',
 			self::message( $kind ),
 			array(
 				'status'        => 409,
@@ -231,10 +231,10 @@ final class Drift {
 	 */
 	private static function message( string $kind ): string {
 		if ( 'other' === $kind ) {
-			return __( 'The published post was updated after these edits were staged, but its title, content, and excerpt are unchanged. Publishing will not overwrite that update.', 'save-without-publish' );
+			return __( 'The published post was updated after these edits were staged, but its title, content, and excerpt are unchanged. Publishing will not overwrite that update.', 'staged-edits' );
 		}
 
-		return __( 'The published post changed after these edits were staged. Review the change before publishing.', 'save-without-publish' );
+		return __( 'The published post changed after these edits were staged. Review the change before publishing.', 'staged-edits' );
 	}
 
 	/**

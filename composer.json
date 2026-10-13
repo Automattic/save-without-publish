@@ -1,5 +1,5 @@
 {
-	"name": "automattic/save-without-publish",
+	"name": "automattic/staged-edits",
 	"description": "Edit a published post as a private staged copy. The live post keeps serving until you publish the change.",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",

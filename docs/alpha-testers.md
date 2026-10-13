@@ -1,6 +1,6 @@
 # Alpha testers: what to know
 
-Thank you for testing Save without Publish. It is early software, so expect rough edges, and tell us about them. This page says what the plugin does, what it deliberately does not do, and the things that will most likely surprise you.
+Thank you for testing Staged Edits. It is early software, so expect rough edges, and tell us about them. This page says what the plugin does, what it deliberately does not do, and the things that will most likely surprise you.
 
 For what the plugin is, see [the listing](integration-center.md).
 
@@ -11,7 +11,7 @@ On a normal single site, everyone does, administrators included. When you save a
 **On a multisite network, super admins do not.** WordPress gives a super admin every capability, and that includes the one that lets a save skip staging. A super admin sees ordinary WordPress: a **Save** or **Update** button that changes the published post at once. If you are testing as a super admin and the plugin seems to do nothing, this is why. You can still stage on purpose: the **Stage changes** control in the editor's Summary panel moves what you have typed onto a staged copy without touching the published post. To make super admins stage like everyone else, a developer adds this to the site:
 
 ```php
-add_filter( 'swpub_can_publish_directly', '__return_false' );
+add_filter( 'staged_edits_can_publish_directly', '__return_false' );
 ```
 
 Test with a normal administrator or editor account as well as a super admin, because that is what most of your editors will be.
@@ -65,7 +65,7 @@ Scheduled publishing runs on WordPress's scheduled-task system, WP-Cron, so be c
 - A publish by someone who has since lost the right to publish. The schedule runs as the person who set it. If they can no longer publish that post when the time comes, it stops.
 - A publish while staging is switched off. If staging is turned off at the moment a schedule comes due, it stops.
 
-If a site has WP-CLI, `wp swpub run-due` fires every schedule that has come due. It is the right thing to run after a cron problem.
+If a site has WP-CLI, `wp staged-edits run-due` fires every schedule that has come due. It is the right thing to run after a cron problem.
 
 ## When the published post changed
 
@@ -73,7 +73,7 @@ This is called *drift*: after you staged your change, the published post changed
 
 - **Publishing by hand** is refused until you have seen what changed. You are shown the difference (in a new tab, so your staged edits survive) and can confirm to overwrite. If only something other than the words changed, publishing still stops and says so plainly, because it will not overwrite that.
 - **A scheduled publish stops.** Nobody is there to confirm, so it does not guess. The staged copy is kept, the schedule is cleared, and the posts list shows **Schedule stopped**. Someone reviews it, publishes it by hand, or schedules it again.
-- **A site can opt in to publishing anyway.** A developer answers the `swpub_scheduled_publish_overrides_drift` filter, and can decide by what changed, such as publishing past a category change but still stopping when the words changed. The platform also offers a site-wide setting with the same effect. Either way, the staged words win. When that happens the plugin records that it did. See [the developer page](vip-integration.md#runtime-config).
+- **A site can opt in to publishing anyway.** A developer answers the `staged_edits_scheduled_publish_overrides_drift` filter, and can decide by what changed, such as publishing past a category change but still stopping when the words changed. The platform also offers a site-wide setting with the same effect. Either way, the staged words win. When that happens the plugin records that it did. See [the developer page](vip-integration.md#runtime-config).
 
 If you test this, test both: a scheduled publish with nothing changed (it should publish), and one where you change the published post first (it should stop).
 
@@ -95,6 +95,6 @@ Please include:
 - Whether the site is a single site or a multisite network, and the WordPress and PHP versions.
 - The numbers of the published post and its staged copy. The number is `post=` in the address bar when the post is open in the editor.
 - For a scheduled publish: the time you set, the time it was due, and the time it ran or stopped.
-- If you have WP-CLI: the output of `wp swpub list`.
+- If you have WP-CLI: the output of `wp staged-edits list`.
 
 Please do not post passwords, API keys or private content in an issue. The repository is public.

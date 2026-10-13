@@ -1,4 +1,4 @@
-# Handoff manifest for Save without Publish.
+# Handoff manifest for Staged Edits.
 #
 # The one file WordPress VIP reads to register and load the integration. Check
 # it with `npm run validate:integration` (see docs/vip-integration.md).
@@ -11,8 +11,8 @@ manifest_version: 1
 manifest_kind: vip-integration-handoff
 
 integration:
-  slug: save-without-publish
-  display_name: Save without Publish
+  slug: staged-edits
+  display_name: Staged Edits
   summary: >-
     Edit a published post as a private staged copy. The published post keeps
     serving until someone publishes the change.
@@ -26,13 +26,13 @@ documentation:
 
 runtime:
   wordpress_plugin:
-    folder: save-without-publish
-    entry_file: save-without-publish.php
-    php_namespace: SaveWithoutPublish
+    folder: staged-edits
+    entry_file: staged-edits.php
+    php_namespace: StagedEdits
     scope: site
 
 runtime_config:
-  constant_name: VIP_SAVE_WITHOUT_PUBLISH_CONFIG
+  constant_name: VIP_STAGED_EDITS_CONFIG
   fields:
     - key: scheduled_publish_overrides_drift
       label: When a scheduled publish finds the published post changed
@@ -50,10 +50,12 @@ runtime_config:
 # No telemetry section: the plugin records none.
 
 release:
-  plugin_version: 0.2.0-alpha.1
+  plugin_version: 0.3.0-alpha.1
   version_strategy: semantic_versioning
-  migration_required: false
+  migration_required: true
   changelog: >-
-    First Integration Center release. Stages edits to a published post's title,
-    content and excerpt on a private copy, then publishes them on demand or at a
-    scheduled time.
+    Renamed from Save without Publish to Staged Edits. Every hook, capability,
+    REST route, WP-CLI command and the config constant takes the new name, with
+    no aliases for the old ones. Stored data (the staged post status, meta keys,
+    scheduled publishes and capability grants) is renamed automatically on the
+    first request after upgrading, and cannot be read by an earlier version.

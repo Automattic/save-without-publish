@@ -45,7 +45,7 @@ import { context } from './context';
  * markup (`PostPanelRow`) has no help-text slot to reach for, and
  * `PluginPostStatusInfo` renders whatever is passed as children directly
  * inside its own `PanelRow`, so a second element after the row's own two
- * columns is what this class (`swpub-published-row__help`) styles small and
+ * columns is what this class (`staged-edits-published-row__help`) styles small and
  * muted, the way a field's help text usually reads.
  *
  * @return {string} The sentence.
@@ -53,7 +53,7 @@ import { context } from './context';
 function movedFieldsHelp() {
 	return __(
 		'Slug, publish date, author, categories, tags, featured image, and discussion are set on the published post.',
-		'save-without-publish'
+		'staged-edits'
 	);
 }
 
@@ -74,9 +74,9 @@ export function PublishedRow() {
 	}
 
 	return (
-		<PluginPostStatusInfo className="swpub-published-row">
+		<PluginPostStatusInfo className="staged-edits-published-row">
 			<div className="editor-post-panel__row-label">
-				{ __( 'Published post', 'save-without-publish' ) }
+				{ __( 'Published post', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				<Button
@@ -89,16 +89,18 @@ export function PublishedRow() {
 					 * `.editor-post-panel__row-control .components-button`, and
 					 * a bare link sits 12px to their left.
 					 */
-					text={ __( 'Edit', 'save-without-publish' ) }
+					text={ __( 'Edit', 'staged-edits' ) }
 					aria-label={ __(
 						'Edit the published post',
-						'save-without-publish'
+						'staged-edits'
 					) }
 					variant="tertiary"
 					size="compact"
 				/>
 			</div>
-			<p className="swpub-published-row__help">{ movedFieldsHelp() }</p>
+			<p className="staged-edits-published-row__help">
+				{ movedFieldsHelp() }
+			</p>
 		</PluginPostStatusInfo>
 	);
 }

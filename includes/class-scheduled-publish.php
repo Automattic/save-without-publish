@@ -2,12 +2,12 @@
 /**
  * Publishing a staged copy at a set time.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * with that person set as the acting user, and refused for every reason the
  * merge refuses an editor's own click. Nothing here is a second publishing
  * path: `fire()` calls `Merge::apply()` unchanged, so every gate the merge
- * already enforces -- capability, drift, `swpub_pre_merge` -- still runs.
+ * already enforces -- capability, drift, `staged_edits_pre_merge` -- still runs.
  *
  * The scheduled time lives in its own meta, never on the copy's `post_date`.
  * That field already means something else: it is the fork timestamp
@@ -50,7 +50,7 @@ final class Scheduled_Publish {
 	 *
 	 * Presence is what "scheduled" means; absence is what "not scheduled" means.
 	 */
-	public const AT_META = '_swpub_publish_at';
+	public const AT_META = '_staged_edits_publish_at';
 
 	/**
 	 * Meta on the staged copy naming who scheduled it.
@@ -60,7 +60,7 @@ final class Scheduled_Publish {
 	 * click, against the published post, so a scheduler who has since lost
 	 * the capability is refused rather than merged as nobody.
 	 */
-	public const BY_META = '_swpub_publish_scheduled_by';
+	public const BY_META = '_staged_edits_publish_scheduled_by';
 
 	/**
 	 * Meta on the staged copy recording why a scheduled run was refused.
@@ -68,7 +68,7 @@ final class Scheduled_Publish {
 	 * `array{ reason: string, code: string, message: string, scheduled_for: string, attempted_at: string }`.
 	 * Written only on a refusal, cleared by the next successful `schedule()`.
 	 */
-	public const REFUSED_META = '_swpub_schedule_refused';
+	public const REFUSED_META = '_staged_edits_schedule_refused';
 
 	/**
 	 * The cron hook a schedule arms.
@@ -77,7 +77,7 @@ final class Scheduled_Publish {
 	 * array( $copy_id ) )` clears every event for that one copy -- what a
 	 * reschedule and an unschedule both do first.
 	 */
-	public const HOOK = 'swpub_publish_scheduled';
+	public const HOOK = 'staged_edits_publish_scheduled';
 
 	/**
 	 * Seconds a "future" time may already be in the past by.
@@ -126,8 +126,8 @@ final class Scheduled_Publish {
 	public static function schedule( int $copy_id, string $at, int $user_id ) {
 		if ( ! is_enabled() ) {
 			return new WP_Error(
-				'swpub_disabled',
-				__( 'Staging is currently disabled.', 'save-without-publish' ),
+				'staged_edits_disabled',
+				__( 'Staging is currently disabled.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -136,16 +136,16 @@ final class Scheduled_Publish {
 
 		if ( ! $copy instanceof WP_Post || ! Status::is_staged( $copy ) ) {
 			return new WP_Error(
-				'swpub_not_staged',
-				__( 'There is nothing staged to publish.', 'save-without-publish' ),
+				'staged_edits_not_staged',
+				__( 'There is nothing staged to publish.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
 
 		if ( $user_id <= 0 || ! user_can( $user_id, 'edit_post', $copy_id ) ) {
 			return new WP_Error(
-				'swpub_forbidden',
-				__( 'You are not allowed to publish these changes.', 'save-without-publish' ),
+				'staged_edits_forbidden',
+				__( 'You are not allowed to publish these changes.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -154,32 +154,32 @@ final class Scheduled_Publish {
 
 		if ( ! $live instanceof WP_Post ) {
 			return new WP_Error(
-				'swpub_no_live_post',
-				__( 'The published post this stages no longer exists.', 'save-without-publish' ),
+				'staged_edits_no_live_post',
+				__( 'The published post this stages no longer exists.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
 
 		if ( 'publish' !== $live->post_status ) {
 			return new WP_Error(
-				'swpub_not_published',
-				__( 'The published post is no longer published, so there is nothing to update.', 'save-without-publish' ),
+				'staged_edits_not_published',
+				__( 'The published post is no longer published, so there is nothing to update.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
 
 		if ( null !== Transitions::stranding( $copy_id ) ) {
 			return new WP_Error(
-				'swpub_stranded',
-				__( 'These changes cannot be published right now.', 'save-without-publish' ),
+				'staged_edits_stranded',
+				__( 'These changes cannot be published right now.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
 
 		if ( null !== Merge_Marker::get( $live->ID ) ) {
 			return new WP_Error(
-				'swpub_merge_in_progress',
-				__( 'These changes are already being published.', 'save-without-publish' ),
+				'staged_edits_merge_in_progress',
+				__( 'These changes are already being published.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -188,8 +188,8 @@ final class Scheduled_Publish {
 
 		if ( null === $parsed ) {
 			return new WP_Error(
-				'swpub_bad_time',
-				__( 'That is not a date WordPress can schedule.', 'save-without-publish' ),
+				'staged_edits_bad_time',
+				__( 'That is not a date WordPress can schedule.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -199,8 +199,8 @@ final class Scheduled_Publish {
 
 		if ( false === $timestamp || $timestamp < time() - self::GRACE ) {
 			return new WP_Error(
-				'swpub_time_past',
-				__( 'That time has already passed.', 'save-without-publish' ),
+				'staged_edits_time_past',
+				__( 'That time has already passed.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -218,8 +218,8 @@ final class Scheduled_Publish {
 			delete_post_meta( $copy_id, self::BY_META );
 
 			return new WP_Error(
-				'swpub_cron_failed',
-				__( 'The publish could not be scheduled.', 'save-without-publish' ),
+				'staged_edits_cron_failed',
+				__( 'The publish could not be scheduled.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);
 		}
@@ -405,11 +405,11 @@ final class Scheduled_Publish {
 				 * receives that default and has the last word.
 				 *
 				 * Return true to let the schedule proceed anyway -- the
-				 * staged words win, and the merge fires `swpub_drift_overridden`
+				 * staged words win, and the merge fires `staged_edits_drift_overridden`
 				 * exactly as an editor's own confirmation does.
 				 *
 				 *     add_filter(
-				 *         'swpub_scheduled_publish_overrides_drift',
+				 *         'staged_edits_scheduled_publish_overrides_drift',
 				 *         function ( $override, $copy_id, $live_id, $kind ) {
 				 *             // Publish past a category or featured-image
 				 *             // change; still ask a human about text.
@@ -427,7 +427,7 @@ final class Scheduled_Publish {
 				 * @param string $kind     `content`, `other`, or `unknown` (VIPPROD-752).
 				 */
 				$overrides = (bool) apply_filters(
-					'swpub_scheduled_publish_overrides_drift',
+					'staged_edits_scheduled_publish_overrides_drift',
 					Config::current()->drift_override_default( $kind ),
 					$copy_id,
 					$live->ID,
@@ -453,7 +453,7 @@ final class Scheduled_Publish {
 		}
 
 		if ( is_wp_error( $result ) ) {
-			if ( 'swpub_merge_in_progress' === $result->get_error_code() ) {
+			if ( 'staged_edits_merge_in_progress' === $result->get_error_code() ) {
 				// Lost the single-flight claim to a concurrent run, which is
 				// transient by definition. Deferred, not refused: if that run
 				// publishes, the next event finds no schedule and does
@@ -482,7 +482,7 @@ final class Scheduled_Publish {
 	 *
 	 * The one place a sweep over staged copies is allowed, for the same
 	 * reason `CLI::inventory()` is: a deliberate operator action, not a
-	 * background query (R24). This is what `wp swpub run-due` calls, and what
+	 * background query (R24). This is what `wp staged-edits run-due` calls, and what
 	 * a system cron line calls on a site running `DISABLE_WP_CRON`.
 	 *
 	 * @return array<int, array{outcome: string, reason: string, result: array<string, mixed>|WP_Error|null}> Outcomes, keyed by staged copy ID.

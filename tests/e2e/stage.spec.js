@@ -210,7 +210,7 @@ test.describe( 'A publisher and a published post', () => {
 
 		expect(
 			seen.filter( ( request ) =>
-				/^POST .*\/swpub\/v1\/stage\/\d+/.test( request )
+				/^POST .*\/staged-edits\/v1\/stage\/\d+/.test( request )
 			)
 		).toHaveLength( 0 );
 		expect(
@@ -257,7 +257,7 @@ test.describe( 'A publisher and a published post', () => {
 		await page.route(
 			( url ) =>
 				decodeURIComponent( url.toString() ).includes(
-					'/swpub/v1/stage/'
+					'/staged-edits/v1/stage/'
 				),
 			async ( route ) => {
 				await held;
@@ -326,9 +326,9 @@ test.describe( 'A publisher and a published post', () => {
 		// The word is stated on its own rather than offered as a link to a
 		// screen that would have nothing on the other side of the comparison.
 		await showDocumentPanel( page );
-		await expect( page.locator( '.swpub-status-row__value' ) ).toHaveText(
-			'Staged'
-		);
+		await expect(
+			page.locator( '.staged-edits-status-row__value' )
+		).toHaveText( 'Staged' );
 		await expect( reviewControl( page ) ).toHaveCount( 0 );
 
 		// A second end, and the link appears. Clicking into the block to
@@ -345,7 +345,7 @@ test.describe( 'A publisher and a published post', () => {
 		// carried the arrival flag would open announcing the fork again.
 		const href = await reviewControl( page ).getAttribute( 'href' );
 
-		expect( href ).not.toContain( 'swpub_forked' );
+		expect( href ).not.toContain( 'staged_edits_forked' );
 		expect( href ).toMatch( /(revision|to)=\d+/ );
 	} );
 

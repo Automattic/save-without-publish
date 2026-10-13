@@ -2,12 +2,12 @@
 /**
  * The staged post status.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -32,7 +32,7 @@ final class Status {
 	 *
 	 * Stored in `wp_posts.post_status`, which is a 20-character column.
 	 */
-	public const NAME = 'swpub_staged';
+	public const NAME = 'staged_edits_staged';
 
 	/**
 	 * Registers the status.
@@ -47,7 +47,7 @@ final class Status {
 		register_post_status(
 			self::NAME,
 			array(
-				'label'                     => _x( 'Staged', 'post status', 'save-without-publish' ),
+				'label'                     => _x( 'Staged', 'post status', 'staged-edits' ),
 
 				/*
 				 * Every flag is set explicitly rather than left to core's

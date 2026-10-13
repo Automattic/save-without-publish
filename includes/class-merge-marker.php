@@ -2,12 +2,12 @@
 /**
  * The merge marker: what a merge was doing when it stopped.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 
@@ -34,7 +34,7 @@ final class Merge_Marker {
 	 * Meta key on the live post. Underscore-prefixed, so core treats it as
 	 * protected and never exposes it over REST.
 	 */
-	public const META = '_swpub_merge';
+	public const META = '_staged_edits_merge';
 
 	/**
 	 * Phases, in the order the merge performs them.
@@ -349,7 +349,7 @@ final class Merge_Marker {
 		 *                                 (VIPPROD-1247).
 		 * }
 		 */
-		do_action( 'swpub_merge_completed', $live_id, self::payload( $marker ) );
+		do_action( 'staged_edits_merge_completed', $live_id, self::payload( $marker ) );
 
 		return true;
 	}

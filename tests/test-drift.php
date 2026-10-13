@@ -2,15 +2,15 @@
 /**
  * Drift tests for U6 (R12, R13).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Drift;
+use StagedEdits\Staged_Copy_Repository;
 use WP_UnitTestCase;
 
 /**
@@ -158,7 +158,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 	}
 
 	/**
@@ -174,7 +174,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 		$this->assertSame( 'content', $result->get_error_data()['drift_kind'] );
 	}
 
@@ -194,7 +194,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 
 		$data = $result->get_error_data();
 
@@ -230,7 +230,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id, $stale );
 
 		$this->assertWPError( $result, 'A token from before the content changed must not override it.' );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 
 		$fresh = $result->get_error_data()['live_state'];
 
@@ -253,7 +253,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id, str_repeat( 'a', 64 ) );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 	}
 
 	/**
@@ -269,7 +269,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id, $first );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 	}
 
 	/**
@@ -285,7 +285,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id, $override );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_bad_override', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_bad_override', $result->get_error_code() );
 	}
 
 	/**
@@ -335,7 +335,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id, $shown );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 	}
 
 	/**
@@ -369,7 +369,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 	}
 
 	/**
@@ -403,7 +403,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_no_live_post', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_no_live_post', $result->get_error_code() );
 	}
 
 	/**
@@ -459,7 +459,7 @@ class Test_Drift extends WP_UnitTestCase {
 		$result = Drift::check( $this->staged_copy_id );
 
 		$this->assertWPError( $result, 'The check trusted a stale cached post.' );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 		$this->assertSame( 'content', $result->get_error_data()['drift_kind'] );
 	}
 
@@ -491,7 +491,7 @@ class Test_Drift extends WP_UnitTestCase {
 		 * own escape hatch for exactly this: answering per write rather than
 		 * fighting a role's capabilities.
 		 */
-		add_filter( 'swpub_can_publish_directly', '__return_true' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		// One edit is enough: both surfaces default their `from` to
 		// "whatever came before", core's own reading on either screen, so
@@ -504,21 +504,21 @@ class Test_Drift extends WP_UnitTestCase {
 			)
 		);
 
-		remove_filter( 'swpub_can_publish_directly', '__return_true' );
+		remove_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		$revisions = wp_get_post_revisions( $live_id, array( 'order' => 'ASC' ) );
 		$newest    = (int) end( $revisions )->ID;
 
 		$this->assertGreaterThan( 0, $newest, 'Precondition: the edits above have to have left revisions.' );
 
-		add_filter( 'swpub_review_surface', fn () => 'editor' );
+		add_filter( 'staged_edits_review_surface', fn () => 'editor' );
 
 		$editor_url = Drift::history_url( $live_id );
 
 		$this->assertStringContainsString( 'post.php', $editor_url );
 		$this->assertStringContainsString( 'revision=' . $newest, $editor_url );
 
-		add_filter( 'swpub_review_surface', fn () => 'classic' );
+		add_filter( 'staged_edits_review_surface', fn () => 'classic' );
 
 		$classic_url = Drift::history_url( $live_id );
 

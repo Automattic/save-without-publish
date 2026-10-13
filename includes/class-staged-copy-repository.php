@@ -2,12 +2,12 @@
 /**
  * Staged copy creation, lookup, and linking.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;
@@ -34,12 +34,12 @@ final class Staged_Copy_Repository {
 	 * Meta on the live post naming its staged copy. Underscore-prefixed, so core
 	 * treats it as protected and it is not exposed over REST.
 	 */
-	public const STAGED_COPY_META = '_swpub_staged_copy_id';
+	public const STAGED_COPY_META = '_staged_edits_staged_copy_id';
 
 	/**
 	 * Meta on the staged copy naming its live post.
 	 */
-	public const LIVE_META = '_swpub_live_id';
+	public const LIVE_META = '_staged_edits_live_id';
 
 	/**
 	 * Meta on the staged copy recording the live post's GMT modified time at fork.
@@ -48,7 +48,7 @@ final class Staged_Copy_Repository {
 	 * drift the editor was actually shown. Lives here rather than in the drift
 	 * unit because the fork is the only moment this value is true.
 	 */
-	public const FORK_BASELINE_META = '_swpub_forked_modified_gmt';
+	public const FORK_BASELINE_META = '_staged_edits_forked_modified_gmt';
 
 	/**
 	 * Meta on the staged copy recording a fingerprint of the live post's
@@ -61,7 +61,7 @@ final class Staged_Copy_Repository {
 	 * possible. Written once and never updated, for the same reason the
 	 * baseline is (I8).
 	 */
-	public const FORK_FINGERPRINT_META = '_swpub_forked_fingerprint';
+	public const FORK_FINGERPRINT_META = '_staged_edits_forked_fingerprint';
 
 	/**
 	 * Fields an editor may change on a staged copy (R29, KD9).
@@ -84,7 +84,7 @@ final class Staged_Copy_Repository {
 	 * @return string Staged copy slug.
 	 */
 	public static function staged_copy_slug( int $live_id ): string {
-		return 'swpub-staged-' . $live_id;
+		return 'staged-edits-staged-' . $live_id;
 	}
 
 	/**
@@ -188,24 +188,24 @@ final class Staged_Copy_Repository {
 	public static function can_establish( WP_Post $live ) {
 		if ( ! in_array( $live->post_type, staged_post_types(), true ) ) {
 			return new WP_Error(
-				'swpub_type_not_staged',
-				__( 'This post type does not stage changes.', 'save-without-publish' ),
+				'staged_edits_type_not_staged',
+				__( 'This post type does not stage changes.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
 
 		if ( 'publish' !== $live->post_status ) {
 			return new WP_Error(
-				'swpub_not_published',
-				__( 'There is no published post here to stage a change to.', 'save-without-publish' ),
+				'staged_edits_not_published',
+				__( 'There is no published post here to stage a change to.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
 
 		if ( ! post_type_supports( $live->post_type, 'revisions' ) || ! wp_revisions_enabled( $live ) ) {
 			return new WP_Error(
-				'swpub_no_revisions',
-				__( 'This post type does not keep revisions, so a staged change could not be reviewed or rolled back.', 'save-without-publish' ),
+				'staged_edits_no_revisions',
+				__( 'This post type does not keep revisions, so a staged change could not be reviewed or rolled back.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -214,8 +214,8 @@ final class Staged_Copy_Repository {
 		// being adopted and deleted would lose the change without saying so.
 		if ( null !== Merge_Marker::get( $live->ID ) ) {
 			return new WP_Error(
-				'swpub_merge_in_progress',
-				__( 'A publish is already in progress for this post. Try again once it finishes.', 'save-without-publish' ),
+				'staged_edits_merge_in_progress',
+				__( 'A publish is already in progress for this post. Try again once it finishes.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -266,8 +266,8 @@ final class Staged_Copy_Repository {
 			wp_delete_post( $staged_copy->ID, true );
 
 			return new WP_Error(
-				'swpub_baseline_failed',
-				__( 'The change was not saved. The published post is unchanged, and your edits are still here.', 'save-without-publish' ),
+				'staged_edits_baseline_failed',
+				__( 'The change was not saved. The published post is unchanged, and your edits are still here.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);
 		}
@@ -389,8 +389,8 @@ final class Staged_Copy_Repository {
 			$winner = self::find_for_live( $live->ID );
 
 			return $winner instanceof WP_Post ? $winner : new WP_Error(
-				'swpub_fork_race_unresolved',
-				__( 'Could not establish a staged copy of this post.', 'save-without-publish' )
+				'staged_edits_fork_race_unresolved',
+				__( 'Could not establish a staged copy of this post.', 'staged-edits' )
 			);
 		}
 
@@ -398,8 +398,8 @@ final class Staged_Copy_Repository {
 
 		if ( ! $staged_copy instanceof WP_Post ) {
 			return new WP_Error(
-				'swpub_staged_copy_missing',
-				__( 'Could not establish a staged copy of this post.', 'save-without-publish' )
+				'staged_edits_staged_copy_missing',
+				__( 'Could not establish a staged copy of this post.', 'staged-edits' )
 			);
 		}
 
@@ -446,10 +446,10 @@ final class Staged_Copy_Repository {
 	/**
 	 * The refusal every seam gives a write to a post that already has a copy (R55).
 	 *
-	 * ## The `swpub_live_locked` error code is public contract
+	 * ## The `staged_edits_live_locked` error code is public contract
 	 *
 	 * Answered with HTTP 409, a `staged_copy_id` naming the copy that is in the
-	 * way, and an `edit_url` pointing at it. Like `swpub_field_locked`, that
+	 * way, and an `edit_url` pointing at it. Like `staged_edits_field_locked`, that
 	 * shape is API rather than an incident identifier:
 	 *
 	 * - 409 rather than 403, because nothing is wrong with the caller or its
@@ -473,10 +473,10 @@ final class Staged_Copy_Repository {
 	 */
 	public static function live_locked_error( WP_Post $live, WP_Post $staged_copy ): WP_Error {
 		return new WP_Error(
-			'swpub_live_locked',
+			'staged_edits_live_locked',
 			__(
 				'This post has staged changes waiting to be published. Publish or discard them before editing the published post.',
-				'save-without-publish'
+				'staged-edits'
 			),
 			array(
 				'status'         => 409,

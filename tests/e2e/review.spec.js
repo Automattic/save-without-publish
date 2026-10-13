@@ -237,7 +237,9 @@ test.describe( 'Reviewing a staged change', () => {
 		// Restoring has nothing left to mean here either (D4), and the
 		// screen still knows this is a staged copy's own history.
 		await expect( tab.locator( '.restore-revision' ) ).toHaveCount( 0 );
-		await expect( tab.locator( 'body.swpub-staged' ) ).toHaveCount( 1 );
+		await expect( tab.locator( 'body.staged-edits-staged' ) ).toHaveCount(
+			1
+		);
 
 		await tab.close();
 
@@ -308,7 +310,7 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		await openEditor( page, stagedCopyId );
 		await showDocumentPanel( page );
 
-		const link = page.locator( '.swpub-status-row a' ).first();
+		const link = page.locator( '.staged-edits-status-row a' ).first();
 
 		await link.waitFor( { timeout: 20_000 } );
 
@@ -358,7 +360,7 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		);
 
 		const href = await page
-			.locator( '.swpub-status-row a' )
+			.locator( '.staged-edits-status-row a' )
 			.first()
 			.getAttribute( 'href' );
 
@@ -422,12 +424,16 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		await expect(
 			page.locator( '.interface-interface-skeleton__sidebar' )
 		).toBeVisible();
-		await expect( page.locator( '.swpub-status-row' ) ).toHaveCount( 1 );
+		await expect( page.locator( '.staged-edits-status-row' ) ).toHaveCount(
+			1
+		);
 
 		// And the published post is not a staged copy, so it is never marked.
 		await openEditor( page, liveId );
 
-		await expect( page.locator( 'body.swpub-staged' ) ).toHaveCount( 0 );
+		await expect( page.locator( 'body.staged-edits-staged' ) ).toHaveCount(
+			0
+		);
 	} );
 
 	test( 'the revisions view offers publishing, not restoring', async ( {
@@ -446,7 +452,7 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		);
 
 		const href = await page
-			.locator( '.swpub-status-row a' )
+			.locator( '.staged-edits-status-row a' )
 			.first()
 			.getAttribute( 'href' );
 
@@ -496,7 +502,7 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		);
 
 		const href = await page
-			.locator( '.swpub-status-row a' )
+			.locator( '.staged-edits-status-row a' )
 			.first()
 			.getAttribute( 'href' );
 
@@ -522,7 +528,9 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 
 		// The body class this plugin marks the staged copy's own screens
 		// with reaches even this admin-side page.
-		await expect( page.locator( 'body.swpub-staged' ) ).toHaveCount( 1 );
+		await expect( page.locator( 'body.staged-edits-staged' ) ).toHaveCount(
+			1
+		);
 	} );
 
 	test( 'the notice links the phrase naming what readers see', async ( {
@@ -578,7 +586,7 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		await openEditor( page, stagedCopyId );
 		await showDocumentPanel( page );
 
-		const row = page.locator( '.swpub-status-row' );
+		const row = page.locator( '.staged-edits-status-row' );
 
 		await expect( row ).toHaveCount( 1 );
 		await expect(
@@ -621,7 +629,7 @@ test.describe( 'The staged copy speaks through registered slots', () => {
 		// a staged copy no longer shows at all (VIPPROD-1228).
 		const status = await row.boundingBox();
 		const publishAt = await page
-			.locator( '.swpub-schedule-row' )
+			.locator( '.staged-edits-schedule-row' )
 			.boundingBox();
 
 		expect( status.y ).toBeLessThan( publishAt.y );
@@ -936,8 +944,12 @@ test.describe( 'The published post, for someone whose save stages', () => {
 		 * The Status fill covers both readers now, so the second row would be
 		 * the same fact said twice.
 		 */
-		await expect( page.locator( '.swpub-status-row' ) ).toHaveCount( 1 );
-		await expect( page.locator( '.swpub-staged-row' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.staged-edits-status-row' ) ).toHaveCount(
+			1
+		);
+		await expect( page.locator( '.staged-edits-staged-row' ) ).toHaveCount(
+			0
+		);
 		await expect( reviewControl( page ) ).toHaveCount( 1 );
 
 		// Said once on the screen, not just once in the markup. The regexp is

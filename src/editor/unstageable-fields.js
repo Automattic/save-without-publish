@@ -130,7 +130,7 @@ export function UnstageableFields() {
 
 		watchHiddenRows();
 		// `ctx` rather than `ctx.lockedTaxonomies`: the context object is a
-		// stable reference for the whole page load (`window.swpubEditor`),
+		// stable reference for the whole page load (`window.stagedEditsEditor`),
 		// so this still runs exactly once.
 	}, [ locked, removeEditorPanel, ctx ] );
 

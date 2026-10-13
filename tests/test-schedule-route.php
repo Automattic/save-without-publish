@@ -2,15 +2,15 @@
 /**
  * Schedule route tests for VIPPROD-1247.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Scheduled_Publish;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Scheduled_Publish;
+use StagedEdits\Staged_Copy_Repository;
 use WP_REST_Request;
 use WP_UnitTestCase;
 
@@ -67,7 +67,7 @@ class Test_Schedule_Route extends WP_UnitTestCase {
 	 * @return \WP_REST_Response The response.
 	 */
 	private function schedule_request( int $staged_copy_id, ?string $at ) {
-		$request = new WP_REST_Request( 'POST', '/swpub/v1/schedule/' . $staged_copy_id );
+		$request = new WP_REST_Request( 'POST', '/staged-edits/v1/schedule/' . $staged_copy_id );
 		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 
 		if ( null !== $at ) {
@@ -84,7 +84,7 @@ class Test_Schedule_Route extends WP_UnitTestCase {
 	 * @return \WP_REST_Response The response.
 	 */
 	private function unschedule_request( int $staged_copy_id ) {
-		$request = new WP_REST_Request( 'DELETE', '/swpub/v1/schedule/' . $staged_copy_id );
+		$request = new WP_REST_Request( 'DELETE', '/staged-edits/v1/schedule/' . $staged_copy_id );
 		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 
 		return rest_get_server()->dispatch( $request );
@@ -96,9 +96,9 @@ class Test_Schedule_Route extends WP_UnitTestCase {
 	public function test_the_route_is_registered(): void {
 		$routes = rest_get_server()->get_routes();
 
-		$this->assertArrayHasKey( '/swpub/v1/schedule/(?P<id>[\d]+)', $routes );
+		$this->assertArrayHasKey( '/staged-edits/v1/schedule/(?P<id>[\d]+)', $routes );
 
-		$methods = wp_list_pluck( $routes['/swpub/v1/schedule/(?P<id>[\d]+)'], 'methods' );
+		$methods = wp_list_pluck( $routes['/staged-edits/v1/schedule/(?P<id>[\d]+)'], 'methods' );
 
 		$this->assertContains( array( 'POST' => true ), $methods );
 		$this->assertContains( array( 'DELETE' => true ), $methods );
@@ -135,7 +135,7 @@ class Test_Schedule_Route extends WP_UnitTestCase {
 
 		$error = $response->as_error();
 
-		$this->assertSame( 'swpub_time_past', $error->get_error_code() );
+		$this->assertSame( 'staged_edits_time_past', $error->get_error_code() );
 		$this->assertSame( 400, $error->get_error_data()['status'] );
 	}
 
@@ -174,29 +174,29 @@ class Test_Schedule_Route extends WP_UnitTestCase {
 
 		$scheduled = $this->schedule_request( $this->staged_copy_id, $at );
 		$this->assertTrue( $scheduled->is_error() );
-		$this->assertSame( 'swpub_forbidden', $scheduled->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_forbidden', $scheduled->as_error()->get_error_code() );
 
 		$unscheduled = $this->unschedule_request( $this->staged_copy_id );
 		$this->assertTrue( $unscheduled->is_error() );
-		$this->assertSame( 'swpub_forbidden', $unscheduled->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_forbidden', $unscheduled->as_error()->get_error_code() );
 	}
 
 	/**
 	 * The kill switch closes both methods of the route.
 	 */
 	public function test_the_kill_switch_closes_the_route(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$at = gmdate( 'Y-m-d\TH:i:s\Z', time() + HOUR_IN_SECONDS );
 
 		$response = $this->schedule_request( $this->staged_copy_id, $at );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_disabled', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_disabled', $response->as_error()->get_error_code() );
 	}
 
 	/**
-	 * Pointing the route at an ordinary post refuses with `swpub_not_staged`.
+	 * Pointing the route at an ordinary post refuses with `staged_edits_not_staged`.
 	 */
 	public function test_the_route_refuses_a_post_that_is_not_a_staged_copy(): void {
 		$at = gmdate( 'Y-m-d\TH:i:s\Z', time() + HOUR_IN_SECONDS );
@@ -204,7 +204,7 @@ class Test_Schedule_Route extends WP_UnitTestCase {
 		$response = $this->schedule_request( $this->live_id, $at );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_not_staged', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_not_staged', $response->as_error()->get_error_code() );
 	}
 
 	/**
@@ -217,7 +217,7 @@ class Test_Schedule_Route extends WP_UnitTestCase {
 		$response = $this->schedule_request( 999999, $at );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_not_staged', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_not_staged', $response->as_error()->get_error_code() );
 	}
 
 	/**

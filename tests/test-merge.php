@@ -2,19 +2,19 @@
 /**
  * Merge tests for U7 (R8, R9, R10, R11, R30, R31).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Merge;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
+use StagedEdits\Capabilities;
+use StagedEdits\Drift;
+use StagedEdits\Merge;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use WP_Post;
 use WP_UnitTestCase;
 
@@ -309,7 +309,7 @@ class Test_Merge extends WP_UnitTestCase {
 	 */
 	public function test_a_veto_leaves_both_posts_untouched(): void {
 		add_filter(
-			'swpub_pre_merge',
+			'staged_edits_pre_merge',
 			static function () {
 				return new \WP_Error( 'nope', 'Blocked by policy.' );
 			}
@@ -336,7 +336,7 @@ class Test_Merge extends WP_UnitTestCase {
 	public function test_two_simultaneous_merges_apply_once(): void {
 		$completed = 0;
 		add_action(
-			'swpub_merge_completed',
+			'staged_edits_merge_completed',
 			static function () use ( &$completed ): void {
 				++$completed;
 			}
@@ -344,7 +344,7 @@ class Test_Merge extends WP_UnitTestCase {
 
 		$second = null;
 		add_filter(
-			'swpub_pre_merge',
+			'staged_edits_pre_merge',
 			function ( $allowed ) use ( &$second ) {
 				if ( null === $second ) {
 					$second = Merge::apply( $this->staged_copy_id );
@@ -358,7 +358,7 @@ class Test_Merge extends WP_UnitTestCase {
 
 		$this->assertIsArray( $first, 'The first merge did not apply.' );
 		$this->assertWPError( $second, 'The second merge was not refused.' );
-		$this->assertSame( 'swpub_merge_in_progress', $second->get_error_code() );
+		$this->assertSame( 'staged_edits_merge_in_progress', $second->get_error_code() );
 		$this->assertSame( 1, $completed, 'The completion event fired more than once.' );
 		$this->assertNull( get_post( $this->staged_copy_id ) );
 	}
@@ -381,7 +381,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$result = Merge::apply( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_not_published', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_not_published', $result->get_error_code() );
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
 	}
 
@@ -407,7 +407,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$result = Merge::apply( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_no_live_post', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_no_live_post', $result->get_error_code() );
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
 	}
 
@@ -420,7 +420,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$result = Merge::apply( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_forbidden', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_forbidden', $result->get_error_code() );
 		$this->assertSame( self::PUBLISHED_CONTENT, get_post( $this->live_id )->post_content );
 	}
 
@@ -441,7 +441,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$refused = Merge::apply( $this->staged_copy_id );
 
 		$this->assertWPError( $refused );
-		$this->assertSame( 'swpub_drift', $refused->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $refused->get_error_code() );
 		$this->assertSame( self::PUBLISHED_CONTENT, get_post( $this->live_id )->post_content );
 		$this->assertNull( Merge_Marker::get( $this->live_id ), 'A refused merge left a marker behind.' );
 
@@ -460,7 +460,7 @@ class Test_Merge extends WP_UnitTestCase {
 
 		$payload = null;
 		add_action(
-			'swpub_merge_completed',
+			'staged_edits_merge_completed',
 			static function ( $live_id, $data ) use ( &$payload ): void {
 				$payload = $data;
 			},
@@ -492,7 +492,7 @@ class Test_Merge extends WP_UnitTestCase {
 
 		$overridden = null;
 		add_action(
-			'swpub_drift_overridden',
+			'staged_edits_drift_overridden',
 			static function ( $staged_copy_id, $live_id, $user_id, $confirmed, $kind ) use ( &$overridden ): void {
 				$overridden = array(
 					'confirmed' => $confirmed,
@@ -505,7 +505,7 @@ class Test_Merge extends WP_UnitTestCase {
 
 		$payload = null;
 		add_action(
-			'swpub_merge_completed',
+			'staged_edits_merge_completed',
 			static function ( $live_id, $data ) use ( &$payload ): void {
 				$payload = $data;
 			},
@@ -516,7 +516,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$applied = Merge::apply( $this->staged_copy_id, $shown );
 
 		$this->assertIsArray( $applied );
-		$this->assertIsArray( $overridden, 'swpub_drift_overridden did not fire.' );
+		$this->assertIsArray( $overridden, 'staged_edits_drift_overridden did not fire.' );
 		$this->assertSame( $shown, $overridden['confirmed'] );
 		$this->assertSame( 'other', $overridden['kind'], 'drift_live() only moves the timestamp.' );
 
@@ -592,7 +592,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$marker['attempted_at'] = time() - ( Merge_Marker::COOLDOWN + 1 );
 		update_post_meta( $this->live_id, Merge_Marker::META, $marker );
 
-		return \SaveWithoutPublish\Merge_Resume::run( $this->live_id );
+		return \StagedEdits\Merge_Resume::run( $this->live_id );
 	}
 
 	/**
@@ -627,7 +627,7 @@ class Test_Merge extends WP_UnitTestCase {
 
 		$decision = $this->resume();
 
-		$this->assertSame( \SaveWithoutPublish\Merge_Resume::ACTION_RESUME, $decision['action'] );
+		$this->assertSame( \StagedEdits\Merge_Resume::ACTION_RESUME, $decision['action'] );
 		$this->assert_merge_completed();
 	}
 
@@ -675,7 +675,7 @@ class Test_Merge extends WP_UnitTestCase {
 	public function test_an_interruption_before_deletion_resumes(): void {
 		$completed = 0;
 		add_action(
-			'swpub_merge_completed',
+			'staged_edits_merge_completed',
 			static function () use ( &$completed ): void {
 				++$completed;
 			}
@@ -780,7 +780,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$result = Merge::resume( $this->live_id, $this->staged_copy_id, Merge_Marker::PHASE_ADOPTING );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_drift', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $result->get_error_code() );
 
 		// The staged history is still the staged copy's, not the live post's.
 		foreach ( $staged as $revision_id ) {
@@ -835,6 +835,6 @@ class Test_Merge extends WP_UnitTestCase {
 		$second = Merge::apply( $this->staged_copy_id );
 
 		$this->assertWPError( $second );
-		$this->assertSame( 'swpub_not_staged', $second->get_error_code() );
+		$this->assertSame( 'staged_edits_not_staged', $second->get_error_code() );
 	}
 }

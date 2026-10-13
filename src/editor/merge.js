@@ -18,7 +18,7 @@ import apiFetch from '@wordpress/api-fetch';
  */
 export function mergeStagedChanges( stagedCopyId, confirm ) {
 	return apiFetch( {
-		path: `/swpub/v1/merge/${ stagedCopyId }`,
+		path: `/staged-edits/v1/merge/${ stagedCopyId }`,
 		method: 'POST',
 		data: confirm ? { confirm } : {},
 	} );

@@ -2,12 +2,12 @@
 /**
  * The plugin's public event surface.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;
@@ -92,7 +92,7 @@ final class Events {
 		 * @param int $live_id   Published post ID it stages.
 		 * @param int $user_id   User who staged the edit.
 		 */
-		do_action( 'swpub_staged_created', $staged_copy_id, $live_id, get_current_user_id() );
+		do_action( 'staged_edits_staged_created', $staged_copy_id, $live_id, get_current_user_id() );
 	}
 
 	/**
@@ -116,20 +116,20 @@ final class Events {
 		 * @param int $live_id   Published post ID it stages.
 		 * @param int $user_id   User who saved the edit.
 		 */
-		do_action( 'swpub_staged_edited', $staged_copy_id, $live_id, get_current_user_id() );
+		do_action( 'staged_edits_staged_edited', $staged_copy_id, $live_id, get_current_user_id() );
 	}
 
 	/**
 	 * Announces that a write was contained into a staged copy.
 	 *
 	 * Fires on every engagement of the write guard, whatever transport the write
-	 * arrived on, and adds to `swpub_staged_created` / `swpub_staged_edited`
+	 * arrived on, and adds to `staged_edits_staged_created` / `staged_edits_staged_edited`
 	 * rather than replacing them -- the guard's divert is a save of the staged
 	 * copy, so those fire too. It carries what they cannot: which transport the
 	 * write came from, which is the difference between an editor staging a change
 	 * and an integration finding its writes quietly contained.
 	 *
-	 * The argument order deliberately matches `swpub_staged_created`. A handler
+	 * The argument order deliberately matches `staged_edits_staged_created`. A handler
 	 * copied between the two would otherwise read the wrong post.
 	 *
 	 * @param int    $staged_copy_id Staged copy post ID.
@@ -150,14 +150,14 @@ final class Events {
 		 *                               quickedit, or internal. Best-effort.
 		 * @param int    $user_id        User who made the write. 0 when there is none.
 		 */
-		do_action( 'swpub_write_staged', $staged_copy_id, $live_id, $channel, get_current_user_id() );
+		do_action( 'staged_edits_write_staged', $staged_copy_id, $live_id, $channel, get_current_user_id() );
 	}
 
 	/**
 	 * Announces that a save reached the backstop instead of the staging route.
 	 *
 	 * The block editor's own protocol is the staging route: it recognises a save
-	 * that will stage and sends it to `POST /swpub/v1/stage/{id}` deliberately.
+	 * that will stage and sends it to `POST /staged-edits/v1/stage/{id}` deliberately.
 	 * The redirect-on-save fork underneath it stays as the floor, because a
 	 * protocol that depends on a script having loaded is not a guarantee. But it
 	 * is a floor, not a path: reaching it means the editor's own protocol did not
@@ -188,7 +188,7 @@ final class Events {
 		 * @param int $live_id        Published post ID it stages.
 		 * @param int $user_id        User whose save was staged.
 		 */
-		do_action( 'swpub_staged_via_backstop', $staged_copy_id, $live_id, get_current_user_id() );
+		do_action( 'staged_edits_staged_via_backstop', $staged_copy_id, $live_id, get_current_user_id() );
 	}
 
 	/**
@@ -201,7 +201,7 @@ final class Events {
 	 *
 	 * This is the price of leaving it open. A bypass whose use leaves no record is
 	 * not a seam, it is a hole, so every use of it says so here -- with the channel
-	 * it arrived on and the user it ran as. `swpub_enforce_programmatic_first_save`
+	 * it arrived on and the user it ran as. `staged_edits_enforce_programmatic_first_save`
 	 * closes the seam for a site that would rather stage those writes.
 	 *
 	 * @param int    $live_id Published post ID that was written to.
@@ -215,9 +215,9 @@ final class Events {
 		 * Subscribe to it to see the seam being used on your site:
 		 *
 		 *     add_action(
-		 *         'swpub_published_via_carveout',
+		 *         'staged_edits_published_via_carveout',
 		 *         function ( $live_id, $channel, $user_id ) {
-		 *             error_log( "swpub: post {$live_id} published via {$channel} by user {$user_id}" );
+		 *             error_log( "staged-edits: post {$live_id} published via {$channel} by user {$user_id}" );
 		 *         },
 		 *         10,
 		 *         3
@@ -230,7 +230,7 @@ final class Events {
 		 *                        or cli. Best-effort.
 		 * @param int    $user_id User who made the write.
 		 */
-		do_action( 'swpub_published_via_carveout', $live_id, $channel, get_current_user_id() );
+		do_action( 'staged_edits_published_via_carveout', $live_id, $channel, get_current_user_id() );
 	}
 
 	/**
@@ -260,7 +260,7 @@ final class Events {
 		 *                        `quickedit`.
 		 * @param int    $user_id User whose write was refused.
 		 */
-		do_action( 'swpub_stage_refused', $live_id, $channel, get_current_user_id() );
+		do_action( 'staged_edits_stage_refused', $live_id, $channel, get_current_user_id() );
 	}
 
 	/**
@@ -297,9 +297,9 @@ final class Events {
 		 * any write trying to take a copy out of containment by its status:
 		 *
 		 *     add_action(
-		 *         'swpub_write_blocked',
+		 *         'staged_edits_write_blocked',
 		 *         function ( $staged_copy_id, $live_id, $channel, $user_id ) {
-		 *             error_log( "swpub: write to {$live_id} via {$channel} refused; copy {$staged_copy_id}" );
+		 *             error_log( "staged-edits: write to {$live_id} via {$channel} refused; copy {$staged_copy_id}" );
 		 *         },
 		 *         10,
 		 *         4
@@ -314,14 +314,14 @@ final class Events {
 		 * @param string $channel        Transport the write arrived on. Best-effort.
 		 * @param int    $user_id        User whose write was refused. 0 when there is none.
 		 */
-		do_action( 'swpub_write_blocked', $staged_copy_id, $live_id, $channel, get_current_user_id() );
+		do_action( 'staged_edits_write_blocked', $staged_copy_id, $live_id, $channel, get_current_user_id() );
 	}
 
 	/**
 	 * Announces that a staged copy was put back after something published it
 	 * out from under the guard (VIPPROD-1246).
 	 *
-	 * The twin of `swpub_write_blocked`, for the one path that cannot be
+	 * The twin of `staged_edits_write_blocked`, for the one path that cannot be
 	 * refused. `wp_publish_post()` writes `post_status` to the row directly and
 	 * never reaches the hook the refusal lives on, so the copy is put back
 	 * rather than stopped. By the time this fires the status is already staged
@@ -346,9 +346,9 @@ final class Events {
 		 * is reaching for staged copies:
 		 *
 		 *     add_action(
-		 *         'swpub_staged_status_reverted',
+		 *         'staged_edits_staged_status_reverted',
 		 *         function ( $staged_copy_id, $live_id, $attempted_status, $user_id ) {
-		 *             error_log( "swpub: copy {$staged_copy_id} was given {$attempted_status}; put back" );
+		 *             error_log( "staged-edits: copy {$staged_copy_id} was given {$attempted_status}; put back" );
 		 *         },
 		 *         10,
 		 *         4
@@ -361,14 +361,14 @@ final class Events {
 		 * @param string $attempted_status The status something gave it.
 		 * @param int    $user_id          User the write ran as. 0 when there is none, which cron is.
 		 */
-		do_action( 'swpub_staged_status_reverted', $staged_copy_id, $live_id, $attempted_status, get_current_user_id() );
+		do_action( 'staged_edits_staged_status_reverted', $staged_copy_id, $live_id, $attempted_status, get_current_user_id() );
 	}
 
 	/**
 	 * Announces that a scheduled publish applied (VIPPROD-1247).
 	 *
 	 * By the time this fires the merge has already completed: the staged
-	 * copy is gone and the published post holds its content. `swpub_merge_completed`
+	 * copy is gone and the published post holds its content. `staged_edits_merge_completed`
 	 * fires too, with `scheduled_for` in its payload, so a listener that only
 	 * cares what changed can subscribe to that one action for both a clicked
 	 * and a scheduled publish. This one exists for a listener that cares
@@ -393,7 +393,7 @@ final class Events {
 		 * @param int    $late_by        Seconds after the scheduled time this actually ran.
 		 * @param int    $user_id        The user who scheduled it.
 		 */
-		do_action( 'swpub_scheduled_publish_ran', $live_id, $staged_copy_id, $scheduled_for, $late_by, $user_id );
+		do_action( 'staged_edits_scheduled_publish_ran', $live_id, $staged_copy_id, $scheduled_for, $late_by, $user_id );
 	}
 
 	/**
@@ -408,7 +408,7 @@ final class Events {
 	 * @param int            $live_id        Published post ID, or 0 when it cannot be resolved.
 	 * @param string         $reason         Why it was refused: `not_staged`, `disabled`,
 	 *                                       `no_live_post`, `not_published`, `stranded`, `actor`,
-	 *                                       or the merge's own `WP_Error` code (most often `swpub_drift`).
+	 *                                       or the merge's own `WP_Error` code (most often `staged_edits_drift`).
 	 * @param WP_Error|null  $error          The merge's own refusal, when the reason came from one.
 	 * @return void
 	 */
@@ -419,9 +419,9 @@ final class Events {
 		 * Subscribe to it to find out when a schedule could not be kept:
 		 *
 		 *     add_action(
-		 *         'swpub_scheduled_publish_refused',
+		 *         'staged_edits_scheduled_publish_refused',
 		 *         function ( $staged_copy_id, $live_id, $reason, $error, $user_id ) {
-		 *             error_log( "swpub: scheduled publish of copy {$staged_copy_id} refused: {$reason}" );
+		 *             error_log( "staged-edits: scheduled publish of copy {$staged_copy_id} refused: {$reason}" );
 		 *         },
 		 *         10,
 		 *         5
@@ -439,7 +439,7 @@ final class Events {
 		 *                                       it never names the scheduler, only whoever (if anyone)
 		 *                                       triggered the run itself.
 		 */
-		do_action( 'swpub_scheduled_publish_refused', $staged_copy_id, $live_id, $reason, $error, get_current_user_id() );
+		do_action( 'staged_edits_scheduled_publish_refused', $staged_copy_id, $live_id, $reason, $error, get_current_user_id() );
 	}
 
 	/**
@@ -467,7 +467,7 @@ final class Events {
 		 * @param string $reason  Error code from the failed staged-copy write.
 		 * @param int    $user_id User who made the write. 0 when there is none.
 		 */
-		do_action( 'swpub_staging_write_failed', $live_id, $reason, get_current_user_id() );
+		do_action( 'staged_edits_staging_write_failed', $live_id, $reason, get_current_user_id() );
 	}
 
 	/**
@@ -496,7 +496,7 @@ final class Events {
 		 * @param string $confirmed The published state token they were shown.
 		 * @param string $kind      `'content'`, `'other'`, or `'unknown'` (VIPPROD-752).
 		 */
-		do_action( 'swpub_drift_overridden', $staged_copy_id, $live_id, get_current_user_id(), $confirmed, $kind );
+		do_action( 'staged_edits_drift_overridden', $staged_copy_id, $live_id, get_current_user_id(), $confirmed, $kind );
 	}
 
 	/**
@@ -525,7 +525,7 @@ final class Events {
 		 * @param string[] $keys           Meta keys that were dropped.
 		 * @param int      $user_id        User who made the write. 0 when there is none.
 		 */
-		do_action( 'swpub_meta_keys_dropped', $staged_copy_id, $keys, get_current_user_id() );
+		do_action( 'staged_edits_meta_keys_dropped', $staged_copy_id, $keys, get_current_user_id() );
 	}
 
 	/**
@@ -537,7 +537,7 @@ final class Events {
 	 * only react to published content -- search indexing, social posting, cache
 	 * warming, newsletters -- can exclude them with this:
 	 *
-	 *     if ( function_exists( 'SaveWithoutPublish\is_staged' ) && SaveWithoutPublish\is_staged( $post ) ) {
+	 *     if ( function_exists( 'StagedEdits\is_staged' ) && StagedEdits\is_staged( $post ) ) {
 	 *         return;
 	 *     }
 	 *

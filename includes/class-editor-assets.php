@@ -2,12 +2,12 @@
 /**
  * Block editor asset registration.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -24,7 +24,7 @@ final class Editor_Assets {
 	/**
 	 * Script handle.
 	 */
-	private const HANDLE = 'swpub-editor';
+	private const HANDLE = 'staged-edits-editor';
 
 	/**
 	 * Registers hooks.
@@ -61,7 +61,7 @@ final class Editor_Assets {
 			true
 		);
 
-		wp_set_script_translations( self::HANDLE, 'save-without-publish' );
+		wp_set_script_translations( self::HANDLE, 'staged-edits' );
 
 		/*
 		 * The Summary panel rows are rendered with core's own row classes, so
@@ -78,7 +78,7 @@ final class Editor_Assets {
 
 		wp_add_inline_script(
 			self::HANDLE,
-			'window.swpubEditor = ' . wp_json_encode( self::context() ) . ';',
+			'window.stagedEditsEditor = ' . wp_json_encode( self::context() ) . ';',
 			'before'
 		);
 	}
@@ -99,8 +99,8 @@ final class Editor_Assets {
 		$context = array(
 			'canPublish' => false,
 			'isStaged'   => false,
-			'justForked' => isset( $_GET['swpub_forked'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display hint.
-			'justPublished' => isset( $_GET['swpub_published'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display hint.
+			'justForked' => isset( $_GET['staged_edits_forked'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display hint.
+			'justPublished' => isset( $_GET['staged_edits_published'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display hint.
 			'liveId'     => 0,
 			'stagedCopyId'   => 0,
 		);
@@ -153,7 +153,7 @@ final class Editor_Assets {
 			 * are needed: the first save onto a copy that arrived with only
 			 * its baseline. The editor base is the copy's own clean edit link
 			 * rather than the address bar, which on arrival still carries the
-			 * `swpub_forked` flag and would carry it into the review.
+			 * `staged_edits_forked` flag and would carry it into the review.
 			 */
 			$context['reviewSurface']       = Review_Link::surface();
 			$context['classicRevisionBase'] = admin_url( 'revision.php' );

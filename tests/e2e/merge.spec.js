@@ -191,7 +191,7 @@ test.describe( 'Publishing a staged change', () => {
 		await expect( reviewControl( page ) ).toHaveCount( 1 );
 		await expect(
 			page
-				.locator( '.swpub-status-row' )
+				.locator( '.staged-edits-status-row' )
 				.getByRole( 'link', { name: 'Review staged changes' } )
 		).toBeVisible();
 

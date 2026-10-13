@@ -2,12 +2,12 @@
 /**
  * Forking a published post on its first save.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;
@@ -31,7 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * one because the editor's protocol is JavaScript, and JavaScript that failed to
  * load must not be the difference between staging and publishing. When it
  * engages for a save the staging route could have taken, it says so:
- * `swpub_staged_via_backstop` is an alarm the end-to-end suite requires silent.
+ * `staged_edits_staged_via_backstop` is an alarm the end-to-end suite requires silent.
  */
 final class Fork {
 
@@ -100,7 +100,7 @@ final class Fork {
 	 * the point.
 	 *
 	 * Ahead of it, because the fork path used to answer this case by writing the
-	 * request's content into the existing copy and reporting 409 `swpub_staged`.
+	 * request's content into the existing copy and reporting 409 `staged_edits_staged`.
 	 * The request came from an editor looking at the published words, so that
 	 * write reverted every staged change it did not carry. The refusal has to land
 	 * before anything is written, not as a nicer message afterwards.
@@ -109,7 +109,7 @@ final class Fork {
 	 * the only seam that can say so in words. `Write_Guard` refuses underneath on
 	 * all of them, but only through core's `empty_content` abort, whose message
 	 * names the wrong problem. An application password or OAuth client that used
-	 * to get 200 and a `swpub` field now gets 409 and a code it can match.
+	 * to get 200 and a `staged_edits` field now gets 409 and a code it can match.
 	 *
 	 * Autosaves are exempt for the same reason they are exempt everywhere else:
 	 * they write a revision row, never the live post, so there is nothing here to
@@ -251,7 +251,7 @@ final class Fork {
 	 * The editor no longer arrives here on the ordinary path (R49): it recognises
 	 * a save that will stage and asks `Stage_Route` for it, which answers 200. So
 	 * a save that lands here is a save whose editor protocol did not run, and
-	 * `swpub_staged_via_backstop` says so.
+	 * `staged_edits_staged_via_backstop` says so.
 	 *
 	 * This is the first save only. A save onto a post that already has a copy used
 	 * to arrive here too -- including from someone who may publish directly, which
@@ -264,7 +264,7 @@ final class Fork {
 	 * A token client never sees this 409 and never did. `live_post_for()` gates
 	 * the whole seam on a valid `wp_rest` nonce, so only a cookie-authenticated
 	 * editor save reaches it; an application password, OAuth, or XML-RPC write is
-	 * contained by `Write_Guard` instead and answered 200 with the `swpub` field
+	 * contained by `Write_Guard` instead and answered 200 with the `staged_edits` field
 	 * (R48). Worth saying plainly, because the natural assumption from an error
 	 * code is that every client can meet it.
 	 *
@@ -276,8 +276,8 @@ final class Fork {
 		Events::staged_via_backstop( $staged_copy->ID, $live->ID );
 
 		return new WP_Error(
-			'swpub_staged',
-			__( 'Your edit was staged instead of updating the published post. Opening the staged copy.', 'save-without-publish' ),
+			'staged_edits_staged',
+			__( 'Your edit was staged instead of updating the published post. Opening the staged copy.', 'staged-edits' ),
 			array(
 				'status'    => 409,
 				'staged_copy_id' => $staged_copy->ID,
@@ -441,8 +441,8 @@ final class Fork {
 	 */
 	private static function staging_failed(): WP_Error {
 		return new WP_Error(
-			'swpub_staging_failed',
-			__( 'Your change was not saved. The published post is unchanged, and your edits are still in the editor -- copy them somewhere safe and try again.', 'save-without-publish' ),
+			'staged_edits_staging_failed',
+			__( 'Your change was not saved. The published post is unchanged, and your edits are still in the editor -- copy them somewhere safe and try again.', 'staged-edits' ),
 			array( 'status' => 500 )
 		);
 	}

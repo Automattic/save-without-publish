@@ -2,20 +2,20 @@
 /**
  * Scheduled publish tests for VIPPROD-1247.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Config;
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Scheduled_Publish;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
-use SaveWithoutPublish\Transitions;
+use StagedEdits\Config;
+use StagedEdits\Drift;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Scheduled_Publish;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
+use StagedEdits\Transitions;
 use WP_Error;
 use WP_Post;
 use WP_UnitTestCase;
@@ -86,10 +86,10 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		foreach (
 			array(
-				'swpub_scheduled_publish_ran'     => 5,
-				'swpub_scheduled_publish_refused' => 5,
-				'swpub_merge_completed'           => 2,
-				'swpub_drift_overridden'          => 4,
+				'staged_edits_scheduled_publish_ran'     => 5,
+				'staged_edits_scheduled_publish_refused' => 5,
+				'staged_edits_merge_completed'           => 2,
+				'staged_edits_drift_overridden'          => 4,
 			) as $event => $arg_count
 		) {
 			add_action(
@@ -280,7 +280,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $past, $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_time_past', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_time_past', $result->get_error_code() );
 
 		$grace = gmdate( 'Y-m-d\TH:i:s\Z', time() - 30 );
 
@@ -297,7 +297,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->live_id, $at, $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_not_staged', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_not_staged', $result->get_error_code() );
 	}
 
 	/**
@@ -310,7 +310,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $at, $subscriber );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_forbidden', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_forbidden', $result->get_error_code() );
 	}
 
 	/**
@@ -321,7 +321,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $at, 0 );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_forbidden', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_forbidden', $result->get_error_code() );
 	}
 
 	/**
@@ -334,7 +334,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $at, $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_no_live_post', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_no_live_post', $result->get_error_code() );
 	}
 
 	/**
@@ -351,7 +351,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $at, $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_not_published', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_not_published', $result->get_error_code() );
 	}
 
 	/**
@@ -382,7 +382,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $at, $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_stranded', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_stranded', $result->get_error_code() );
 	}
 
 	/**
@@ -395,20 +395,20 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $at, $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_merge_in_progress', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_merge_in_progress', $result->get_error_code() );
 	}
 
 	/**
 	 * The kill switch refuses scheduling.
 	 */
 	public function test_scheduling_while_disabled_is_refused(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$at     = gmdate( 'Y-m-d\TH:i:s\Z', time() + HOUR_IN_SECONDS );
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, $at, $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_disabled', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_disabled', $result->get_error_code() );
 	}
 
 	/**
@@ -418,7 +418,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$result = Scheduled_Publish::schedule( $this->staged_copy_id, 'next thursday', $this->scheduler_id );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'swpub_bad_time', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_bad_time', $result->get_error_code() );
 	}
 
 	// ---------------------------------------------------------------
@@ -459,7 +459,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		$this->assertSame( 'skipped', $outcome['outcome'] );
 		$this->assertSame( 'unscheduled', $outcome['reason'] );
-		$this->assertSame( array(), $this->captured( 'swpub_scheduled_publish_refused' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_scheduled_publish_refused' ) );
 	}
 
 	/**
@@ -506,7 +506,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$this->assertSame( 'skipped', $outcome['outcome'] );
 		$this->assertSame( 'merge_in_progress', $outcome['reason'] );
 		$this->assertSame( $due, get_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, true ) );
-		$this->assertSame( array(), $this->captured( 'swpub_scheduled_publish_refused' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_scheduled_publish_refused' ) );
 
 		$next = wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) );
 
@@ -534,7 +534,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$this->assertSame( 'merge_stranded', $outcome['reason'] );
 		$this->assertNull( Scheduled_Publish::scheduled( $this->staged_copy_id ) );
 		$this->assertFalse( wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) ), 'A refusal must not leave an event behind to loop on.' );
-		$this->assertCount( 1, $this->captured( 'swpub_scheduled_publish_refused' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_scheduled_publish_refused' ) );
 	}
 
 	/**
@@ -549,7 +549,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		// Exactly what Merge::claim() does, taken from outside so the merge
 		// finds the claim already held.
-		wp_cache_add( 'merge_' . $this->live_id, 1, 'swpub', 300 );
+		wp_cache_add( 'merge_' . $this->live_id, 1, 'staged_edits', 300 );
 
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
@@ -591,14 +591,14 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$this->assertSame( 'Launches on October 3.', get_post_field( 'post_content', $this->live_id ) );
 		$this->assertNull( get_post( $this->staged_copy_id ) );
 
-		$ran = $this->captured( 'swpub_scheduled_publish_ran' );
+		$ran = $this->captured( 'staged_edits_scheduled_publish_ran' );
 
 		$this->assertCount( 1, $ran );
 		$this->assertSame( array( $this->live_id, $this->staged_copy_id, $due ), array_slice( $ran[0], 0, 3 ) );
 		$this->assertLessThan( 10, $ran[0][3], 'late_by' );
 		$this->assertSame( $this->scheduler_id, $ran[0][4] );
 
-		$completed = $this->captured( 'swpub_merge_completed' );
+		$completed = $this->captured( 'staged_edits_merge_completed' );
 
 		$this->assertCount( 1, $completed );
 		$this->assertSame( $due, $completed[0][1]['scheduled_for'] );
@@ -615,11 +615,11 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, $due );
 		update_post_meta( $this->staged_copy_id, Scheduled_Publish::BY_META, $this->scheduler_id );
 
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- The constant's value is 'swpub_publish_scheduled'; the sniff cannot resolve it statically.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- The constant's value is 'staged_edits_publish_scheduled'; the sniff cannot resolve it statically.
 		do_action( Scheduled_Publish::HOOK, $this->staged_copy_id );
 
 		$this->assertNull( get_post( $this->staged_copy_id ) );
-		$this->assertCount( 1, $this->captured( 'swpub_scheduled_publish_ran' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_scheduled_publish_ran' ) );
 	}
 
 	/**
@@ -636,7 +636,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		$this->assertSame( 'ran', $outcome['outcome'] );
 
-		$ran = $this->captured( 'swpub_scheduled_publish_ran' );
+		$ran = $this->captured( 'staged_edits_scheduled_publish_ran' );
 
 		$this->assertCount( 1, $ran );
 		$this->assertGreaterThanOrEqual( HOUR_IN_SECONDS, $ran[0][3], 'late_by' );
@@ -673,7 +673,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$this->assertNull( Scheduled_Publish::scheduled( $this->staged_copy_id ) );
 		$this->assertFalse( wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) ) );
 
-		$refused = $this->captured( 'swpub_scheduled_publish_refused' );
+		$refused = $this->captured( 'staged_edits_scheduled_publish_refused' );
 
 		$this->assertCount( 1, $refused );
 		$this->assertSame( $this->staged_copy_id, $refused[0][0] );
@@ -690,7 +690,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, $due );
 		update_post_meta( $this->staged_copy_id, Scheduled_Publish::BY_META, $this->scheduler_id );
 
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
@@ -777,7 +777,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$this->assertSame( 'refused', $outcome['outcome'] );
 		$this->assertSame( 'not_staged', $outcome['reason'] );
 
-		$refused = $this->captured( 'swpub_scheduled_publish_refused' );
+		$refused = $this->captured( 'staged_edits_scheduled_publish_refused' );
 
 		$this->assertCount( 1, $refused );
 		$this->assertSame(
@@ -807,15 +807,15 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'refused', $outcome['outcome'] );
-		$this->assertSame( 'swpub_drift', $outcome['reason'] );
+		$this->assertSame( 'staged_edits_drift', $outcome['reason'] );
 
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
 		$this->assertSame( 'A change nobody staged.', get_post_field( 'post_content', $this->live_id ) );
-		$this->assertSame( array(), $this->captured( 'swpub_drift_overridden' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_drift_overridden' ) );
 
 		$refusal = Scheduled_Publish::refusal( $this->staged_copy_id );
 
-		$this->assertSame( 'swpub_drift', $refusal['code'] );
+		$this->assertSame( 'staged_edits_drift', $refusal['code'] );
 	}
 
 	/**
@@ -830,14 +830,14 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		$this->drift_content( 'A change nobody staged.' );
 
-		add_filter( 'swpub_scheduled_publish_overrides_drift', '__return_true' );
+		add_filter( 'staged_edits_scheduled_publish_overrides_drift', '__return_true' );
 
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'ran', $outcome['outcome'] );
 		$this->assertSame( 'Launches on October 3.', get_post_field( 'post_content', $this->live_id ) );
 		$this->assertNull( get_post( $this->staged_copy_id ) );
-		$this->assertCount( 1, $this->captured( 'swpub_drift_overridden' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_drift_overridden' ) );
 	}
 
 	/**
@@ -846,7 +846,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 	 */
 	public function test_the_filter_can_discriminate_by_drift_kind(): void {
 		add_filter(
-			'swpub_scheduled_publish_overrides_drift',
+			'staged_edits_scheduled_publish_overrides_drift',
 			static function ( $override, $copy_id, $live_id, $kind ) {
 				return 'other' === $kind;
 			},
@@ -870,7 +870,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 	 */
 	public function test_the_filter_still_refuses_content_drift_when_scoped_to_other(): void {
 		add_filter(
-			'swpub_scheduled_publish_overrides_drift',
+			'staged_edits_scheduled_publish_overrides_drift',
 			static function ( $override, $copy_id, $live_id, $kind ) {
 				return 'other' === $kind;
 			},
@@ -887,7 +887,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'refused', $outcome['outcome'], 'content-kind drift should not have been overridden.' );
-		$this->assertSame( 'swpub_drift', $outcome['reason'] );
+		$this->assertSame( 'staged_edits_drift', $outcome['reason'] );
 	}
 
 	// ---------------------------------------------------------------
@@ -921,7 +921,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'ran', $outcome['outcome'] );
-		$this->assertCount( 1, $this->captured( 'swpub_drift_overridden' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_drift_overridden' ) );
 	}
 
 	/**
@@ -939,9 +939,9 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'refused', $outcome['outcome'] );
-		$this->assertSame( 'swpub_drift', $outcome['reason'] );
+		$this->assertSame( 'staged_edits_drift', $outcome['reason'] );
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
-		$this->assertSame( array(), $this->captured( 'swpub_drift_overridden' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_drift_overridden' ) );
 	}
 
 	/**
@@ -961,7 +961,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$this->assertSame( 'ran', $outcome['outcome'] );
 		$this->assertSame( 'Launches on October 3.', get_post_field( 'post_content', $this->live_id ) );
 		$this->assertNull( get_post( $this->staged_copy_id ) );
-		$this->assertCount( 1, $this->captured( 'swpub_drift_overridden' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_drift_overridden' ) );
 	}
 
 	/**
@@ -979,7 +979,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'refused', $outcome['outcome'] );
-		$this->assertSame( 'swpub_drift', $outcome['reason'] );
+		$this->assertSame( 'staged_edits_drift', $outcome['reason'] );
 	}
 
 	/**
@@ -991,7 +991,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 	public function test_a_site_filter_returning_false_beats_config_always(): void {
 		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'always' ) );
 
-		add_filter( 'swpub_scheduled_publish_overrides_drift', '__return_false' );
+		add_filter( 'staged_edits_scheduled_publish_overrides_drift', '__return_false' );
 
 		$this->schedule_due();
 		$this->drift_content( 'A change nobody staged.' );
@@ -999,7 +999,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'refused', $outcome['outcome'] );
-		$this->assertSame( array(), $this->captured( 'swpub_drift_overridden' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_drift_overridden' ) );
 	}
 
 	/**
@@ -1011,7 +1011,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 	public function test_a_site_filter_returning_true_beats_config_never(): void {
 		define( Config::CONSTANT_NAME, array( 'scheduled_publish_overrides_drift' => 'never' ) );
 
-		add_filter( 'swpub_scheduled_publish_overrides_drift', '__return_true' );
+		add_filter( 'staged_edits_scheduled_publish_overrides_drift', '__return_true' );
 
 		$this->schedule_due();
 		$this->drift_content( 'A change nobody staged.' );
@@ -1019,7 +1019,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'ran', $outcome['outcome'] );
-		$this->assertCount( 1, $this->captured( 'swpub_drift_overridden' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_drift_overridden' ) );
 	}
 
 	// ---------------------------------------------------------------
@@ -1027,10 +1027,10 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 	// ---------------------------------------------------------------
 
 	/**
-	 * `swpub_pre_merge` vetoes a scheduled run exactly as it vetoes a click.
+	 * `staged_edits_pre_merge` vetoes a scheduled run exactly as it vetoes a click.
 	 */
 	public function test_the_merge_veto_refuses_a_scheduled_run(): void {
-		add_filter( 'swpub_pre_merge', '__return_false' );
+		add_filter( 'staged_edits_pre_merge', '__return_false' );
 
 		$due = gmdate( 'Y-m-d H:i:s', time() - 5 );
 		update_post_meta( $this->staged_copy_id, Scheduled_Publish::AT_META, $due );
@@ -1039,7 +1039,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$outcome = Scheduled_Publish::fire( $this->staged_copy_id );
 
 		$this->assertSame( 'refused', $outcome['outcome'] );
-		$this->assertSame( 'swpub_merge_vetoed', $outcome['reason'] );
+		$this->assertSame( 'staged_edits_merge_vetoed', $outcome['reason'] );
 	}
 
 	// ---------------------------------------------------------------
@@ -1065,7 +1065,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 
 		$this->assertSame( 'skipped', $second['outcome'] );
 		$this->assertSame( 'unscheduled', $second['reason'] );
-		$this->assertSame( array(), $this->captured( 'swpub_scheduled_publish_refused' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_scheduled_publish_refused' ) );
 	}
 
 	// ---------------------------------------------------------------
@@ -1092,7 +1092,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$at = gmdate( 'Y-m-d\TH:i:s\Z', time() + HOUR_IN_SECONDS );
 		Scheduled_Publish::schedule( $this->staged_copy_id, $at, $this->scheduler_id );
 
-		\SaveWithoutPublish\Merge::apply( $this->staged_copy_id );
+		\StagedEdits\Merge::apply( $this->staged_copy_id );
 
 		$this->assertFalse( wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) ) );
 	}

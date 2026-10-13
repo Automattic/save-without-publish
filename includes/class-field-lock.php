@@ -2,12 +2,12 @@
 /**
  * Server-side enforcement of the staged field set.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;
@@ -29,12 +29,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * refused, and an editor whose category edit vanished without comment would
  * reasonably call that data loss.
  *
- * ## The `swpub_field_locked` error code is public contract
+ * ## The `staged_edits_field_locked` error code is public contract
  *
- * Every refusal from this class answers with the error code `swpub_field_locked`,
+ * Every refusal from this class answers with the error code `staged_edits_field_locked`,
  * HTTP 403, and a `field` data key naming the first locked parameter the request
  * would have changed. That triple is API, not an incident identifier, and it is
- * documented here the way `swpub_staged` is (KTD35):
+ * documented here the way `staged_edits_staged` is (KTD35):
  *
  * - The code is what the editor's own request middleware keys on to recognise a
  *   click that reached core's publish control on a staged copy and turn it back
@@ -61,7 +61,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * So `meta` is handled once the lock has passed, by `strip_unstageable_meta()`:
  * a request's `meta` array is narrowed to the staged set (`STAGED_META_KEYS`,
  * empty until VIPPROD-755 T4 gives it real members) and whatever was removed is
- * named on `swpub_meta_keys_dropped` and the `X-SWPub-Meta-Dropped` response
+ * named on `staged_edits_meta_keys_dropped` and the `X-Staged-Edits-Meta-Dropped` response
  * header, rather than costing the rest of the save. A write that is refused
  * for some other locked field is refused whole, meta included, and announces
  * nothing about its meta -- there was no save for the key to be missing from.
@@ -168,7 +168,7 @@ final class Field_Lock {
 	/**
 	 * Refuses a write that would change a locked field on a staged copy.
 	 *
-	 * The refusal shape is contract: code `swpub_field_locked`, status 403, and a
+	 * The refusal shape is contract: code `staged_edits_field_locked`, status 403, and a
 	 * `field` key naming the parameter. See the class doc-block.
 	 *
 	 * @param object          $prepared_post The post about to be written.
@@ -194,10 +194,10 @@ final class Field_Lock {
 
 		if ( null !== $attempted ) {
 			return new WP_Error(
-				'swpub_field_locked',
+				'staged_edits_field_locked',
 				sprintf(
 					/* translators: %s: the name of the field the editor tried to change. */
-					__( 'Only the title, content, and excerpt can be staged. Change %s on the published post instead.', 'save-without-publish' ),
+					__( 'Only the title, content, and excerpt can be staged. Change %s on the published post instead.', 'staged-edits' ),
 					$attempted
 				),
 				array(
@@ -477,7 +477,7 @@ final class Field_Lock {
 		}
 
 		if ( $response instanceof WP_REST_Response ) {
-			$response->header( 'X-SWPub-Meta-Dropped', implode( ',', self::$dropped_meta[ $staged_copy_id ] ) );
+			$response->header( 'X-Staged-Edits-Meta-Dropped', implode( ',', self::$dropped_meta[ $staged_copy_id ] ) );
 		}
 
 		unset( self::$dropped_meta[ $staged_copy_id ] );

@@ -10,10 +10,10 @@
  * requests -- the browser's network panel, a proxy, an error tracker, a log.
  *
  * The second is the backstop. The server still redirects a save that reaches the
- * post endpoint anyway, and still answers `swpub_staged` with HTTP 409, because
+ * post endpoint anyway, and still answers `staged_edits_staged` with HTTP 409, because
  * the protocol above is JavaScript and JavaScript that did not load must not be
  * the difference between staging and publishing. That path is now instrumented
- * rather than routine: the server fires `swpub_staged_via_backstop`, and the end
+ * rather than routine: the server fires `staged_edits_staged_via_backstop`, and the end
  * -to-end suite fails if it is ever heard on a path a working editor takes.
  *
  * Either way the write succeeded, so either way the editor arrives on the staged
@@ -34,14 +34,14 @@ import { REPAIR_ACTION } from './publish-changes';
 import { editStaged } from './routes';
 import { stageChanges } from './stage';
 
-const STAGED_CODE = 'swpub_staged';
+const STAGED_CODE = 'staged_edits_staged';
 
 /**
  * The server's refusal when a write would change something a staged copy cannot
  * hold. Documented contract, not an incident identifier -- see
  * `includes/class-field-lock.php`.
  */
-const LOCKED_CODE = 'swpub_field_locked';
+const LOCKED_CODE = 'staged_edits_field_locked';
 
 /**
  * Fields a staging save drops rather than refuses.
@@ -69,7 +69,7 @@ const DROPPED_FIELDS = [ 'status' ];
  *
  * Per tab and read once, so it cannot outlive the navigation that set it.
  */
-const ARRIVAL_KEY = 'swpub-staged-arrival';
+const ARRIVAL_KEY = 'staged-edits-staged-arrival';
 
 /**
  * Names for the fields a save may not carry alongside a staged change.
@@ -81,23 +81,23 @@ const ARRIVAL_KEY = 'swpub-staged-arrival';
  * @return {Object} Parameter name to label.
  */
 const fieldLabels = () => ( {
-	author: __( 'The author', 'save-without-publish' ),
-	categories: __( 'Categories', 'save-without-publish' ),
-	comment_status: __( 'Comments', 'save-without-publish' ),
-	date: __( 'The publish date', 'save-without-publish' ),
-	date_gmt: __( 'The publish date', 'save-without-publish' ),
-	featured_media: __( 'The featured image', 'save-without-publish' ),
-	format: __( 'The post format', 'save-without-publish' ),
-	menu_order: __( 'The order', 'save-without-publish' ),
-	meta: __( 'Custom fields', 'save-without-publish' ),
-	parent: __( 'The parent', 'save-without-publish' ),
-	password: __( 'The password', 'save-without-publish' ),
-	ping_status: __( 'Pingbacks', 'save-without-publish' ),
-	slug: __( 'The slug', 'save-without-publish' ),
-	status: __( 'The status', 'save-without-publish' ),
-	sticky: __( 'Sticky', 'save-without-publish' ),
-	tags: __( 'Tags', 'save-without-publish' ),
-	template: __( 'The template', 'save-without-publish' ),
+	author: __( 'The author', 'staged-edits' ),
+	categories: __( 'Categories', 'staged-edits' ),
+	comment_status: __( 'Comments', 'staged-edits' ),
+	date: __( 'The publish date', 'staged-edits' ),
+	date_gmt: __( 'The publish date', 'staged-edits' ),
+	featured_media: __( 'The featured image', 'staged-edits' ),
+	format: __( 'The post format', 'staged-edits' ),
+	menu_order: __( 'The order', 'staged-edits' ),
+	meta: __( 'Custom fields', 'staged-edits' ),
+	parent: __( 'The parent', 'staged-edits' ),
+	password: __( 'The password', 'staged-edits' ),
+	ping_status: __( 'Pingbacks', 'staged-edits' ),
+	slug: __( 'The slug', 'staged-edits' ),
+	status: __( 'The status', 'staged-edits' ),
+	sticky: __( 'Sticky', 'staged-edits' ),
+	tags: __( 'Tags', 'staged-edits' ),
+	template: __( 'The template', 'staged-edits' ),
 } );
 
 /**
@@ -115,7 +115,7 @@ const fieldLabels = () => ( {
  * @return {boolean} True when the swap is disabled.
  */
 function swapDisabled() {
-	return true === window.swpubTestDisableSaveSwap;
+	return true === window.stagedEditsTestDisableSaveSwap;
 }
 
 /**
@@ -188,7 +188,7 @@ function shouldStage( ctx, id, fields ) {
 /**
  * Whether this save would write fields the staged copy already owns (R55).
  *
- * The client half of `swpub_live_locked`. The canvas and the title are
+ * The client half of `staged_edits_live_locked`. The canvas and the title are
  * read-only while a copy exists, and the excerpt field is gone from the
  * screen (`existing-staged-copy.js`), but those are courtesies, not the
  * boundary: this is what actually catches an edit that reaches the store some
@@ -270,10 +270,10 @@ function refuseLocked( ctx ) {
 		data.dispatch( 'core/notices' ).createErrorNotice(
 			__(
 				'Not saved. This post already has staged changes, and they are the only place its title, content, and excerpt can be edited.',
-				'save-without-publish'
+				'staged-edits'
 			),
 			{
-				id: 'swpub-live-locked',
+				id: 'staged-edits-live-locked',
 				isDismissible: true,
 				actions: editStaged( ctx ),
 			}
@@ -283,7 +283,7 @@ function refuseLocked( ctx ) {
 	dismissCoreSaveFailure();
 
 	const error = new Error();
-	error.code = 'swpub_live_locked';
+	error.code = 'staged_edits_live_locked';
 
 	return error;
 }
@@ -297,7 +297,7 @@ function refuseLocked( ctx ) {
 function arrivalUrl( editUrl ) {
 	const separator = editUrl.indexOf( '?' ) === -1 ? '?' : '&';
 
-	return editUrl + separator + 'swpub_forked=1';
+	return editUrl + separator + 'staged_edits_forked=1';
 }
 
 /**
@@ -343,7 +343,9 @@ function undoRefused( refused ) {
 
 	// The refusal has been answered; left up, it would go on telling the
 	// editor to undo a change that is no longer there.
-	data.dispatch( 'core/notices' ).removeNotice( 'swpub-unstageable-edit' );
+	data.dispatch( 'core/notices' ).removeNotice(
+		'staged-edits-unstageable-edit'
+	);
 }
 
 /**
@@ -378,19 +380,16 @@ function refuse( refused ) {
 				/* translators: %s: the names of the fields that were changed, as a list. */
 				__(
 					'%s cannot be staged. Undo that change to save, or change it on the published post after your text change is staged.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				named.join( ', ' )
 			),
 			{
-				id: 'swpub-unstageable-edit',
+				id: 'staged-edits-unstageable-edit',
 				isDismissible: true,
 				actions: [
 					{
-						label: __(
-							'Undo those changes',
-							'save-without-publish'
-						),
+						label: __( 'Undo those changes', 'staged-edits' ),
 						onClick: () => undoRefused( refused ),
 					},
 				],
@@ -401,7 +400,7 @@ function refuse( refused ) {
 	dismissCoreSaveFailure();
 
 	const error = new Error();
-	error.code = 'swpub_unstageable_edit';
+	error.code = 'staged_edits_unstageable_edit';
 
 	return error;
 }
@@ -503,9 +502,9 @@ function announceArrival() {
 	data.dispatch( 'core/notices' ).createSuccessNotice(
 		__(
 			'Your change was staged. The published post is unchanged.',
-			'save-without-publish'
+			'staged-edits'
 		),
-		{ id: 'swpub-staged-arrival', type: 'snackbar' }
+		{ id: 'staged-edits-staged-arrival', type: 'snackbar' }
 	);
 }
 

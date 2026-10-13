@@ -3,17 +3,17 @@
  * Field-lock tests for U5 (R29, R30), and for the taxonomy enumeration and
  * meta handling VIPPROD-755 added to it.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Field_Lock;
-use SaveWithoutPublish\Merge;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
+use StagedEdits\Field_Lock;
+use StagedEdits\Merge;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use WP_REST_Request;
 use WP_UnitTestCase;
 
@@ -100,7 +100,7 @@ class Test_Field_Lock extends WP_UnitTestCase {
 	public function test_publishing_a_staged_copy_is_refused(): void {
 		$response = $this->update_staged_copy( array( 'status' => 'publish' ) );
 
-		$this->assertSame( 'swpub_field_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( Status::NAME, get_post( $this->staged_copy_id )->post_status );
 	}
 
@@ -110,7 +110,7 @@ class Test_Field_Lock extends WP_UnitTestCase {
 	public function test_changing_the_staged_copy_slug_is_refused(): void {
 		$response = $this->update_staged_copy( array( 'slug' => 'something-else' ) );
 
-		$this->assertSame( 'swpub_field_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( Staged_Copy_Repository::staged_copy_slug( $this->live_id ), get_post( $this->staged_copy_id )->post_name );
 	}
 
@@ -122,7 +122,7 @@ class Test_Field_Lock extends WP_UnitTestCase {
 
 		$response = $this->update_staged_copy( array( 'categories' => array( $category ) ) );
 
-		$this->assertSame( 'swpub_field_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $response->as_error()->get_error_code() );
 		$this->assertNotContains(
 			$category,
 			wp_get_object_terms( $this->staged_copy_id, 'category', array( 'fields' => 'ids' ) )
@@ -137,7 +137,7 @@ class Test_Field_Lock extends WP_UnitTestCase {
 
 		$response = $this->update_staged_copy( array( 'featured_media' => $attachment ) );
 
-		$this->assertSame( 'swpub_field_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( 0, (int) get_post_thumbnail_id( $this->staged_copy_id ) );
 	}
 
@@ -206,7 +206,7 @@ class Test_Field_Lock extends WP_UnitTestCase {
 		$error = $response->as_error();
 		$data  = $error->get_error_data();
 
-		$this->assertSame( 'swpub_field_locked', $error->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $error->get_error_code() );
 		$this->assertSame( 403, $data['status'] );
 		$this->assertSame( 'status', $data['field'] );
 		$this->assertSame( Status::NAME, get_post_status( $this->staged_copy_id ), 'The staged copy was published anyway.' );
@@ -233,7 +233,7 @@ class Test_Field_Lock_Taxonomy_Enumeration extends WP_UnitTestCase {
 	 * under its own name -- the shape of a site's own classification
 	 * taxonomy, or a plugin's.
 	 */
-	private const TAXONOMY = 'swpub_collection';
+	private const TAXONOMY = 'staged_edits_collection';
 
 	/**
 	 * The published post.
@@ -324,7 +324,7 @@ class Test_Field_Lock_Taxonomy_Enumeration extends WP_UnitTestCase {
 			$response->is_error(),
 			'A term change on an unlisted taxonomy was accepted by a staged copy; it should be refused like categories and tags.'
 		);
-		$this->assertSame( 'swpub_field_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $response->as_error()->get_error_code() );
 		$this->assertNotContains(
 			$term_id,
 			wp_get_object_terms( $this->staged_copy_id, self::TAXONOMY, array( 'fields' => 'ids' ) )
@@ -384,7 +384,7 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 	 * A meta key with the shape of an SEO plugin's editorial field: its own
 	 * name, registered for REST, no relation to anything this plugin knows.
 	 */
-	private const SEO_META_KEY = 'swpub_test_seo_description';
+	private const SEO_META_KEY = 'staged_edits_test_seo_description';
 
 	/**
 	 * The published post.
@@ -462,14 +462,14 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 	 * included, and announces nothing about its meta.
 	 *
 	 * The strip runs only once the lock has passed. Otherwise a save carrying
-	 * `status: publish` and a meta key would fire `swpub_meta_keys_dropped`
+	 * `status: publish` and a meta key would fire `staged_edits_meta_keys_dropped`
 	 * and queue the header -- both of which say "the save went through
 	 * without this key" -- and then be refused.
 	 */
 	public function test_a_write_refused_for_another_field_announces_no_dropped_meta(): void {
 		$fired = 0;
 		add_action(
-			'swpub_meta_keys_dropped',
+			'staged_edits_meta_keys_dropped',
 			static function () use ( &$fired ) {
 				++$fired;
 			}
@@ -484,11 +484,11 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 		);
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_field_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( 'status', $response->as_error()->get_error_data()['field'] );
 
 		$this->assertSame( 0, $fired, 'A refused write must not announce dropped meta.' );
-		$this->assertArrayNotHasKey( 'X-SWPub-Meta-Dropped', $response->get_headers() );
+		$this->assertArrayNotHasKey( 'X-Staged-Edits-Meta-Dropped', $response->get_headers() );
 
 		$staged_copy = get_post( $this->staged_copy_id );
 		$this->assertSame( Status::NAME, $staged_copy->post_status );
@@ -515,7 +515,7 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 		);
 
 		$this->assertFalse( $response->is_error() );
-		$this->assertSame( self::SEO_META_KEY, $response->get_headers()['X-SWPub-Meta-Dropped'] );
+		$this->assertSame( self::SEO_META_KEY, $response->get_headers()['X-Staged-Edits-Meta-Dropped'] );
 		$this->assertSame( array( 'a', 'b' ), get_post_meta( $this->staged_copy_id, self::SEO_META_KEY, true ), 'The stored value must be untouched.' );
 	}
 
@@ -525,13 +525,13 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 	 * `register_block_core_footnotes_post_meta()`): the content edit
 	 * persists; the footnotes key -- outside the (currently empty)
 	 * staged-meta set -- is stripped rather than written; a warning names
-	 * it, both as the `swpub_meta_keys_dropped` action and as a response
+	 * it, both as the `staged_edits_meta_keys_dropped` action and as a response
 	 * header a REST client can read without subscribing to anything.
 	 */
 	public function test_footnotes_meta_is_dropped_and_content_still_saves(): void {
 		$dropped = array();
 		add_action(
-			'swpub_meta_keys_dropped',
+			'staged_edits_meta_keys_dropped',
 			static function ( $staged_copy_id, $keys ) use ( &$dropped ) {
 				$dropped[] = array( $staged_copy_id, $keys );
 			},
@@ -572,8 +572,8 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 		$this->assertSame( array( 'footnotes' ), $dropped[0][1] );
 
 		$headers = $response->get_headers();
-		$this->assertArrayHasKey( 'X-SWPub-Meta-Dropped', $headers, 'No response header named the dropped key.' );
-		$this->assertSame( 'footnotes', $headers['X-SWPub-Meta-Dropped'] );
+		$this->assertArrayHasKey( 'X-Staged-Edits-Meta-Dropped', $headers, 'No response header named the dropped key.' );
+		$this->assertSame( 'footnotes', $headers['X-Staged-Edits-Meta-Dropped'] );
 	}
 
 	/**
@@ -584,7 +584,7 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 	public function test_an_editorial_meta_key_is_dropped_and_content_still_saves(): void {
 		$dropped = array();
 		add_action(
-			'swpub_meta_keys_dropped',
+			'staged_edits_meta_keys_dropped',
 			static function ( $staged_copy_id, $keys ) use ( &$dropped ) {
 				$dropped[] = array( $staged_copy_id, $keys );
 			},
@@ -612,8 +612,8 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 		$this->assertSame( array( self::SEO_META_KEY ), $dropped[0][1] );
 
 		$headers = $response->get_headers();
-		$this->assertArrayHasKey( 'X-SWPub-Meta-Dropped', $headers );
-		$this->assertSame( self::SEO_META_KEY, $headers['X-SWPub-Meta-Dropped'] );
+		$this->assertArrayHasKey( 'X-Staged-Edits-Meta-Dropped', $headers );
+		$this->assertSame( self::SEO_META_KEY, $headers['X-Staged-Edits-Meta-Dropped'] );
 	}
 
 	/**
@@ -625,7 +625,7 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 	 */
 	public function test_locked_taxonomies_lists_every_rest_taxonomy_of_the_post_type(): void {
 		register_taxonomy(
-			'swpub_test_tax',
+			'staged_edits_test_tax',
 			'post',
 			array(
 				'show_in_rest' => true,
@@ -637,9 +637,9 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 
 		$this->assertContains( 'category', $taxonomies );
 		$this->assertContains( 'post_tag', $taxonomies );
-		$this->assertContains( 'swpub_test_tax', $taxonomies );
+		$this->assertContains( 'staged_edits_test_tax', $taxonomies );
 
-		unregister_taxonomy( 'swpub_test_tax' );
+		unregister_taxonomy( 'staged_edits_test_tax' );
 	}
 
 	/**
@@ -649,15 +649,15 @@ class Test_Field_Lock_Meta extends WP_UnitTestCase {
 	 */
 	public function test_locked_taxonomies_excludes_a_taxonomy_not_exposed_to_rest(): void {
 		register_taxonomy(
-			'swpub_test_hidden_tax',
+			'staged_edits_test_hidden_tax',
 			'post',
 			array( 'show_in_rest' => false )
 		);
 
 		$taxonomies = Field_Lock::locked_taxonomies( 'post' );
 
-		$this->assertNotContains( 'swpub_test_hidden_tax', $taxonomies );
+		$this->assertNotContains( 'staged_edits_test_hidden_tax', $taxonomies );
 
-		unregister_taxonomy( 'swpub_test_hidden_tax' );
+		unregister_taxonomy( 'staged_edits_test_hidden_tax' );
 	}
 }

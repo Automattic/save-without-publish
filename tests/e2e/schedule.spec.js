@@ -33,7 +33,7 @@ const PUBLISHED_TEXT = 'The Summer collection launches in June.';
  * @return {Object} A locator for the button.
  */
 function scheduleToggle( page ) {
-	return page.locator( '.swpub-schedule-row__button' );
+	return page.locator( '.staged-edits-schedule-row__button' );
 }
 
 /**
@@ -44,7 +44,7 @@ function scheduleToggle( page ) {
  * @return {Object} A locator for the popover.
  */
 function schedulePopover( page ) {
-	return page.locator( '.swpub-schedule-row__popover' );
+	return page.locator( '.staged-edits-schedule-row__popover' );
 }
 
 /**

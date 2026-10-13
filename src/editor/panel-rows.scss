@@ -13,11 +13,11 @@
  * core when core changes.
  */
 
-.components-panel__row.swpub-staged-row,
-.components-panel__row.swpub-stage-row,
-.components-panel__row.swpub-status-row,
-.components-panel__row.swpub-published-row,
-.components-panel__row.swpub-schedule-row {
+.components-panel__row.staged-edits-staged-row,
+.components-panel__row.staged-edits-stage-row,
+.components-panel__row.staged-edits-status-row,
+.components-panel__row.staged-edits-published-row,
+.components-panel__row.staged-edits-schedule-row {
 	// Core's rows are spaced by their container's gap, not by their own margin.
 	margin-top: 0;
 
@@ -47,11 +47,11 @@
  * which is where they sit today. Rows in the wrong place, never rows that are
  * gone.
  */
-.components-panel__row.swpub-status-row {
+.components-panel__row.staged-edits-status-row {
 	order: -2;
 }
 
-.components-panel__row.swpub-published-row {
+.components-panel__row.staged-edits-published-row {
 	order: -1;
 
 	// Its help line (VIPPROD-1228) wraps onto a line of its own; see below.
@@ -65,7 +65,7 @@
  * the width of the panel and centres its label, and this one sits in the same
  * place doing the same job.
  */
-.components-panel__row.swpub-discard-row {
+.components-panel__row.staged-edits-discard-row {
 	margin-top: 0;
 
 	.components-button {
@@ -86,7 +86,7 @@
  * text starts a new one under them. The `flex-wrap` half sits with the
  * row's `order` above.
  */
-.swpub-published-row__help {
+.staged-edits-published-row__help {
 	flex-basis: 100%;
 	margin: 4px 0 0;
 	color: #757575;
@@ -103,7 +103,7 @@
  * own row stays exactly where it was. An unscoped hide would delete it on the
  * one page load where it is the only thing left.
  */
-.editor-post-summary:has(.swpub-status-row)
+.editor-post-summary:has(.staged-edits-status-row)
 	.editor-post-panel__row:has(.editor-post-status) {
 	display: none;
 }
@@ -115,7 +115,7 @@
  * back when this rule does not match destroys staged work, and it is worse to
  * hide it than to show it twice.
  */
-.editor-post-summary:has(.swpub-discard-row) .editor-post-trash {
+.editor-post-summary:has(.staged-edits-discard-row) .editor-post-trash {
 	display: none;
 }
 
@@ -141,17 +141,17 @@
  * `unstageable-fields.js`'s canary watches the `aria-label` selectors going
  * stale.
  */
-.editor-post-summary:has(.swpub-status-row)
+.editor-post-summary:has(.staged-edits-status-row)
 	.editor-post-panel__row:has(.editor-post-schedule__panel-dropdown),
-.editor-post-summary:has(.swpub-status-row)
+.editor-post-summary:has(.staged-edits-status-row)
 	.editor-post-panel__row:has(.editor-post-url__panel-dropdown),
-.editor-post-summary:has(.swpub-status-row)
+.editor-post-summary:has(.staged-edits-status-row)
 	.editor-post-panel__row:has(.components-dropdown-menu__toggle),
-.editor-post-summary:has(.swpub-status-row)
+.editor-post-summary:has(.staged-edits-status-row)
 	.editor-post-panel__row:has([aria-label="Template options"]),
-.editor-post-summary:has(.swpub-status-row)
+.editor-post-summary:has(.staged-edits-status-row)
 	.editor-post-panel__row:has([aria-label^="Change author:"]),
-.editor-post-summary:has(.swpub-status-row)
+.editor-post-summary:has(.staged-edits-status-row)
 	.editor-post-panel__row:has([aria-label^="Change format:"]) {
 	display: none;
 }

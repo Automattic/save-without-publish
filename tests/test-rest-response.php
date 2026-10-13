@@ -2,16 +2,16 @@
 /**
  * The machine-client REST response for U4 (R48, R50).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
 use ReflectionProperty;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Write_Guard;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Write_Guard;
 use WP_Post;
 use WP_REST_Request;
 use WP_UnitTestCase;
@@ -22,7 +22,7 @@ use WP_UnitTestCase;
  * The guarantee under test is not "the write was contained" -- `tests/test-write-guard.php`
  * owns that -- but what the client is told about it. A write that succeeded must
  * not arrive as an error, the body must be the published post's true state rather
- * than the values the client sent, and the `swpub` field must name the staged copy
+ * than the values the client sent, and the `staged_edits` field must name the staged copy
  * for exactly the request that staged something and no other.
  */
 class Test_Rest_Response extends WP_UnitTestCase {
@@ -88,7 +88,7 @@ class Test_Rest_Response extends WP_UnitTestCase {
 		$this->engagements = array();
 
 		add_action(
-			'swpub_write_staged',
+			'staged_edits_write_staged',
 			function ( $staged_copy_id, $live_id, $channel, $user_id ): void {
 				$this->engagements[] = array(
 					'staged_copy_id' => (int) $staged_copy_id,
@@ -193,7 +193,7 @@ class Test_Rest_Response extends WP_UnitTestCase {
 	 * The 200 and the live-state body are already true once the guard diverts the
 	 * write, because the divert leaves the controller with an ordinary successful
 	 * update of an unchanged row. What is asserted here as well is the part that
-	 * makes it legible: without `swpub`, a client is told its write succeeded and
+	 * makes it legible: without `staged_edits`, a client is told its write succeeded and
 	 * handed back its own values unchanged, with nothing anywhere saying why.
 	 *
 	 * On a first write with the seam closed, which is the one shape a token client
@@ -204,7 +204,7 @@ class Test_Rest_Response extends WP_UnitTestCase {
 	 * token client reaches the divert at all.
 	 */
 	public function test_a_token_write_returns_the_live_state_and_names_the_staged_copy(): void {
-		add_filter( 'swpub_enforce_programmatic_first_save', '__return_true' );
+		add_filter( 'staged_edits_enforce_programmatic_first_save', '__return_true' );
 
 		$response = $this->rest_write( array( 'content' => self::INCOMING_CONTENT ) );
 
@@ -222,14 +222,14 @@ class Test_Rest_Response extends WP_UnitTestCase {
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 
-		$this->assertIsArray( $data['swpub'] );
-		$this->assertTrue( $data['swpub']['staged'] );
-		$this->assertSame( $staged_copy->ID, $data['swpub']['staged_copy_id'] );
+		$this->assertIsArray( $data['staged_edits'] );
+		$this->assertTrue( $data['staged_edits']['staged'] );
+		$this->assertSame( $staged_copy->ID, $data['staged_edits']['staged_copy_id'] );
 		$this->assertSame(
 			(string) get_edit_post_link( $staged_copy->ID, 'raw' ),
-			$data['swpub']['edit_url']
+			$data['staged_edits']['edit_url']
 		);
-		$this->assertNotSame( '', $data['swpub']['edit_url'] );
+		$this->assertNotSame( '', $data['staged_edits']['edit_url'] );
 
 		$this->assertCount( 1, $this->engagements );
 		$this->assertSame( $staged_copy->ID, $this->engagements[0]['staged_copy_id'] );
@@ -259,8 +259,8 @@ class Test_Rest_Response extends WP_UnitTestCase {
 
 		$data = $response->get_data();
 
-		$this->assertArrayHasKey( 'swpub', $data );
-		$this->assertNull( $data['swpub'] );
+		$this->assertArrayHasKey( 'staged_edits', $data );
+		$this->assertNull( $data['staged_edits'] );
 		$this->assertInstanceOf( WP_Post::class, Staged_Copy_Repository::find_for_live( $this->live_id ) );
 		$this->assertSame(
 			$staged_copy->ID,
@@ -280,8 +280,8 @@ class Test_Rest_Response extends WP_UnitTestCase {
 
 		$data = $response->get_data();
 
-		$this->assertArrayHasKey( 'swpub', $data );
-		$this->assertNull( $data['swpub'] );
+		$this->assertArrayHasKey( 'staged_edits', $data );
+		$this->assertNull( $data['staged_edits'] );
 		$this->assertSame( 'summer-collection', $data['slug'] );
 		$this->assertSame( 'summer-collection', $this->stored( $this->live_id, 'post_name' ) );
 		$this->assertSame( array(), $this->engagements );
@@ -312,9 +312,9 @@ class Test_Rest_Response extends WP_UnitTestCase {
 
 		$data = $response->get_data();
 
-		$this->assertArrayHasKey( 'swpub', $data['schema']['properties'] );
+		$this->assertArrayHasKey( 'staged_edits', $data['schema']['properties'] );
 
-		$field = $data['schema']['properties']['swpub'];
+		$field = $data['schema']['properties']['staged_edits'];
 
 		$this->assertTrue( $field['readonly'] );
 		$this->assertSame( array( 'object', 'null' ), $field['type'] );
@@ -339,7 +339,7 @@ class Test_Rest_Response extends WP_UnitTestCase {
 
 		$error = $response->as_error();
 
-		$this->assertSame( 'swpub_staged', $error->get_error_code() );
+		$this->assertSame( 'staged_edits_staged', $error->get_error_code() );
 
 		$staged_copy = Staged_Copy_Repository::find_for_live( $this->live_id );
 

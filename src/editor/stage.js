@@ -19,7 +19,7 @@ import { STAGED_FIELDS } from './edits';
  * Namespaced because core keys locks by string and every plugin's locks share
  * one register; releasing another plugin's lock is a one-word typo away.
  */
-const LOCK = 'swpub/staging';
+const LOCK = 'staged-edits/staging';
 
 /**
  * Takes or releases the autosave lock (KTD39).
@@ -80,7 +80,7 @@ export async function stageChanges( liveId, fields ) {
 
 	try {
 		return await apiFetch( {
-			path: `/swpub/v1/stage/${ liveId }`,
+			path: `/staged-edits/v1/stage/${ liveId }`,
 			method: 'POST',
 			data,
 		} );

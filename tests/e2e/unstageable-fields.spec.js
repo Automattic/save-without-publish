@@ -68,10 +68,10 @@ function unstageableControls( page ) {
  */
 function ownRows( page ) {
 	return {
-		Status: page.locator( '.swpub-status-row' ),
-		'Publish at': page.locator( '.swpub-schedule-row' ),
-		'Published post': page.locator( '.swpub-published-row' ),
-		Discard: page.locator( '.swpub-discard-row' ),
+		Status: page.locator( '.staged-edits-status-row' ),
+		'Publish at': page.locator( '.staged-edits-schedule-row' ),
+		'Published post': page.locator( '.staged-edits-published-row' ),
+		Discard: page.locator( '.staged-edits-discard-row' ),
 	};
 }
 
@@ -117,7 +117,9 @@ test.describe( 'Fields that cannot be staged', () => {
 		await openEditor( page, stagedCopyId );
 		await showDocumentPanel( page );
 
-		await expect( page.locator( '.swpub-published-row__help' ) ).toHaveText(
+		await expect(
+			page.locator( '.staged-edits-published-row__help' )
+		).toHaveText(
 			'Slug, publish date, author, categories, tags, featured image, and discussion are set on the published post.'
 		);
 	} );
@@ -318,7 +320,7 @@ test.describe( 'Undo those changes', () => {
 		// The published post's first stage forks to a new copy and navigates
 		// there (`fork-navigation.js`'s `stageInstead()`) -- not the same-page
 		// snackbar a save onto an existing copy shows.
-		await page.waitForURL( /swpub_forked=1/ );
+		await page.waitForURL( /staged_edits_forked=1/ );
 
 		expect(
 			stagedCopyIdFor( liveId ),

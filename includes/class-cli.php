@@ -2,12 +2,12 @@
 /**
  * WP-CLI commands for finding and repairing staged state.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_CLI;
 use WP_Post;
@@ -52,7 +52,7 @@ final class CLI {
 		}
 
 		WP_CLI::add_command(
-			'swpub list',
+			'staged-edits list',
 			array( __CLASS__, 'command_list' ),
 			array(
 				'shortdesc' => 'Lists every staged copy, its published post, and any merge in flight.',
@@ -60,7 +60,7 @@ final class CLI {
 		);
 
 		WP_CLI::add_command(
-			'swpub repair',
+			'staged-edits repair',
 			array( __CLASS__, 'command_repair' ),
 			array(
 				'shortdesc' => 'Resumes or reports an interrupted merge.',
@@ -68,7 +68,7 @@ final class CLI {
 		);
 
 		WP_CLI::add_command(
-			'swpub schedule',
+			'staged-edits schedule',
 			array( __CLASS__, 'command_schedule' ),
 			array(
 				'shortdesc' => 'Schedules a staged copy to publish at a set time (VIPPROD-1247).',
@@ -76,7 +76,7 @@ final class CLI {
 		);
 
 		WP_CLI::add_command(
-			'swpub unschedule',
+			'staged-edits unschedule',
 			array( __CLASS__, 'command_unschedule' ),
 			array(
 				'shortdesc' => "Cancels a staged copy's scheduled publish (VIPPROD-1247).",
@@ -84,7 +84,7 @@ final class CLI {
 		);
 
 		WP_CLI::add_command(
-			'swpub publish',
+			'staged-edits publish',
 			array( __CLASS__, 'command_publish' ),
 			array(
 				'shortdesc' => 'Publishes a staged copy immediately, from the command line (VIPPROD-1247).',
@@ -92,7 +92,7 @@ final class CLI {
 		);
 
 		WP_CLI::add_command(
-			'swpub run-due',
+			'staged-edits run-due',
 			array( __CLASS__, 'command_run_due' ),
 			array(
 				'shortdesc' => 'Fires every scheduled publish that is due now (VIPPROD-1247).',
@@ -176,7 +176,7 @@ final class CLI {
 	}
 
 	/**
-	 * `wp swpub list`
+	 * `wp staged-edits list`
 	 *
 	 * ## OPTIONS
 	 *
@@ -211,7 +211,7 @@ final class CLI {
 	}
 
 	/**
-	 * `wp swpub repair <post-id>`
+	 * `wp staged-edits repair <post-id>`
 	 *
 	 * ## OPTIONS
 	 *
@@ -259,10 +259,10 @@ final class CLI {
 	}
 
 	/**
-	 * `wp swpub schedule <copy> --at=<datetime>`
+	 * `wp staged-edits schedule <copy> --at=<datetime>`
 	 *
 	 * Runs as WP-CLI's own `--user` global, the same flag every WP-CLI
-	 * command already reads: `wp swpub schedule 123 --at="+2 minutes"
+	 * command already reads: `wp staged-edits schedule 123 --at="+2 minutes"
 	 * --user=admin`. That person becomes the acting user when the schedule
 	 * fires (VIPPROD-1247), exactly as scheduling from the editor would make
 	 * the person clicking the acting user.
@@ -321,7 +321,7 @@ final class CLI {
 	}
 
 	/**
-	 * `wp swpub unschedule <copy>`
+	 * `wp staged-edits unschedule <copy>`
 	 *
 	 * ## OPTIONS
 	 *
@@ -346,7 +346,7 @@ final class CLI {
 	}
 
 	/**
-	 * `wp swpub publish <copy>`
+	 * `wp staged-edits publish <copy>`
 	 *
 	 * The merge, from the command line: applies immediately, as WP-CLI's own
 	 * `--user` global, with every refusal the editor's own click meets --
@@ -397,7 +397,7 @@ final class CLI {
 	}
 
 	/**
-	 * `wp swpub run-due`
+	 * `wp staged-edits run-due`
 	 *
 	 * Fires every schedule whose time has come, the way a system cron line
 	 * would on a site running `DISABLE_WP_CRON` (VIPPROD-1247). Also the

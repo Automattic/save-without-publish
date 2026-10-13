@@ -2,15 +2,15 @@
 /**
  * Authorization tests for U12 (R28).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Capabilities;
+use StagedEdits\Staged_Copy_Repository;
 use WP_REST_Request;
 use WP_UnitTestCase;
 
@@ -238,9 +238,9 @@ class Test_Authorization extends WP_UnitTestCase {
 		wp_set_current_user( $granted->ID );
 		$this->assertTrue( Capabilities::current_user_can_publish_directly( $this->live_id ) );
 
-		add_filter( 'swpub_can_publish_directly', '__return_false' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_false' );
 		$this->assertFalse( Capabilities::current_user_can_publish_directly( $this->live_id ) );
-		remove_filter( 'swpub_can_publish_directly', '__return_false' );
+		remove_filter( 'staged_edits_can_publish_directly', '__return_false' );
 
 		$this->assertTrue( Capabilities::current_user_can_publish_directly( $this->live_id ) );
 	}
@@ -259,11 +259,11 @@ class Test_Authorization extends WP_UnitTestCase {
 
 		$this->assertFalse( Capabilities::current_user_can_publish_directly( $this->live_id ) );
 
-		add_filter( 'swpub_can_publish_directly', '__return_true' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		$this->assertTrue( Capabilities::current_user_can_publish_directly( $this->live_id ) );
 
-		remove_filter( 'swpub_can_publish_directly', '__return_true' );
+		remove_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		$this->assertFalse( Capabilities::current_user_can_publish_directly( $this->live_id ) );
 	}
@@ -278,7 +278,7 @@ class Test_Authorization extends WP_UnitTestCase {
 		$granted = get_user_by( 'id', $this->editor_id );
 		$granted->add_cap( Capabilities::PUBLISH_DIRECTLY_POSTS );
 
-		add_filter( 'swpub_can_publish_directly', '__return_null' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_null' );
 
 		wp_set_current_user( $granted->ID );
 		$this->assertTrue( Capabilities::current_user_can_publish_directly( $this->live_id ) );
@@ -293,7 +293,7 @@ class Test_Authorization extends WP_UnitTestCase {
 	public function test_filter_cannot_grant_the_bypass_on_a_missing_post(): void {
 		wp_set_current_user( $this->editor_id );
 
-		add_filter( 'swpub_can_publish_directly', '__return_true' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		$this->assertFalse( Capabilities::current_user_can_publish_directly( 999999 ) );
 	}
@@ -303,22 +303,22 @@ class Test_Authorization extends WP_UnitTestCase {
 	 *
 	 * A grant on posts is not a grant on every type a site registers: the
 	 * capability name is built from the type's own publish capability, so the
-	 * locked type below needs `swpub_publish_directly_swpub_lockeds` and does
+	 * locked type below needs `staged_edits_publish_directly_staged_edits_lockeds` and does
 	 * not get it from the grant on posts.
 	 */
 	public function test_direct_publish_is_resolved_per_post_type(): void {
 		register_post_type(
-			'swpub_locked',
+			'staged_edits_locked',
 			array(
 				'public'          => true,
-				'capability_type' => 'swpub_locked',
+				'capability_type' => 'staged_edits_locked',
 				'map_meta_cap'    => true,
 			)
 		);
 
 		$locked = self::factory()->post->create(
 			array(
-				'post_type'   => 'swpub_locked',
+				'post_type'   => 'staged_edits_locked',
 				'post_status' => 'publish',
 			)
 		);
@@ -331,7 +331,7 @@ class Test_Authorization extends WP_UnitTestCase {
 		$this->assertTrue( Capabilities::current_user_can_publish_directly( $this->live_id ) );
 		$this->assertFalse( Capabilities::current_user_can_publish_directly( $locked ) );
 
-		unregister_post_type( 'swpub_locked' );
+		unregister_post_type( 'staged_edits_locked' );
 	}
 
 	/**
@@ -366,7 +366,7 @@ class Test_Authorization extends WP_UnitTestCase {
 
 		wp_set_current_user( $revisor->ID );
 
-		add_filter( 'swpub_can_publish_directly', '__return_true' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		$this->assertTrue(
 			Capabilities::current_user_can_publish_directly( $this->live_id ),

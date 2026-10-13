@@ -2,12 +2,12 @@
 /**
  * The REST route that schedules and cancels a publish.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_REST_Request;
@@ -58,7 +58,7 @@ final class Schedule_Route {
 						'at' => array(
 							'type'        => 'string',
 							'required'    => true,
-							'description' => __( 'When to publish these changes. ISO 8601; a time with no offset is treated as site-local, exactly as the date parameter is.', 'save-without-publish' ),
+							'description' => __( 'When to publish these changes. ISO 8601; a time with no offset is treated as site-local, exactly as the date parameter is.', 'staged-edits' ),
 						),
 					),
 				),
