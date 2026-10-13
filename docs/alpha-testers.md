@@ -85,7 +85,7 @@ If you test this, test both: a scheduled publish with nothing changed (it should
 
 ## Reporting a problem
 
-Open an issue at https://github.com/Automattic/save-without-publish/issues.
+Open an issue at https://github.com/Automattic/staged-edits/issues.
 
 Please include:
 

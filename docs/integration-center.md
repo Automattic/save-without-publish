@@ -40,4 +40,4 @@ One optional setting, set by the platform: what a scheduled publish does when th
 
 ## Getting help
 
-Open an issue at https://github.com/Automattic/save-without-publish/issues. The [alpha tester page](alpha-testers.md#reporting-a-problem) lists what to include.
+Open an issue at https://github.com/Automattic/staged-edits/issues. The [alpha tester page](alpha-testers.md#reporting-a-problem) lists what to include.
