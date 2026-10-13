@@ -142,7 +142,7 @@ test.describe( 'When the editor chrome cannot attach', () => {
 		// independently, so an unscoped hide would take core's controls away on
 		// exactly this page load.
 		await page.route(
-			'**/save-without-publish/build/index.js*',
+			'**/wp-content/plugins/*/build/index.js*',
 			( route ) => route.abort()
 		);
 
@@ -153,7 +153,7 @@ test.describe( 'When the editor chrome cannot attach', () => {
 			await page.evaluate(
 				() =>
 					!! document.querySelector(
-						'link[href*="save-without-publish/build/index.css"]'
+						'link[href*="/wp-content/plugins/"][href*="/build/index.css"]'
 					)
 			),
 			'The stylesheet did not load, so this proves nothing.'

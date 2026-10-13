@@ -528,7 +528,7 @@ test.describe( 'When the editor protocol does not run', () => {
 		// failure AE26 describes. Everything below is what the server does on
 		// its own.
 		await page.route(
-			'**/save-without-publish/build/index.js*',
+			'**/wp-content/plugins/*/build/index.js*',
 			( route ) => route.abort()
 		);
 
