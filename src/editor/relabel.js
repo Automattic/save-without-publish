@@ -13,7 +13,7 @@
  * a published post that already has a staged copy, the same "Submit for
  * Review" or "Stage changes" promises the one thing that save cannot do: the
  * copy owns the title, content, and excerpt now, and a write to any of them
- * is refused (`swpub_live_locked`). That case reads "Save" instead, honestly:
+ * is refused (`staged_edits_live_locked`). That case reads "Save" instead, honestly:
  * a write that changes none of those three fields -- a category, a featured
  * image -- still applies to the published post exactly as core, so "Save" is
  * never a lie there, and where it would be the fields are locked at the

@@ -133,7 +133,7 @@ class Test_Fork extends WP_UnitTestCase {
 		$response = $this->update_post( $this->live_id, array( 'content' => 'Launches in July.' ) );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_live_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_live_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( $before, get_post_field( 'post_content', $this->live_id ) );
 		$this->assertSame( $copy_before, get_post_field( 'post_content', $staged_copy->ID ), 'The staged copy was overwritten from the published post.' );
 	}
@@ -156,11 +156,11 @@ class Test_Fork extends WP_UnitTestCase {
 	 */
 	public function test_filter_forcing_staging_stages_a_publisher_save(): void {
 		wp_set_current_user( $this->publisher_id );
-		add_filter( 'swpub_can_publish_directly', '__return_false' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_false' );
 
 		$response = $this->update_post( $this->live_id, array( 'content' => 'Launches in July.' ) );
 
-		remove_filter( 'swpub_can_publish_directly', '__return_false' );
+		remove_filter( 'staged_edits_can_publish_directly', '__return_false' );
 
 		$this->assertTrue( $response->is_error() );
 		$this->assertInstanceOf( WP_Post::class, Staged_Copy_Repository::find_for_live( $this->live_id ) );
@@ -173,13 +173,13 @@ class Test_Fork extends WP_UnitTestCase {
 	 */
 	public function test_kill_switch_short_circuits_before_the_gate(): void {
 		wp_set_current_user( $this->publisher_id );
-		add_filter( 'swpub_can_publish_directly', '__return_false' );
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$response = $this->update_post( $this->live_id, array( 'content' => 'Launches in July.' ) );
 
-		remove_filter( 'swpub_is_enabled', '__return_false' );
-		remove_filter( 'swpub_can_publish_directly', '__return_false' );
+		remove_filter( 'staged_edits_is_enabled', '__return_false' );
+		remove_filter( 'staged_edits_can_publish_directly', '__return_false' );
 
 		$this->assertFalse( $response->is_error() );
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ) );
@@ -240,7 +240,7 @@ class Test_Fork extends WP_UnitTestCase {
 	 */
 	public function test_a_private_rest_post_type_is_staged(): void {
 		register_post_type(
-			'swpub_internal',
+			'staged_edits_hidden',
 			array(
 				'public'       => false,
 				'show_in_rest' => true,
@@ -259,26 +259,26 @@ class Test_Fork extends WP_UnitTestCase {
 
 		$live_id = self::factory()->post->create(
 			array(
-				'post_type'    => 'swpub_internal',
+				'post_type'    => 'staged_edits_hidden',
 				'post_status'  => 'publish',
 				'post_content' => 'Internal, published.',
 			)
 		);
 
-		$request = new WP_REST_Request( 'POST', '/wp/v2/swpub_internal/' . $live_id );
+		$request = new WP_REST_Request( 'POST', '/wp/v2/staged_edits_hidden/' . $live_id );
 		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 		$request->set_param( 'content', 'Internal, edited.' );
 
 		$response = rest_get_server()->dispatch( $request );
 
-		$this->assertSame( 'swpub_staged', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_staged', $response->as_error()->get_error_code() );
 		$this->assertStringContainsString( 'Internal, published.', get_post( $live_id )->post_content );
 
 		$staged_copy = Staged_Copy_Repository::find_for_live( $live_id );
 		$this->assertInstanceOf( \WP_Post::class, $staged_copy );
-		$this->assertSame( 'swpub_internal', $staged_copy->post_type );
+		$this->assertSame( 'staged_edits_hidden', $staged_copy->post_type );
 
-		unregister_post_type( 'swpub_internal' );
+		unregister_post_type( 'staged_edits_hidden' );
 	}
 
 	/**
@@ -297,7 +297,7 @@ class Test_Fork extends WP_UnitTestCase {
 
 		$response = $this->update_post( $this->live_id, array( 'content' => 'Launches October 3.' ) );
 
-		$this->assertSame( 'swpub_staged', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_staged', $response->as_error()->get_error_code() );
 
 		$staged_copy = Staged_Copy_Repository::find_for_live( $this->live_id );
 		$this->assertInstanceOf( WP_Post::class, $staged_copy );
@@ -354,7 +354,7 @@ class Test_Fork extends WP_UnitTestCase {
 		$response = $this->update_post( $this->live_id, array( 'content' => 'Second staged edit.' ) );
 		$second   = Staged_Copy_Repository::find_for_live( $this->live_id );
 
-		$this->assertSame( 'swpub_live_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_live_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( $first->ID, $second->ID, 'A second staged copy was created.' );
 		$this->assertStringContainsString( 'First staged edit', get_post( $second->ID )->post_content );
 	}
@@ -427,11 +427,11 @@ class Test_Fork extends WP_UnitTestCase {
 	 * The R32 kill switch turns staging off without deactivating the plugin.
 	 */
 	public function test_kill_switch_disables_forking(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$this->update_post( $this->live_id, array( 'content' => 'Published directly.' ) );
 
-		remove_filter( 'swpub_is_enabled', '__return_false' );
+		remove_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ) );
 		$this->assertStringContainsString( 'Published directly', get_post( $this->live_id )->post_content );
@@ -490,7 +490,7 @@ class Test_Fork extends WP_UnitTestCase {
 	 */
 	public function test_late_registered_public_post_type_forks(): void {
 		register_post_type(
-			'swpub_late',
+			'staged_edits_late',
 			array(
 				'public'       => true,
 				'show_in_rest' => true,
@@ -508,20 +508,20 @@ class Test_Fork extends WP_UnitTestCase {
 
 		$late_id = self::factory()->post->create(
 			array(
-				'post_type'    => 'swpub_late',
+				'post_type'    => 'staged_edits_late',
 				'post_status'  => 'publish',
 				'post_content' => 'Original.',
 			)
 		);
 
-		$request = new WP_REST_Request( 'POST', '/wp/v2/swpub_late/' . $late_id );
+		$request = new WP_REST_Request( 'POST', '/wp/v2/staged_edits_late/' . $late_id );
 		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 		$request->set_param( 'content', 'Staged.' );
 		rest_get_server()->dispatch( $request );
 
 		$staged_copy = Staged_Copy_Repository::find_for_live( $late_id );
 
-		unregister_post_type( 'swpub_late' );
+		unregister_post_type( 'staged_edits_late' );
 
 		$this->assertInstanceOf( WP_Post::class, $staged_copy, 'A late-registered public type did not fork.' );
 		$this->assertStringContainsString( 'Original.', get_post( $late_id )->post_content );
@@ -555,18 +555,18 @@ class Test_Fork extends WP_UnitTestCase {
 	 * shrug.
 	 */
 	public function test_backstop_event_fires_for_a_staging_user(): void {
-		$this->record_action( 'swpub_staged_via_backstop' );
+		$this->record_action( 'staged_edits_staged_via_backstop' );
 
 		$response = $this->update_post( $this->live_id, array( 'content' => 'Launches in July.' ) );
 
-		$this->assertSame( 'swpub_staged', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_staged', $response->as_error()->get_error_code() );
 
 		$staged_copy = Staged_Copy_Repository::find_for_live( $this->live_id );
 
-		$this->assertCount( 1, $this->fired['swpub_staged_via_backstop'], 'The backstop did not report itself.' );
+		$this->assertCount( 1, $this->fired['staged_edits_staged_via_backstop'], 'The backstop did not report itself.' );
 		$this->assertSame(
 			array( $staged_copy->ID, $this->live_id, $this->editor_id ),
-			$this->fired['swpub_staged_via_backstop'][0],
+			$this->fired['staged_edits_staged_via_backstop'][0],
 			'The backstop reported the wrong post or the wrong user.'
 		);
 	}
@@ -584,14 +584,14 @@ class Test_Fork extends WP_UnitTestCase {
 
 		wp_set_current_user( $this->publisher_id );
 
-		$this->record_action( 'swpub_staged_via_backstop' );
+		$this->record_action( 'staged_edits_staged_via_backstop' );
 
 		$copy_before = get_post_field( 'post_content', $staged_copy->ID );
 		$response    = $this->update_post( $this->live_id, array( 'content' => 'Launches in July.' ) );
 
-		$this->assertSame( 'swpub_live_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_live_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( $copy_before, get_post_field( 'post_content', $staged_copy->ID ) );
-		$this->assertSame( array(), $this->fired['swpub_staged_via_backstop'], 'A refusal reported itself as a fallback.' );
+		$this->assertSame( array(), $this->fired['staged_edits_staged_via_backstop'], 'A refusal reported itself as a fallback.' );
 	}
 
 	/**
@@ -605,14 +605,14 @@ class Test_Fork extends WP_UnitTestCase {
 	public function test_a_save_changing_no_staged_field_passes_through(): void {
 		$category = self::factory()->category->create( array( 'name' => 'Collections' ) );
 
-		$this->record_action( 'swpub_staged_via_backstop' );
+		$this->record_action( 'staged_edits_staged_via_backstop' );
 
 		$response = $this->update_post( $this->live_id, array( 'categories' => array( $category ) ) );
 
 		$this->assertFalse( $response->is_error(), 'A term-only save was refused instead of applied.' );
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ), 'A term-only save created a staged copy.' );
 		$this->assertContains( $category, wp_get_post_categories( $this->live_id ) );
-		$this->assertSame( array(), $this->fired['swpub_staged_via_backstop'] );
+		$this->assertSame( array(), $this->fired['staged_edits_staged_via_backstop'] );
 	}
 
 	/**

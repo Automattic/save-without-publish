@@ -123,7 +123,7 @@ class Test_Transitions extends WP_UnitTestCase {
 		$result = Merge::apply( $this->staged_copy_id );
 
 		$this->assertWPError( $result );
-		$this->assertSame( 'swpub_not_published', $result->get_error_code() );
+		$this->assertSame( 'staged_edits_not_published', $result->get_error_code() );
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
 	}
 
@@ -169,7 +169,7 @@ class Test_Transitions extends WP_UnitTestCase {
 		$fired = array();
 
 		add_action(
-			'swpub_staged_stranded',
+			'staged_edits_staged_stranded',
 			static function ( $staged_copy_id, $reason ) use ( &$fired ): void {
 				$fired[] = array( $staged_copy_id, $reason );
 			},
@@ -188,7 +188,7 @@ class Test_Transitions extends WP_UnitTestCase {
 	public function test_republishing_clears_the_stranded_mark(): void {
 		$recovered = 0;
 		add_action(
-			'swpub_staged_recovered',
+			'staged_edits_staged_recovered',
 			static function () use ( &$recovered ): void {
 				++$recovered;
 			}

@@ -11,7 +11,7 @@
  *
  * The save lock exists because the other three do not cover every way a
  * locked field can end up dirty. A save carrying one still reaches the write
- * path, which refuses it (`swpub_live_locked`), so without the lock the
+ * path, which refuses it (`staged_edits_live_locked`), so without the lock the
  * primary button would sit there promising a save that cannot succeed.
  * Locking it with core's own `lockPostSaving` -- the same mechanism
  * `PostPublishButton` already reads to grey itself out -- means the button
@@ -57,7 +57,7 @@ import { compareAsText, editStaged } from './routes';
  * Namespaced for the same reason `stage.js`'s autosave lock is: core keys
  * locks by string and every plugin's locks share one register.
  */
-const SAVE_LOCK = 'swpub/live-locked';
+const SAVE_LOCK = 'staged-edits/live-locked';
 
 /**
  * The name core's own excerpt panel registers as.
@@ -214,8 +214,8 @@ function useLockedSave( ctx ) {
  * @return {string} The selector to use.
  */
 function titleSelector() {
-	return true === window.swpubTestBreakTitleSelector
-		? '.swpub-title-not-found'
+	return true === window.stagedEditsTestBreakTitleSelector
+		? '.staged-edits-title-not-found'
 		: '.editor-post-title__input';
 }
 
@@ -480,7 +480,7 @@ export function ExistingStagedCopyNotice() {
 				.filter( Boolean )
 				.join( ' ' ),
 			{
-				id: 'swpub-existing',
+				id: 'staged-edits-existing',
 
 				// Not dismissible: it describes which fields on this screen will
 				// not save, which stays true for as long as the staged copy

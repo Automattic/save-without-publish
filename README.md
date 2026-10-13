@@ -16,11 +16,11 @@ These are the words the interface and the code use, one per thing.
 | --- | --- | --- |
 | **published post** | The post readers see. Keeps its ID, URL, date, author, comments, and terms throughout. | Everywhere. Never "live post" in an editor-facing string. |
 | **staged** | The state: a change that exists, is complete, and is waiting for a deliberate act to go live. | The post status, short labels, and sentences alike. |
-| **staged copy** | The private post row holding the change. | Code and docs: `Staged_Copy_Repository`, `$staged_copy`, `_swpub_staged_copy_id`. |
+| **staged copy** | The private post row holding the change. | Code and docs: `Staged_Copy_Repository`, `$staged_copy`, `_staged_edits_staged_copy_id`. |
 | **publishing** | Applying the staged copy's content to the published post, then deleting the copy. | Everywhere. Never "merging" in an editor-facing string. |
 | **drift** | The published post changed after the copy was staged, so publishing would overwrite someone else's edit. | Code and docs only. Editors are told what happened, not the word. |
 | **stage changes** | The deliberate act: starting a staged copy when your save would otherwise publish. | The editor's Summary panel and the posts list row action, as a verb. |
-| **publish directly** | Writing to a published post without staging the change. The capability deciding it is granted to no role. | `swpub_publish_directly_posts` on a role, `swpub_publish_directly` resolved per post, `swpub_can_publish_directly` to filter it. |
+| **publish directly** | Writing to a published post without staging the change. The capability deciding it is granted to no role. | `staged_edits_publish_directly_posts` on a role, `staged_edits_publish_directly` resolved per post, `staged_edits_can_publish_directly` to filter it. |
 
 ## Requirements
 
@@ -38,26 +38,26 @@ A write that would change the title, content, or excerpt of a published post tha
 
 Nothing exempts this. Not a role, not a capability grant, not a filter. The plugin's own publishing write is the single exception, and it is scoped to the one post it is publishing.
 
-The refusal is `swpub_live_locked`, HTTP 409, over REST and the staging route. 409 rather than 403 because nothing is wrong with the caller: the post is in a state that has to be resolved, and the same request succeeds once it is. Its error data carries `live_id`, `staged_copy_id`, and `edit_url`.
+The refusal is `staged_edits_live_locked`, HTTP 409, over REST and the staging route. 409 rather than 403 because nothing is wrong with the caller: the post is in a state that has to be resolved, and the same request succeeds once it is. Its error data carries `live_id`, `staged_copy_id`, and `edit_url`.
 
 Three things follow that are easy to miss:
 
 - **It is scoped to three fields, not to the post.** A write that touches no staged field (terms, meta, slug, a featured image, a sticky toggle) applies to the published post exactly as core, with no staging, no refusal, and no events. That is deliberate, and load-bearing: those fields cannot live on a staged copy at all, so the published post is the only place to change them. A write carrying both kinds is refused whole rather than half-applied.
 - **The published post is never edited from a distance.** This rule used to divert instead of refuse: the write's staged fields were redirected into the copy and answered 200. It was withdrawn because the value being diverted is composed against the *published* row. Someone editing the published post is reading published words, so their save carries the published body with one change in it, and that body has never seen the staged edits. Writing it into the copy reverted all of them. Since `post_content` is a single field, one edited paragraph replaced the whole staged body. Making the divert safe would mean merging two bodies of text, which is a diff tool this plugin does not have.
 - **A refusal changes nothing, so it cannot register as drift.** The published post's `post_modified` is untouched, so a refused write never makes the next publish ask about a change that did not happen.
-- **The staged copy cannot be left in any other status, by any transport.** Trash discards it, through the same posts-list action as always; nothing else publishes it except the merge. A write that tries is refused whole and announced on `swpub_write_blocked`, the same as a write to the published post. One path is repaired rather than refused: `wp_publish_post()` writes the status column directly and never reaches the hook the refusal lives on, so a copy it publishes is put back and `swpub_staged_status_reverted` says so. That is the function cron runs for a scheduled post, and it is public API any plugin may call.
+- **The staged copy cannot be left in any other status, by any transport.** Trash discards it, through the same posts-list action as always; nothing else publishes it except the merge. A write that tries is refused whole and announced on `staged_edits_write_blocked`, the same as a write to the published post. One path is repaired rather than refused: `wp_publish_post()` writes the status column directly and never reaches the hook the refusal lives on, so a copy it publishes is put back and `staged_edits_staged_status_reverted` says so. That is the function cron runs for a scheduled post, and it is public API any plugin may call.
 
 ### Before there is a copy, the first save decides
 
-The question is answered per post: does this user hold `swpub_publish_directly_posts`?
+The question is answered per post: does this user hold `staged_edits_publish_directly_posts`?
 
 **No role holds it.** The plugin ships the capability granted to nobody, so on a fresh install every save to a published post stages, whoever makes it. An administrator gets the same staged copy a contributor does. Granting it is how a site names its exceptions:
 
 ```php
-get_role( 'editor' )->add_cap( 'swpub_publish_directly_posts' );
+get_role( 'editor' )->add_cap( 'staged_edits_publish_directly_posts' );
 ```
 
-Each post type has its own, built from the type's own publish capability, so a grant on posts is not silently a grant on pages: `publish_pages` gives `swpub_publish_directly_pages`, and a type declaring `capability_type => 'brief'` gives `swpub_publish_directly_briefs`.
+Each post type has its own, built from the type's own publish capability, so a grant on posts is not silently a grant on pages: `publish_pages` gives `staged_edits_publish_directly_pages`, and a type declaring `capability_type => 'brief'` gives `staged_edits_publish_directly_briefs`.
 
 It is the plugin's own capability rather than the post type's `publish_posts`, which decided this until now, because the two answer different questions. `publish_posts` asks whether this user may put content in front of readers at all, and every editor and author holds it. This asks whether their ordinary save may go straight to readers with no staged copy in between. A site that installs this plugin has already said the answer is usually no, and a typo fix that does not need staging is a smaller exception than a role.
 
@@ -71,7 +71,7 @@ It is the plugin's own capability rather than the post type's `publish_posts`, w
 A site that wants staging even for the users it granted, belt and braces, filters the bypass off:
 
 ```php
-add_filter( 'swpub_can_publish_directly', '__return_false' );
+add_filter( 'staged_edits_can_publish_directly', '__return_false' );
 ```
 
 ### The programmatic first-save seam
@@ -80,10 +80,10 @@ A first write to a post that has no staged copy, made by a user without the dire
 
 It is open by default deliberately. Closing it by default would divert the writes of every sync plugin, headless publisher, and scheduled script already running as a low-capability user into staged copies nobody asked for and nobody is watching.
 
-The price is disclosed rather than hidden. Every use of the seam fires `swpub_published_via_carveout` naming the channel and the user, and one filter closes it site-wide:
+The price is disclosed rather than hidden. Every use of the seam fires `staged_edits_published_via_carveout` naming the channel and the user, and one filter closes it site-wide:
 
 ```php
-add_filter( 'swpub_enforce_programmatic_first_save', '__return_true' );
+add_filter( 'staged_edits_enforce_programmatic_first_save', '__return_true' );
 ```
 
 **The seam reopens.** Containment is scoped to the copy, so publishing or discarding a staged copy returns that post to its first-save state, where the carve-out applies again. A post is not permanently closed by having been staged once. Closing the seam with the filter is the remedy for a site that needs it shut.
@@ -94,7 +94,7 @@ The plugin ships no log of its own, so on a default install the seam's use leave
 
 An integration that writes the title, content, or excerpt of a published post which happens to have a staged copy has that write refused. Its content does not reach readers until someone clears the copy.
 
-There is no filter for this, by design: the first rule above has no exemptions. Over REST the refusal is `swpub_live_locked` with HTTP 409, which a client can match on. From WP-CLI, XML-RPC, or an in-process `wp_update_post()` it is core's own `empty_content` failure, whose message names the wrong problem — the universal abort inside `wp_insert_post()` carries no error of its own. Subscribe to [`swpub_write_blocked`](#actions) for the real reason on every transport.
+There is no filter for this, by design: the first rule above has no exemptions. Over REST the refusal is `staged_edits_live_locked` with HTTP 409, which a client can match on. From WP-CLI, XML-RPC, or an in-process `wp_update_post()` it is core's own `empty_content` failure, whose message names the wrong problem — the universal abort inside `wp_insert_post()` carries no error of its own. Subscribe to [`staged_edits_write_blocked`](#actions) for the real reason on every transport.
 
 This is louder than what it replaced, and deliberately so. It used to be an ordinary 200 with the write folded into the staged copy, which kept integrations quiet by spending somebody's staged work: the write had been composed against the published content, so it reverted every staged change it did not carry.
 
@@ -103,9 +103,9 @@ Writes that touch none of the three staged fields — terms, meta, slug, feature
 The remedies are:
 
 - Publish or discard the staged copy. The post returns to its first-save state.
-- Turn the plugin off with `swpub_is_enabled`, which stops staging site-wide while leaving existing copies contained.
+- Turn the plugin off with `staged_edits_is_enabled`, which stops staging site-wide while leaving existing copies contained.
 
-That is the whole list, and it is worth being clear about what is not on it. Granting the integration's account the direct-publish bypass with `swpub_can_publish_directly` does not help here. It decides first saves, and a granted account writing to a post that already has a copy is refused like any other. There is no setting that lets a caller write past a staged copy.
+That is the whole list, and it is worth being clear about what is not on it. Granting the integration's account the direct-publish bypass with `staged_edits_can_publish_directly` does not help here. It decides first saves, and a granted account writing to a post that already has a copy is refused like any other. There is no setting that lets a caller write past a staged copy.
 
 A site that runs integrations against published content should decide about this before adopting the plugin, not after.
 
@@ -160,20 +160,20 @@ On the staged copy, the Summary panel carries a **Publish at** row beside **Stag
 Over REST, scheduling and cancelling are their own route:
 
 ```
-POST   /swpub/v1/schedule/{id}   { at }
+POST   /staged-edits/v1/schedule/{id}   { at }
 200                              { scheduledFor, scheduledForLocal, scheduledBy }
 
-DELETE /swpub/v1/schedule/{id}
+DELETE /staged-edits/v1/schedule/{id}
 200                              { scheduled: false }
 ```
 
 `at` is ISO 8601; a value with no offset is treated as site-local, exactly as the posts controller's own `date` parameter is. Cancelling a copy that was not scheduled is not an error.
 
-**If the published post changed in between**, the default is the same one an unattended run always gets: abort, keep the copy, mark it, and say so -- there is nobody to ask, so nothing is confirmed on a schedule's behalf. The copy is not deleted and not retried; it stays exactly as staged, waiting for a person to review it, reschedule it, or publish it by hand. A site that would rather the staged words win regardless sets the `scheduled_publish_overrides_drift` config once for everyone ([docs/vip-integration.md](docs/vip-integration.md#runtime-config)), or answers `swpub_scheduled_publish_overrides_drift`, which wins over the config and can discriminate by what actually changed -- publishing past a category or a featured image while still asking about a change to the words themselves:
+**If the published post changed in between**, the default is the same one an unattended run always gets: abort, keep the copy, mark it, and say so -- there is nobody to ask, so nothing is confirmed on a schedule's behalf. The copy is not deleted and not retried; it stays exactly as staged, waiting for a person to review it, reschedule it, or publish it by hand. A site that would rather the staged words win regardless sets the `scheduled_publish_overrides_drift` config once for everyone ([docs/vip-integration.md](docs/vip-integration.md#runtime-config)), or answers `staged_edits_scheduled_publish_overrides_drift`, which wins over the config and can discriminate by what actually changed -- publishing past a category or a featured image while still asking about a change to the words themselves:
 
 ```php
 add_filter(
-    'swpub_scheduled_publish_overrides_drift',
+    'staged_edits_scheduled_publish_overrides_drift',
     function ( $override, $copy_id, $live_id, $kind ) {
         return 'other' === $kind;
     },
@@ -182,15 +182,15 @@ add_filter(
 );
 ```
 
-Returning `true` proceeds exactly as an editor's own confirmation would: the merge takes its snapshot and fires `swpub_drift_overridden`, named below.
+Returning `true` proceeds exactly as an editor's own confirmation would: the merge takes its snapshot and fires `staged_edits_drift_overridden`, named below.
 
-**A late run still publishes.** WP-Cron makes no promise about exact timing, and a schedule that missed its moment by a few minutes on a quiet site is not a schedule that should be abandoned. `swpub_scheduled_publish_ran` reports how late a run was; a site that wants a hard cutoff instead reads the scheduled time off the copy's meta inside its own `swpub_pre_merge` veto, which already gates every merge, scheduled or not.
+**A late run still publishes.** WP-Cron makes no promise about exact timing, and a schedule that missed its moment by a few minutes on a quiet site is not a schedule that should be abandoned. `staged_edits_scheduled_publish_ran` reports how late a run was; a site that wants a hard cutoff instead reads the scheduled time off the copy's meta inside its own `staged_edits_pre_merge` veto, which already gates every merge, scheduled or not.
 
-**A refusal is not retried.** Once a schedule cannot be kept -- the published post changed and nothing overrode it, the scheduler lost the capability, the pair is stranded, staging is switched off at the moment it comes due -- it is cleared rather than left to fire again on the next cron tick. The reason is recorded on the copy and on `swpub_scheduled_publish_refused`, and the copy reads `schedule-refused` in `wp swpub list`. Nothing is republished by turning staging back on: the copy is exactly as it was staged, and someone reschedules it.
+**A refusal is not retried.** Once a schedule cannot be kept -- the published post changed and nothing overrode it, the scheduler lost the capability, the pair is stranded, staging is switched off at the moment it comes due -- it is cleared rather than left to fire again on the next cron tick. The reason is recorded on the copy and on `staged_edits_scheduled_publish_refused`, and the copy reads `schedule-refused` in `wp staged-edits list`. Nothing is republished by turning staging back on: the copy is exactly as it was staged, and someone reschedules it.
 
-**A run that cannot happen *yet* is deferred, not lost.** A merge already in flight on the same post, or an event that somehow fires ahead of its own time, puts the run off by a few minutes rather than refusing it -- the schedule stands and the time the editor asked for is untouched. This matters more than it looks: cron spends a single event *before* running the hook it fires, so a run that simply declined to act would leave the copy reading as scheduled with nothing left to fire it, and the publish would never happen and never say why. The one in-flight case that is refused rather than deferred is a merge stranded past its attempt budget, because only a person with `wp swpub repair` can clear that, and deferring against it would wait forever.
+**A run that cannot happen *yet* is deferred, not lost.** A merge already in flight on the same post, or an event that somehow fires ahead of its own time, puts the run off by a few minutes rather than refusing it -- the schedule stands and the time the editor asked for is untouched. This matters more than it looks: cron spends a single event *before* running the hook it fires, so a run that simply declined to act would leave the copy reading as scheduled with nothing left to fire it, and the publish would never happen and never say why. The one in-flight case that is refused rather than deferred is a merge stranded past its attempt budget, because only a person with `wp staged-edits repair` can clear that, and deferring against it would wait forever.
 
-**If `WP_CLI` is running**, `wp swpub schedule <copy> --at=<datetime>` schedules as WP-CLI's own `--user` global, the same flag every command already reads. `wp swpub unschedule <copy>` cancels. `wp swpub publish <copy> [--confirm=<token>]` is the merge itself, from the command line, for a script that wants to publish without waiting on cron. `wp swpub run-due` fires every schedule whose time has come -- what a system cron line calls on a site running `DISABLE_WP_CRON`, and the right thing to run by hand after an incident to catch anything WP-Cron dropped. `wp swpub list` gains a `scheduled_for` column, and reports `schedule-refused` in its state column for a copy whose last scheduled run did not keep.
+**If `WP_CLI` is running**, `wp staged-edits schedule <copy> --at=<datetime>` schedules as WP-CLI's own `--user` global, the same flag every command already reads. `wp staged-edits unschedule <copy>` cancels. `wp staged-edits publish <copy> [--confirm=<token>]` is the merge itself, from the command line, for a script that wants to publish without waiting on cron. `wp staged-edits run-due` fires every schedule whose time has come -- what a system cron line calls on a site running `DISABLE_WP_CRON`, and the right thing to run by hand after an incident to catch anything WP-Cron dropped. `wp staged-edits list` gains a `scheduled_for` column, and reports `schedule-refused` in its state column for a copy whose last scheduled run did not keep.
 
 ## Discarding a staged change
 
@@ -204,51 +204,51 @@ A staged save is a success, and every client is told so in the shape it understa
 
 ### Machine clients
 
-A REST write authenticated with anything but a cookie -- an application password, OAuth, any token client -- returns **200**. The body is the published post's true state, which is to say the change is not in it. What says where the change went is the `swpub` field, added to the schema of every post type staging covers:
+A REST write authenticated with anything but a cookie -- an application password, OAuth, any token client -- returns **200**. The body is the published post's true state, which is to say the change is not in it. What says where the change went is the `staged_edits` field, added to the schema of every post type staging covers:
 
 ```json
-"swpub": {
+"staged_edits": {
     "staged": true,
     "staged_copy_id": 456,
     "edit_url": "https://example.com/wp-admin/post.php?post=456&action=edit"
 }
 ```
 
-`swpub` is `null` on every response that staged nothing, including a GET of a post that already has a staged copy. It reports what this request did, not what the post holds. `edit_url` is empty when the acting user cannot edit the staged copy.
+`staged_edits` is `null` on every response that staged nothing, including a GET of a post that already has a staged copy. It reports what this request did, not what the post holds. `edit_url` is empty when the acting user cannot edit the staged copy.
 
-A write to a post that already has a staged copy never gets this far. It is refused first, on every REST client, with `swpub_live_locked` and HTTP 409.
+A write to a post that already has a staged copy never gets this far. It is refused first, on every REST client, with `staged_edits_live_locked` and HTTP 409.
 
-The `swpub_staged` 409 below is a different thing and never reached a token client: it is nonce-gated, so only cookie-authenticated editor saves ever met it.
+The `staged_edits_staged` 409 below is a different thing and never reached a token client: it is nonce-gated, so only cookie-authenticated editor saves ever met it.
 
 ### The block editor
 
 The editor's own protocol is a deliberate route. A save that is going to stage is sent to it instead of the post endpoint:
 
 ```
-POST /swpub/v1/stage/{id}     { title?, content?, excerpt? }
+POST /staged-edits/v1/stage/{id}     { title?, content?, excerpt? }
 200                           { stagedCopyId, editUrl }
 ```
 
-Anything the route cannot stage is refused rather than dropped: a request carrying a status, slug, term, or featured image change answers `swpub_unstageable_field` with HTTP 400, naming the fields.
+Anything the route cannot stage is refused rather than dropped: a request carrying a status, slug, term, or featured image change answers `staged_edits_unstageable_field` with HTTP 400, naming the fields.
 
-The route stages a first change only. Asked to stage onto a post that already has a copy, it answers `swpub_live_locked` with HTTP 409 and does not write, because the request was composed in an editor showing the published words and honouring it would replace what the copy holds rather than add to it.
+The route stages a first change only. Asked to stage onto a post that already has a copy, it answers `staged_edits_live_locked` with HTTP 409 and does not write, because the request was composed in an editor showing the published words and honouring it would replace what the copy holds rather than add to it.
 
 Underneath that sits the backstop. A cookie-authenticated save that reaches `/wp/v2/{type}/{id}` and would stage is redirected onto the staged copy anyway and answered:
 
 ```
-409  swpub_staged  { staged_copy_id, edit_url }
+409  staged_edits_staged  { staged_copy_id, edit_url }
 ```
 
-The write succeeded; the staged copy holds the change. The 409 exists because the protocol above is JavaScript, and JavaScript that failed to load must not be the difference between staging and publishing. It fires `swpub_staged_via_backstop` when it engages for a save that could have taken the staging route, which is an alarm rather than a report: on a healthy site nothing hears it.
+The write succeeded; the staged copy holds the change. The 409 exists because the protocol above is JavaScript, and JavaScript that failed to load must not be the difference between staging and publishing. It fires `staged_edits_staged_via_backstop` when it engages for a save that could have taken the staging route, which is an alarm rather than a report: on a healthy site nothing hears it.
 
-A write that would change a locked field on a staged copy is refused with `swpub_field_locked`, HTTP 403, and a `field` key naming the parameter. That code is contract, not an incident identifier: the editor keys its own recovery on it, and integrations may match on it.
+A write that would change a locked field on a staged copy is refused with `staged_edits_field_locked`, HTTP 403, and a `field` key naming the parameter. That code is contract, not an incident identifier: the editor keys its own recovery on it, and integrations may match on it.
 
-`meta` is the one locked field that does not refuse the write. A staged copy's ordinary save often carries `meta` it never asked to stage -- an SEO plugin's own panel, a custom field, core's own footnotes -- and refusing the whole request for it used to cost the title, content, and excerpt sent alongside it. Instead, any key outside the staged-meta set is silently dropped from the request rather than written, the save proceeds with everything else it carried, and the drop is named twice: on the `X-SWPub-Meta-Dropped` response header, a comma-separated list of the keys, and on `swpub_meta_keys_dropped` below. The staged-meta set is empty today -- no meta key is staged yet -- so every key currently arrives dropped; a client relying on a meta write to a staged copy should not assume it landed without checking one of those two. That includes core's own footnotes: a footnote added on a staged copy keeps its marker in the content and loses its text, which lives in meta, until the staged-meta set has members. A write refused for some other locked field is refused whole, meta included, and announces nothing about its meta.
+`meta` is the one locked field that does not refuse the write. A staged copy's ordinary save often carries `meta` it never asked to stage -- an SEO plugin's own panel, a custom field, core's own footnotes -- and refusing the whole request for it used to cost the title, content, and excerpt sent alongside it. Instead, any key outside the staged-meta set is silently dropped from the request rather than written, the save proceeds with everything else it carried, and the drop is named twice: on the `X-Staged-Edits-Meta-Dropped` response header, a comma-separated list of the keys, and on `staged_edits_meta_keys_dropped` below. The staged-meta set is empty today -- no meta key is staged yet -- so every key currently arrives dropped; a client relying on a meta write to a staged copy should not assume it landed without checking one of those two. That includes core's own footnotes: a footnote added on a staged copy keeps its marker in the content and loses its text, which lives in meta, until the staged-meta set has members. A write refused for some other locked field is refused whole, meta included, and announces nothing about its meta.
 
-`swpub_live_locked` is contract in the same way, and will not be renamed:
+`staged_edits_live_locked` is contract in the same way, and will not be renamed:
 
 ```
-409  swpub_live_locked  { live_id, staged_copy_id, edit_url }
+409  staged_edits_live_locked  { live_id, staged_copy_id, edit_url }
 ```
 
 `edit_url` is the remedy for a person, so a client rendering the refusal can send its reader somewhere without knowing this plugin's routes. `staged_copy_id` is the remedy for a machine, which can read, publish, or discard the copy through the plugin's own routes.
@@ -258,78 +258,78 @@ A write that would change a locked field on a staged copy is refused with `swpub
 ### Actions
 
 ```php
-do_action( 'swpub_staged_created',       int $staged_copy_id, int $live_id, int $user_id );
-do_action( 'swpub_staged_edited',        int $staged_copy_id, int $live_id, int $user_id );
-do_action( 'swpub_write_staged',         int $staged_copy_id, int $live_id, string $channel, int $user_id );
-do_action( 'swpub_staged_via_backstop',  int $staged_copy_id, int $live_id, int $user_id );
-do_action( 'swpub_stage_refused',        int $live_id,        string $channel, int $user_id );
-do_action( 'swpub_write_blocked',        int $staged_copy_id, int $live_id, string $channel, int $user_id );
-do_action( 'swpub_staged_status_reverted', int $staged_copy_id, int $live_id, string $attempted_status, int $user_id );
-do_action( 'swpub_scheduled_publish_ran',     int $live_id, int $staged_copy_id, string $scheduled_for, int $late_by, int $user_id );
-do_action( 'swpub_scheduled_publish_refused', int $staged_copy_id, int $live_id, string $reason, ?WP_Error $error, int $user_id );
-do_action( 'swpub_published_via_carveout', int $live_id,      string $channel, int $user_id );
-do_action( 'swpub_staging_write_failed', int $live_id,        string $reason,  int $user_id );
-do_action( 'swpub_drift_overridden',     int $staged_copy_id, int $live_id, int $user_id, string $confirmed, string $drift_kind );
-do_action( 'swpub_merge_completed',      int $live_id,        array $payload );
-do_action( 'swpub_staged_stranded',      int $staged_copy_id, string $reason, int $live_id );
-do_action( 'swpub_staged_recovered',     int $staged_copy_id );
-do_action( 'swpub_meta_keys_dropped',    int $staged_copy_id, array $keys, int $user_id );
+do_action( 'staged_edits_staged_created',       int $staged_copy_id, int $live_id, int $user_id );
+do_action( 'staged_edits_staged_edited',        int $staged_copy_id, int $live_id, int $user_id );
+do_action( 'staged_edits_write_staged',         int $staged_copy_id, int $live_id, string $channel, int $user_id );
+do_action( 'staged_edits_staged_via_backstop',  int $staged_copy_id, int $live_id, int $user_id );
+do_action( 'staged_edits_stage_refused',        int $live_id,        string $channel, int $user_id );
+do_action( 'staged_edits_write_blocked',        int $staged_copy_id, int $live_id, string $channel, int $user_id );
+do_action( 'staged_edits_staged_status_reverted', int $staged_copy_id, int $live_id, string $attempted_status, int $user_id );
+do_action( 'staged_edits_scheduled_publish_ran',     int $live_id, int $staged_copy_id, string $scheduled_for, int $late_by, int $user_id );
+do_action( 'staged_edits_scheduled_publish_refused', int $staged_copy_id, int $live_id, string $reason, ?WP_Error $error, int $user_id );
+do_action( 'staged_edits_published_via_carveout', int $live_id,      string $channel, int $user_id );
+do_action( 'staged_edits_staging_write_failed', int $live_id,        string $reason,  int $user_id );
+do_action( 'staged_edits_drift_overridden',     int $staged_copy_id, int $live_id, int $user_id, string $confirmed, string $drift_kind );
+do_action( 'staged_edits_merge_completed',      int $live_id,        array $payload );
+do_action( 'staged_edits_staged_stranded',      int $staged_copy_id, string $reason, int $live_id );
+do_action( 'staged_edits_staged_recovered',     int $staged_copy_id );
+do_action( 'staged_edits_meta_keys_dropped',    int $staged_copy_id, array $keys, int $user_id );
 ```
 
-`swpub_write_staged` fires every time a write is diverted into a staged copy, whatever transport it came from. That is the first save; a later one is refused rather than diverted, and fires `swpub_write_blocked`. It adds to `swpub_staged_created` and `swpub_staged_edited` rather than replacing them: a diverted write is a save of the staged copy, so those fire too. Its argument order matches theirs deliberately, so a handler copied between them reads the same posts. What it carries that they cannot is the channel, which is the difference between an editor staging a change and an integration finding its first write staged.
+`staged_edits_write_staged` fires every time a write is diverted into a staged copy, whatever transport it came from. That is the first save; a later one is refused rather than diverted, and fires `staged_edits_write_blocked`. It adds to `staged_edits_staged_created` and `staged_edits_staged_edited` rather than replacing them: a diverted write is a save of the staged copy, so those fire too. Its argument order matches theirs deliberately, so a handler copied between them reads the same posts. What it carries that they cannot is the channel, which is the difference between an editor staging a change and an integration finding its first write staged.
 
 `$channel` is one of `rest-cookie`, `rest-token`, `xmlrpc`, `classic`, `cli`, `cron`, `quickedit`, or `internal`. It is best-effort: core exposes no request origin at this seam, so each is inferred from a constant, a request header, or the admin page in play. `rest-token` covers application passwords, OAuth, and anything else arriving without a `wp_rest` nonce, which are not reliably distinguishable from each other here. The channel labels an event; it decides nothing.
 
-`swpub_staged_via_backstop` fires when a save was staged by the 409 backstop rather than the staging route, and only where that route was available to the saver. It means the editor's own protocol did not run. On a healthy site it never fires.
+`staged_edits_staged_via_backstop` fires when a save was staged by the 409 backstop rather than the staging route, and only where that route was available to the saver. It means the editor's own protocol did not run. On a healthy site it never fires.
 
-`swpub_stage_refused` fires when a write that would have staged was refused instead, currently only on the `quickedit` channel. Nothing was written on either side.
+`staged_edits_stage_refused` fires when a write that would have staged was refused instead, currently only on the `quickedit` channel. Nothing was written on either side.
 
-`swpub_write_blocked` fires on two refusals, both with nothing written on either side. A write to a published post that already has a staged copy is the first, and the published post is unchanged and so is the copy, which is the point. A write giving the staged copy itself any status but staged or trash is the second: left alone, that write would take the copy out of containment entirely, publishing it as an ordinary post of its own while the post it stages sits untouched. `$live_id` is `0` on this second trigger only when the published post it staged is already gone. This is the event to watch to find out which of your integrations a staged copy is standing in front of, and it fires on every transport, including one with no authenticated user behind it:
+`staged_edits_write_blocked` fires on two refusals, both with nothing written on either side. A write to a published post that already has a staged copy is the first, and the published post is unchanged and so is the copy, which is the point. A write giving the staged copy itself any status but staged or trash is the second: left alone, that write would take the copy out of containment entirely, publishing it as an ordinary post of its own while the post it stages sits untouched. `$live_id` is `0` on this second trigger only when the published post it staged is already gone. This is the event to watch to find out which of your integrations a staged copy is standing in front of, and it fires on every transport, including one with no authenticated user behind it:
 
 ```php
 add_action(
-	'swpub_write_blocked',
+	'staged_edits_write_blocked',
 	function ( $staged_copy_id, $live_id, $channel, $user_id ) {
-		error_log( "swpub: write to {$live_id} via {$channel} refused; copy {$staged_copy_id}" );
+		error_log( "staged-edits: write to {$live_id} via {$channel} refused; copy {$staged_copy_id}" );
 	},
 	10,
 	4
 );
 ```
 
-`swpub_staged_status_reverted` fires when a staged copy's status was put back after something changed it outside `wp_insert_post()`. It is the twin of `swpub_write_blocked` for the one path a refusal cannot reach: `wp_publish_post()` writes the status column with a query of its own, so the copy is repaired rather than stopped, and by the time this fires it is staged again and the published post was never involved. Cron calls that function for a scheduled post, so `$user_id` is `0` on that route. Subscribe to it to find whatever is reaching for staged copies:
+`staged_edits_staged_status_reverted` fires when a staged copy's status was put back after something changed it outside `wp_insert_post()`. It is the twin of `staged_edits_write_blocked` for the one path a refusal cannot reach: `wp_publish_post()` writes the status column with a query of its own, so the copy is repaired rather than stopped, and by the time this fires it is staged again and the published post was never involved. Cron calls that function for a scheduled post, so `$user_id` is `0` on that route. Subscribe to it to find whatever is reaching for staged copies:
 
 ```php
 add_action(
-	'swpub_staged_status_reverted',
+	'staged_edits_staged_status_reverted',
 	function ( $staged_copy_id, $live_id, $attempted_status, $user_id ) {
-		error_log( "swpub: copy {$staged_copy_id} was given {$attempted_status}; put back" );
+		error_log( "staged-edits: copy {$staged_copy_id} was given {$attempted_status}; put back" );
 	},
 	10,
 	4
 );
 ```
 
-`swpub_meta_keys_dropped` fires when a staged copy's own save carried a meta key outside the staged set. The save is not refused for it -- `meta` is the one locked field that is stripped rather than refused, described under [REST](#rest) above -- so this is the one place a site sees that the key did not follow the rest of the save onto the copy.
+`staged_edits_meta_keys_dropped` fires when a staged copy's own save carried a meta key outside the staged set. The save is not refused for it -- `meta` is the one locked field that is stripped rather than refused, described under [REST](#rest) above -- so this is the one place a site sees that the key did not follow the rest of the save onto the copy.
 
-`swpub_published_via_carveout` fires on every use of the programmatic first-save seam. The plugin logs nothing itself, so this is where a site sees the seam being used:
+`staged_edits_published_via_carveout` fires on every use of the programmatic first-save seam. The plugin logs nothing itself, so this is where a site sees the seam being used:
 
 ```php
 add_action(
-    'swpub_published_via_carveout',
+    'staged_edits_published_via_carveout',
     function ( $live_id, $channel, $user_id ) {
-        error_log( "swpub: post {$live_id} published via {$channel} by user {$user_id}" );
+        error_log( "staged-edits: post {$live_id} published via {$channel} by user {$user_id}" );
     },
     10,
     3
 );
 ```
 
-`swpub_staging_write_failed` fires when a first write was diverted but the staged copy could not be written. The whole update is aborted, so the published post is unchanged and so is the copy. The caller receives core's `empty_content` failure, whose message is wrong by construction; `$reason` is the real one.
+`staged_edits_staging_write_failed` fires when a first write was diverted but the staged copy could not be written. The whole update is aborted, so the published post is unchanged and so is the copy. The caller receives core's `empty_content` failure, whose message is wrong by construction; `$reason` is the real one.
 
-`swpub_drift_overridden` fires only when a merge proceeds over a change made after staging began. It is the one moment the plugin knowingly overwrites somebody else's edit. `$confirmed` is the state token the editor sent back, naming the exact published state -- content included -- they were shown; `$drift_kind` is `content`, `other`, or `unknown` (below).
+`staged_edits_drift_overridden` fires only when a merge proceeds over a change made after staging began. It is the one moment the plugin knowingly overwrites somebody else's edit. `$confirmed` is the state token the editor sent back, naming the exact published state -- content included -- they were shown; `$drift_kind` is `content`, `other`, or `unknown` (below).
 
-`swpub_merge_completed` fires once per applied merge, after the staged copy is gone. Its payload carries what nothing can read back afterwards:
+`staged_edits_merge_completed` fires once per applied merge, after the staged copy is gone. Its payload carries what nothing can read back afterwards:
 
 ```php
 array(
@@ -355,35 +355,35 @@ The plugin implements no notification and no audit log of its own. These actions
 
 ```php
 // Stage edits to published posts. Return false to disable staging entirely.
-apply_filters( 'swpub_is_enabled', bool $enabled );
+apply_filters( 'staged_edits_is_enabled', bool $enabled );
 
 // Whether this user's saves may publish this post directly rather than stage.
 // Three answers: null, false, true. See below.
-apply_filters( 'swpub_can_publish_directly', ?bool $decision, int $post_id, int $user_id );
+apply_filters( 'staged_edits_can_publish_directly', ?bool $decision, int $post_id, int $user_id );
 
 // Whether a programmatic first save stages instead of publishing.
 // Return true to close the seam site-wide. Default false.
-apply_filters( 'swpub_enforce_programmatic_first_save', bool $enforce, int $live_id );
+apply_filters( 'staged_edits_enforce_programmatic_first_save', bool $enforce, int $live_id );
 
 // Allow a merge. Return a WP_Error to veto it before anything is written.
-apply_filters( 'swpub_pre_merge', bool $allowed, int $live_id, int $staged_copy_id );
+apply_filters( 'staged_edits_pre_merge', bool $allowed, int $live_id, int $staged_copy_id );
 
 // Let a scheduled publish proceed over drift. The default is the site's
 // scheduled_publish_overrides_drift config (docs/vip-integration.md), and false
 // when that is unset: refuse, keep, and mark the copy, the same as an unattended
 // run with nobody to confirm past it.
-apply_filters( 'swpub_scheduled_publish_overrides_drift', bool $override, int $staged_copy_id, int $live_id, string $drift_kind );
+apply_filters( 'staged_edits_scheduled_publish_overrides_drift', bool $override, int $staged_copy_id, int $live_id, string $drift_kind );
 ```
 
-`swpub_can_publish_directly` answers in three states, because a site needs to be able to say yes as well as no:
+`staged_edits_can_publish_directly` answers in three states, because a site needs to be able to say yes as well as no:
 
-- **`null`**, the default, falls through to the `swpub_publish_directly_posts` capability, which no role holds. Whoever has been granted it publishes without staging, and everyone else stages.
+- **`null`**, the default, falls through to the `staged_edits_publish_directly_posts` capability, which no role holds. Whoever has been granted it publishes without staging, and everyone else stages.
 - **`false`** forces staging, whatever the user's role says, including a role that has been granted the capability.
 - **`true`** grants the bypass per post, to a user who does not hold the capability. This is how an integration keeps publishing: answer for its own account, rather than granting the capability to a role every human shares.
 
 ```php
 add_filter(
-    'swpub_can_publish_directly',
+    'staged_edits_can_publish_directly',
     function ( $decision, $post_id, $user_id ) {
         $sync = get_user_by( 'login', 'acme-sync' );
 
@@ -427,7 +427,7 @@ The `function_exists()` guard keeps the integration working if this plugin is de
 **To stop staging immediately**, without deactivating the plugin:
 
 ```php
-add_filter( 'swpub_is_enabled', '__return_false' );
+add_filter( 'staged_edits_is_enabled', '__return_false' );
 ```
 
 Saves then behave exactly as core does. Existing staged copies stay registered and contained, and remain visible to the commands below. Deactivating the plugin instead would unregister the staged post status, which un-contains them (see the FAQ).
@@ -435,7 +435,7 @@ Saves then behave exactly as core does. Existing staged copies stay registered a
 **To find staged copies:**
 
 ```bash
-wp swpub list
+wp staged-edits list
 ```
 
 Reports every staged copy, the post it stages, and its state: `healthy`, `drifted`, `live-unpublished`, `live-deleted`, `orphaned`, `merging`, or `merge-stranded`.
@@ -443,16 +443,25 @@ Reports every staged copy, the post it stages, and its state: `healthy`, `drifte
 **To repair an interrupted merge:**
 
 ```bash
-wp swpub repair <post-id>          # report what is outstanding, change nothing
-wp swpub repair <post-id> --force  # revive a merge stranded past its attempt budget
-wp swpub repair --all
+wp staged-edits repair <post-id>          # report what is outstanding, change nothing
+wp staged-edits repair <post-id> --force  # revive a merge stranded past its attempt budget
+wp staged-edits repair --all
 ```
 
 Accepts either post of a pair. A merge that fails repeatedly stops re-attempting and is marked stranded, so a failing merge cannot make both posts unopenable; `--force` is how you retry once the cause is addressed.
 
 ## Upgrading
 
-The pointer meta key was `_swpub_shadow_id` before the plugin settled on one word for the second copy. Visiting the admin after an upgrade renames it to `_swpub_staged_copy_id` once, tracked by the `swpub_schema` option. Staged copies created before the rename keep their `swpub-shadow-*` slug, which nothing reads.
+The plugin was called Save without Publish through 0.2.0-alpha.1, and everything it stored was prefixed `swpub`. The first request after an upgrade renames all of it once, tracked by the `staged_edits_schema` option:
+
+- the `swpub_staged` post status becomes `staged_edits_staged`
+- every `_swpub_*` meta key becomes `_staged_edits_*` (and the older `_swpub_shadow_id` pointer becomes `_staged_edits_staged_copy_id`)
+- scheduled publishes move from the `swpub_publish_scheduled` cron hook to `staged_edits_publish_scheduled`, at the time they were set for
+- `swpub_publish_directly_*` capabilities granted or denied on a role or a user are carried over to `staged_edits_publish_directly_*`
+
+Staged copies created before the rename keep their `swpub-staged-*` slug, which nothing reads. There is no way back: a version from before the rename does not find what this one has renamed.
+
+What a site wrote against the old names is not carried over, and has to be changed by hand: every `swpub_*` action and filter is now `staged_edits_*`, the REST namespace `swpub/v1` is `staged-edits/v1`, the `swpub` response field is `staged_edits`, the `X-SWPub-Meta-Dropped` header is `X-Staged-Edits-Meta-Dropped`, `wp swpub` is `wp staged-edits`, and `VIP_SAVE_WITHOUT_PUBLISH_CONFIG` is `VIP_STAGED_EDITS_CONFIG`.
 
 Staged copies created before drift detection told content changes apart from everything else are backfilled at the same upgrade, from the published post's own row, for every copy whose published post has not been touched since staging began. A copy whose published post already moved is left as it was: drift on it reads `unknown`, exactly as it did before this existed.
 
@@ -482,19 +491,19 @@ Yes. Staged copies are posts, so a WordPress export or database dump includes th
 
 **What happens if I deactivate the plugin?**
 
-Existing staged copies remain in the database, but the staged post status is no longer registered, which un-contains them. Discard them, or publish them, before deactivating. During an incident use the `swpub_is_enabled` filter instead: it stops staging while keeping existing copies contained.
+Existing staged copies remain in the database, but the staged post status is no longer registered, which un-contains them. Discard them, or publish them, before deactivating. During an incident use the `staged_edits_is_enabled` filter instead: it stops staging while keeping existing copies contained.
 
 **Which edits are staged?**
 
 Changes to the title, content, or excerpt of a published post whose type supports revisions and appears in the REST API. Nothing else is ever staged: terms, slug, featured image, author, date, and meta apply to the published post immediately, as core.
 
-**Once a post has a staged copy, every such change is refused**, whatever wrote it. The block editor, the classic editor, WP-CLI, XML-RPC, application passwords, OAuth, another plugin calling `wp_update_post()`, code running as no user at all: all of them are turned away, and neither the published post nor the copy changes. A REST client gets `swpub_live_locked` and HTTP 409. Those three fields are edited on the staged copy; everything else on the published post still saves normally.
+**Once a post has a staged copy, every such change is refused**, whatever wrote it. The block editor, the classic editor, WP-CLI, XML-RPC, application passwords, OAuth, another plugin calling `wp_update_post()`, code running as no user at all: all of them are turned away, and neither the published post nor the copy changes. A REST client gets `staged_edits_live_locked` and HTTP 409. Those three fields are edited on the staged copy; everything else on the published post still saves normally.
 
-**Before the post has a copy**, the first save decides. A user holding `swpub_publish_directly_posts` publishes, and no role holds it by default; everyone else stages; Quick Edit refuses; a write with nobody logged in publishes; a programmatic write without the capability publishes on the seam and fires an audit event; anything else stages. [Who stages, and who publishes](#who-stages-and-who-publishes) has the whole rule.
+**Before the post has a copy**, the first save decides. A user holding `staged_edits_publish_directly_posts` publishes, and no role holds it by default; everyone else stages; Quick Edit refuses; a write with nobody logged in publishes; a programmatic write without the capability publishes on the seam and fires an audit event; anything else stages. [Who stages, and who publishes](#who-stages-and-who-publishes) has the whole rule.
 
 **We have an integration that writes to published posts. What happens to it?**
 
-While the post it writes to has a staged copy, that write is refused with `swpub_live_locked` and HTTP 409, and its content does not reach readers until somebody clears the copy. No filter exempts it, and no capability grant reaches it either. Publish or discard the staged copy, or turn staging off with `swpub_is_enabled`. [What this means for an integration](#what-this-means-for-an-integration) covers the trade.
+While the post it writes to has a staged copy, that write is refused with `staged_edits_live_locked` and HTTP 409, and its content does not reach readers until somebody clears the copy. No filter exempts it, and no capability grant reaches it either. Publish or discard the staged copy, or turn staging off with `staged_edits_is_enabled`. [What this means for an integration](#what-this-means-for-an-integration) covers the trade.
 
 **Can two people stage changes to the same post?**
 
@@ -510,7 +519,7 @@ The review surface is core's revision screen, which only stores title, content, 
 
 **Can renaming a staged copy's slug collide with the published post's, the way it does in some other staging tools?**
 
-No. The slug is never staged, so there is no second, editable slug to rename into a collision with the first. The staged copy's own screen does not even offer the control: what an editor sees there is the copy's own internal slug (`swpub-staged-<id>`), which is never published and never meant to be typed into. To change the URL, open the published post and change it there, the way any other slug change is made.
+No. The slug is never staged, so there is no second, editable slug to rename into a collision with the first. The staged copy's own screen does not even offer the control: what an editor sees there is the copy's own internal slug (`staged-edits-staged-<id>`), which is never published and never meant to be typed into. To change the URL, open the published post and change it there, the way any other slug change is made.
 
 ## Development
 

@@ -49,7 +49,7 @@ import { addQueryArgs } from '@wordpress/url';
  * because they are not read the same way. The in-editor view takes one
  * revision and diffs it against whichever came before, so its URL is the
  * copy's own edit link (`editorRevisionBase`) with the freshest id added.
- * Not the address bar: on arrival that still carries the `swpub_forked`
+ * Not the address bar: on arrival that still carries the `staged_edits_forked`
  * flag, which would ride into the review and have it announce the fork
  * again. The classic screen (WordPress below 7.0, `ctx.reviewSurface`)
  * takes both ends by name, so it is rebuilt from them directly: the

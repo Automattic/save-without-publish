@@ -278,10 +278,10 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->captured = array();
 
 		add_action(
-			'swpub_write_staged',
+			'staged_edits_write_staged',
 			function ( $staged_copy_id, $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
-					'event'          => 'swpub_write_staged',
+					'event'          => 'staged_edits_write_staged',
 					'staged_copy_id' => (int) $staged_copy_id,
 					'live_id'        => (int) $live_id,
 					'channel'        => (string) $channel,
@@ -293,10 +293,10 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		);
 
 		add_action(
-			'swpub_write_blocked',
+			'staged_edits_write_blocked',
 			function ( $staged_copy_id, $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
-					'event'          => 'swpub_write_blocked',
+					'event'          => 'staged_edits_write_blocked',
 					'staged_copy_id' => (int) $staged_copy_id,
 					'live_id'        => (int) $live_id,
 					'channel'        => (string) $channel,
@@ -308,10 +308,10 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		);
 
 		add_action(
-			'swpub_staging_write_failed',
+			'staged_edits_staging_write_failed',
 			function ( $live_id, $reason, $user_id ): void {
 				$this->captured[] = array(
-					'event'   => 'swpub_staging_write_failed',
+					'event'   => 'staged_edits_staging_write_failed',
 					'live_id' => (int) $live_id,
 					'reason'  => (string) $reason,
 					'user_id' => (int) $user_id,
@@ -322,10 +322,10 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		);
 
 		add_action(
-			'swpub_published_via_carveout',
+			'staged_edits_published_via_carveout',
 			function ( $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
-					'event'   => 'swpub_published_via_carveout',
+					'event'   => 'staged_edits_published_via_carveout',
 					'live_id' => (int) $live_id,
 					'channel' => (string) $channel,
 					'user_id' => (int) $user_id,
@@ -335,7 +335,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 			3
 		);
 
-		foreach ( array( 'swpub_staged_created', 'swpub_staged_edited' ) as $event ) {
+		foreach ( array( 'staged_edits_staged_created', 'staged_edits_staged_edited' ) as $event ) {
 			add_action(
 				$event,
 				function () use ( $event ): void {
@@ -458,14 +458,14 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$response = $this->rest_update( array( 'content' => self::INCOMING_CONTENT ) );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_live_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_live_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( 409, $response->get_status() );
 
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
 
-		$blocked = $this->captured( 'swpub_write_blocked' );
+		$blocked = $this->captured( 'staged_edits_write_blocked' );
 
 		$this->assertCount( 1, $blocked );
 		$this->assertSame( $staged_copy->ID, $blocked[0]['staged_copy_id'] );
@@ -477,7 +477,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	/**
 	 * The refusal carries the way out, for a person and for a machine.
 	 *
-	 * `swpub_live_locked` is documented as public contract in
+	 * `staged_edits_live_locked` is documented as public contract in
 	 * `Staged_Copy_Repository::live_locked_error()`, and a client that renders the
 	 * refusal needs somewhere to send its reader without knowing this plugin's
 	 * routes.
@@ -496,7 +496,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	 * The editor's cookie save meets the same refusal, not the fork.
 	 *
 	 * It used to meet `Fork::maybe_fork()`, which answered by writing the request
-	 * into the existing copy and reporting 409 `swpub_staged` -- the destructive
+	 * into the existing copy and reporting 409 `staged_edits_staged` -- the destructive
 	 * path, wearing a success-shaped error. `refuse_locked_live_post()` runs one
 	 * priority earlier and refuses before anything is written, so both transports
 	 * now get the same code for the same situation.
@@ -507,11 +507,11 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$response = $this->rest_update( array( 'content' => self::INCOMING_CONTENT ), true );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_live_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_live_locked', $response->as_error()->get_error_code() );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
-		$this->assertCount( 1, $this->captured( 'swpub_write_blocked' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_write_blocked' ) );
 	}
 
 	/**
@@ -568,7 +568,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 		$this->assertNotSame( 'summer-collection', $this->stored( $this->live_id, 'post_name' ) );
 		$this->assertSame( $before, $this->stored( $this->live_id, 'post_modified_gmt' ) );
-		$this->assertCount( 1, $this->captured( 'swpub_write_blocked' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_write_blocked' ) );
 	}
 
 	/**
@@ -647,7 +647,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
-		$this->assertCount( 1, $this->captured( 'swpub_write_blocked' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_write_blocked' ) );
 	}
 
 	/**
@@ -667,7 +667,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 
-		$blocked = $this->captured( 'swpub_write_blocked' );
+		$blocked = $this->captured( 'staged_edits_write_blocked' );
 
 		$this->assertCount( 1, $blocked );
 		$this->assertSame( 'internal', $blocked[0]['channel'] );
@@ -686,14 +686,14 @@ class Test_Write_Guard extends WP_UnitTestCase {
 				'ID'            => $this->live_id,
 				'post_name'     => 'summer-collection',
 				'post_category' => array( $term_id ),
-				'meta_input'    => array( 'swpub_test_marker' => 'set' ),
+				'meta_input'    => array( 'staged_edits_test_marker' => 'set' ),
 			),
 			true
 		);
 
 		$this->assertNotWPError( $result );
 		$this->assertSame( 'summer-collection', $this->stored( $this->live_id, 'post_name' ) );
-		$this->assertSame( 'set', get_post_meta( $this->live_id, 'swpub_test_marker', true ) );
+		$this->assertSame( 'set', get_post_meta( $this->live_id, 'staged_edits_test_marker', true ) );
 		$this->assertTrue( has_category( $term_id, $this->live_id ) );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 		$this->assertSame( array(), $this->captured );
@@ -749,7 +749,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 
-		$blocked = $this->captured( 'swpub_write_blocked' );
+		$blocked = $this->captured( 'staged_edits_write_blocked' );
 
 		$this->assertCount( 1, $blocked );
 		$this->assertSame( 0, $blocked[0]['user_id'] );
@@ -808,7 +808,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
-		$this->assertCount( 1, $this->captured( 'swpub_write_blocked' ) );
+		$this->assertCount( 1, $this->captured( 'staged_edits_write_blocked' ) );
 	}
 
 	/**
@@ -843,7 +843,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	 * A sanction cannot outlive the call that took it, even when that call throws.
 	 *
 	 * Left armed, it would stand as an open bypass across the iterations of
-	 * `wp swpub repair --all` or a cron-driven resume.
+	 * `wp staged-edits repair --all` or a cron-driven resume.
 	 */
 	public function test_the_sanction_is_cleared_even_when_the_callback_throws(): void {
 		$staged_copy = $this->stage();
@@ -888,7 +888,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		);
 
 		$this->assertStringNotContainsString( 'message=1', $location );
-		$this->assertStringContainsString( 'swpub_blocked=1', $location );
+		$this->assertStringContainsString( 'staged_edits_blocked=1', $location );
 	}
 
 	/**
@@ -926,7 +926,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertSame( 'publish', $this->stored( $this->live_id, 'post_status' ) );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
 	}
 
 	/**
@@ -943,7 +943,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertNotWPError( $revision_id );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
 	}
 
 	/**
@@ -975,7 +975,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertNotWPError( $result );
 		$this->assertSame( $this->live_id, (int) get_post_field( 'post_parent', $attachment_id ) );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
 	}
 
 	/**
@@ -1011,9 +1011,9 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
 
-		$failures = $this->captured( 'swpub_staging_write_failed' );
+		$failures = $this->captured( 'staged_edits_staging_write_failed' );
 
 		$this->assertNotEmpty( $failures );
 		$this->assertSame( $this->live_id, $failures[0]['live_id'] );
@@ -1101,12 +1101,12 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	public function test_the_kill_switch_bails_the_guard(): void {
 		$this->stage();
 
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		wp_update_post( wp_slash( array( 'ID' => $this->live_id, 'post_content' => self::INCOMING_CONTENT ) ) );
 
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
 	}
 
 	/**
@@ -1114,7 +1114,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	 */
 	public function test_a_type_without_revisions_is_not_contained(): void {
 		register_post_type(
-			'swpub_norev',
+			'staged_edits_norev',
 			array(
 				'public'       => true,
 				'show_in_rest' => true,
@@ -1124,7 +1124,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$live_id = self::factory()->post->create(
 			array(
-				'post_type'    => 'swpub_norev',
+				'post_type'    => 'staged_edits_norev',
 				'post_status'  => 'publish',
 				'post_content' => wp_slash( self::LIVE_CONTENT ),
 			)
@@ -1134,7 +1134,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		// point -- containment must not depend on a copy it would never create.
 		$copy_id = self::factory()->post->create(
 			array(
-				'post_type'   => 'swpub_norev',
+				'post_type'   => 'staged_edits_norev',
 				'post_status' => \StagedEdits\Status::NAME,
 			)
 		);
@@ -1146,7 +1146,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $live_id, 'post_content' ) );
 
-		unregister_post_type( 'swpub_norev' );
+		unregister_post_type( 'staged_edits_norev' );
 	}
 
 	/**
@@ -1165,13 +1165,13 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ) );
 
-		$carveouts = $this->captured( 'swpub_published_via_carveout' );
+		$carveouts = $this->captured( 'staged_edits_published_via_carveout' );
 
 		$this->assertCount( 1, $carveouts );
 		$this->assertSame( $this->live_id, $carveouts[0]['live_id'] );
 		$this->assertSame( 'rest-token', $carveouts[0]['channel'] );
 		$this->assertSame( $this->editor_id, $carveouts[0]['user_id'] );
-		$this->assertSame( array(), $this->captured( 'swpub_write_staged' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_write_staged' ) );
 	}
 
 	/**
@@ -1180,7 +1180,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	public function test_the_closure_filter_makes_a_programmatic_first_write_stage(): void {
 		wp_set_current_user( $this->editor_id );
 
-		add_filter( 'swpub_enforce_programmatic_first_save', '__return_true' );
+		add_filter( 'staged_edits_enforce_programmatic_first_save', '__return_true' );
 
 		$this->rest_update( array( 'content' => self::INCOMING_CONTENT ) );
 
@@ -1190,11 +1190,11 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 
-		$engagements = $this->captured( 'swpub_write_staged' );
+		$engagements = $this->captured( 'staged_edits_write_staged' );
 
 		$this->assertCount( 1, $engagements );
 		$this->assertSame( 'rest-token', $engagements[0]['channel'] );
-		$this->assertSame( array(), $this->captured( 'swpub_published_via_carveout' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_published_via_carveout' ) );
 	}
 
 	/**
@@ -1247,11 +1247,11 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 
-		$engagements = $this->captured( 'swpub_write_staged' );
+		$engagements = $this->captured( 'staged_edits_write_staged' );
 
 		$this->assertCount( 1, $engagements );
 		$this->assertSame( 'internal', $engagements[0]['channel'] );
-		$this->assertSame( array(), $this->captured( 'swpub_published_via_carveout' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_published_via_carveout' ) );
 	}
 
 	/**
@@ -1284,7 +1284,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( self::LIVE_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $staged_copy->ID, 'post_content' ) );
 
-		$engagements = $this->captured( 'swpub_write_staged' );
+		$engagements = $this->captured( 'staged_edits_write_staged' );
 
 		$this->assertCount( 1, $engagements );
 		$this->assertSame( $staged_copy->ID, $engagements[0]['staged_copy_id'] );
@@ -1302,7 +1302,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 	 */
 	public function test_a_type_staging_cannot_cover_publishes_instead_of_staging(): void {
 		register_post_type(
-			'swpub_norest',
+			'staged_edits_norest',
 			array(
 				'public'       => true,
 				'show_in_rest' => false,
@@ -1312,7 +1312,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$live_id = self::factory()->post->create(
 			array(
-				'post_type'    => 'swpub_norest',
+				'post_type'    => 'staged_edits_norest',
 				'post_status'  => 'publish',
 				'post_content' => wp_slash( self::LIVE_CONTENT ),
 			)
@@ -1326,7 +1326,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $live_id ) );
 		$this->assertSame( array(), $this->captured );
 
-		unregister_post_type( 'swpub_norest' );
+		unregister_post_type( 'staged_edits_norest' );
 	}
 
 	/**
@@ -1346,7 +1346,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertSame( self::INCOMING_CONTENT, $this->stored( $this->live_id, 'post_content' ) );
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ) );
-		$this->assertSame( array(), $this->captured( 'swpub_published_via_carveout' ) );
+		$this->assertSame( array(), $this->captured( 'staged_edits_published_via_carveout' ) );
 	}
 
 	/**
@@ -1409,7 +1409,7 @@ class Test_Write_Guard_Staged_Copy_Status extends WP_UnitTestCase {
 	private array $captured = array();
 
 	/**
-	 * Publishes a post, stages it, and subscribes to `swpub_write_blocked`.
+	 * Publishes a post, stages it, and subscribes to `staged_edits_write_blocked`.
 	 */
 	public function set_up(): void {
 		parent::set_up();
@@ -1430,7 +1430,7 @@ class Test_Write_Guard_Staged_Copy_Status extends WP_UnitTestCase {
 		$this->captured = array();
 
 		add_action(
-			'swpub_write_blocked',
+			'staged_edits_write_blocked',
 			function ( $staged_copy_id, $live_id, $channel, $user_id ): void {
 				$this->captured[] = array(
 					'staged_copy_id' => (int) $staged_copy_id,
@@ -1559,7 +1559,7 @@ class Test_Write_Guard_Staged_Copy_Status extends WP_UnitTestCase {
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_field_locked', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_field_locked', $response->as_error()->get_error_code() );
 
 		// Field_Lock refused before wp_insert_post() was ever reached, so this
 		// guard never ran and fired nothing.
@@ -1599,7 +1599,7 @@ class Test_Write_Guard_Staged_Copy_Status extends WP_UnitTestCase {
 		$reverted = array();
 
 		add_action(
-			'swpub_staged_status_reverted',
+			'staged_edits_staged_status_reverted',
 			static function ( $staged_copy_id, $live_id, $attempted, $user_id ) use ( &$reverted ): void {
 				$reverted[] = array(
 					'staged_copy_id' => (int) $staged_copy_id,
@@ -1688,7 +1688,7 @@ class Test_Write_Guard_Staged_Copy_Status extends WP_UnitTestCase {
 		$reverted = false;
 
 		add_action(
-			'swpub_staged_status_reverted',
+			'staged_edits_staged_status_reverted',
 			static function () use ( &$reverted ): void {
 				$reverted = true;
 			}
@@ -1741,7 +1741,7 @@ class Test_Write_Guard_Autosave extends WP_UnitTestCase {
 		$fired = false;
 
 		add_action(
-			'swpub_write_staged',
+			'staged_edits_write_staged',
 			static function () use ( &$fired ): void {
 				$fired = true;
 			}

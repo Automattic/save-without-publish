@@ -10,10 +10,10 @@
  * requests -- the browser's network panel, a proxy, an error tracker, a log.
  *
  * The second is the backstop. The server still redirects a save that reaches the
- * post endpoint anyway, and still answers `swpub_staged` with HTTP 409, because
+ * post endpoint anyway, and still answers `staged_edits_staged` with HTTP 409, because
  * the protocol above is JavaScript and JavaScript that did not load must not be
  * the difference between staging and publishing. That path is now instrumented
- * rather than routine: the server fires `swpub_staged_via_backstop`, and the end
+ * rather than routine: the server fires `staged_edits_staged_via_backstop`, and the end
  * -to-end suite fails if it is ever heard on a path a working editor takes.
  *
  * Either way the write succeeded, so either way the editor arrives on the staged
@@ -34,14 +34,14 @@ import { REPAIR_ACTION } from './publish-changes';
 import { editStaged } from './routes';
 import { stageChanges } from './stage';
 
-const STAGED_CODE = 'swpub_staged';
+const STAGED_CODE = 'staged_edits_staged';
 
 /**
  * The server's refusal when a write would change something a staged copy cannot
  * hold. Documented contract, not an incident identifier -- see
  * `includes/class-field-lock.php`.
  */
-const LOCKED_CODE = 'swpub_field_locked';
+const LOCKED_CODE = 'staged_edits_field_locked';
 
 /**
  * Fields a staging save drops rather than refuses.
@@ -69,7 +69,7 @@ const DROPPED_FIELDS = [ 'status' ];
  *
  * Per tab and read once, so it cannot outlive the navigation that set it.
  */
-const ARRIVAL_KEY = 'swpub-staged-arrival';
+const ARRIVAL_KEY = 'staged-edits-staged-arrival';
 
 /**
  * Names for the fields a save may not carry alongside a staged change.
@@ -115,7 +115,7 @@ const fieldLabels = () => ( {
  * @return {boolean} True when the swap is disabled.
  */
 function swapDisabled() {
-	return true === window.swpubTestDisableSaveSwap;
+	return true === window.stagedEditsTestDisableSaveSwap;
 }
 
 /**
@@ -188,7 +188,7 @@ function shouldStage( ctx, id, fields ) {
 /**
  * Whether this save would write fields the staged copy already owns (R55).
  *
- * The client half of `swpub_live_locked`. The canvas and the title are
+ * The client half of `staged_edits_live_locked`. The canvas and the title are
  * read-only while a copy exists, and the excerpt field is gone from the
  * screen (`existing-staged-copy.js`), but those are courtesies, not the
  * boundary: this is what actually catches an edit that reaches the store some
@@ -273,7 +273,7 @@ function refuseLocked( ctx ) {
 				'staged-edits'
 			),
 			{
-				id: 'swpub-live-locked',
+				id: 'staged-edits-live-locked',
 				isDismissible: true,
 				actions: editStaged( ctx ),
 			}
@@ -283,7 +283,7 @@ function refuseLocked( ctx ) {
 	dismissCoreSaveFailure();
 
 	const error = new Error();
-	error.code = 'swpub_live_locked';
+	error.code = 'staged_edits_live_locked';
 
 	return error;
 }
@@ -297,7 +297,7 @@ function refuseLocked( ctx ) {
 function arrivalUrl( editUrl ) {
 	const separator = editUrl.indexOf( '?' ) === -1 ? '?' : '&';
 
-	return editUrl + separator + 'swpub_forked=1';
+	return editUrl + separator + 'staged_edits_forked=1';
 }
 
 /**
@@ -343,7 +343,9 @@ function undoRefused( refused ) {
 
 	// The refusal has been answered; left up, it would go on telling the
 	// editor to undo a change that is no longer there.
-	data.dispatch( 'core/notices' ).removeNotice( 'swpub-unstageable-edit' );
+	data.dispatch( 'core/notices' ).removeNotice(
+		'staged-edits-unstageable-edit'
+	);
 }
 
 /**
@@ -383,7 +385,7 @@ function refuse( refused ) {
 				named.join( ', ' )
 			),
 			{
-				id: 'swpub-unstageable-edit',
+				id: 'staged-edits-unstageable-edit',
 				isDismissible: true,
 				actions: [
 					{
@@ -398,7 +400,7 @@ function refuse( refused ) {
 	dismissCoreSaveFailure();
 
 	const error = new Error();
-	error.code = 'swpub_unstageable_edit';
+	error.code = 'staged_edits_unstageable_edit';
 
 	return error;
 }
@@ -502,7 +504,7 @@ function announceArrival() {
 			'Your change was staged. The published post is unchanged.',
 			'staged-edits'
 		),
-		{ id: 'swpub-staged-arrival', type: 'snackbar' }
+		{ id: 'staged-edits-staged-arrival', type: 'snackbar' }
 	);
 }
 

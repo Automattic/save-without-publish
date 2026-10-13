@@ -40,9 +40,9 @@ export function DiscardStaged() {
 	}
 
 	return (
-		<PluginPostStatusInfo className="swpub-discard-row">
+		<PluginPostStatusInfo className="staged-edits-discard-row">
 			<Button
-				className="swpub-discard-row__button"
+				className="staged-edits-discard-row__button"
 				href={ ctx.discardUrl }
 				isDestructive
 				variant="secondary"

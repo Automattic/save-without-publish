@@ -46,7 +46,7 @@ Nothing is required. The plugin behaves exactly as it does without the Integrati
 
 - **`never`** stops the scheduled publish and keeps the staged copy for a person to review. This is what the plugin has always done.
 - **`non_content`** publishes anyway when what changed is a field the publish never writes (a term, the featured image, the slug, meta), and still stops if the title, content or excerpt changed, or if the plugin cannot tell what changed (possible only for a copy staged by a build that did not yet record what the published post looked like).
-- **`always`** publishes the staged words over any change, and records that it did so (the `swpub_drift_overridden` action fires, as it does when an editor confirms an overwrite).
+- **`always`** publishes the staged words over any change, and records that it did so (the `staged_edits_drift_overridden` action fires, as it does when an editor confirms an overwrite).
 
 Example valid config:
 
@@ -66,7 +66,7 @@ With incomplete config the plugin does not fatal and shows no notice, because no
 
 ### How it meets the filter
 
-The setting is the starting answer to the `swpub_scheduled_publish_overrides_drift` filter, not a replacement for it. The filter receives the setting's answer as `$override`, and a site's own callback has the last word in both directions: returning `false` stops a publish the setting would have allowed, and returning `true` allows one it would have stopped. A callback that returns `$override` unchanged keeps the setting.
+The setting is the starting answer to the `staged_edits_scheduled_publish_overrides_drift` filter, not a replacement for it. The filter receives the setting's answer as `$override`, and a site's own callback has the last word in both directions: returning `false` stops a publish the setting would have allowed, and returning `true` allows one it would have stopped. A callback that returns `$override` unchanged keeps the setting.
 
 The constant is read when a scheduled publish meets drift, so it only has to be defined by then. The platform defines it before plugins load.
 

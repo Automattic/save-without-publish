@@ -10,8 +10,11 @@ declare( strict_types = 1 );
 namespace StagedEdits\Tests;
 
 use StagedEdits\Baseline_Revision;
+use StagedEdits\Capabilities;
 use StagedEdits\Drift;
+use StagedEdits\Scheduled_Publish;
 use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use StagedEdits\Upgrade;
 use WP_UnitTestCase;
 
@@ -40,7 +43,7 @@ class Test_Upgrade extends WP_UnitTestCase {
 		update_post_meta( $live_id, self::LEGACY_POINTER, $staged_copy_id );
 		update_post_meta( $staged_copy_id, Staged_Copy_Repository::LIVE_META, $live_id );
 
-		$this->assertSame( 1, Upgrade::rename_pointers() );
+		$this->assertSame( 1, Upgrade::rename_meta() );
 
 		$this->assertSame(
 			(string) $staged_copy_id,
@@ -66,7 +69,7 @@ class Test_Upgrade extends WP_UnitTestCase {
 
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $live_id ) );
 
-		Upgrade::rename_pointers();
+		Upgrade::rename_meta();
 
 		$found = Staged_Copy_Repository::find_for_live( $live_id );
 
@@ -78,7 +81,106 @@ class Test_Upgrade extends WP_UnitTestCase {
 	 * A site with nothing staged is left alone.
 	 */
 	public function test_nothing_to_rename_changes_nothing(): void {
-		$this->assertSame( 0, Upgrade::rename_pointers() );
+		$this->assertSame( 0, Upgrade::rename_meta() );
+	}
+
+	/**
+	 * A pair staged under the plugin's old name is found under its new one.
+	 *
+	 * The whole of what a staged copy is, as an un-upgraded site holds it: the
+	 * old status on the row and the old keys on both sides.
+	 */
+	public function test_a_pair_staged_before_the_plugin_was_renamed_resolves_again(): void {
+		global $wpdb;
+
+		$live_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$staged  = Staged_Copy_Repository::create( get_post( $live_id ) );
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Putting stored state back the way an un-upgraded site has it.
+		$wpdb->update( $wpdb->posts, array( 'post_status' => 'swpub_staged' ), array( 'ID' => $staged->ID ) );
+		$wpdb->update( $wpdb->postmeta, array( 'meta_key' => '_swpub_staged_copy_id' ), array( 'meta_key' => Staged_Copy_Repository::STAGED_COPY_META ) );
+		$wpdb->update( $wpdb->postmeta, array( 'meta_key' => '_swpub_live_id' ), array( 'meta_key' => Staged_Copy_Repository::LIVE_META ) );
+		$wpdb->update( $wpdb->postmeta, array( 'meta_key' => '_swpub_forked_modified_gmt' ), array( 'meta_key' => Staged_Copy_Repository::FORK_BASELINE_META ) );
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+		clean_post_cache( $live_id );
+		clean_post_cache( $staged->ID );
+
+		$this->assertNull( Staged_Copy_Repository::find_for_live( $live_id ) );
+		$this->assertFalse( Status::is_staged( $staged->ID ) );
+
+		delete_option( 'staged_edits_schema' );
+		update_option( 'swpub_schema', 3 );
+
+		Upgrade::maybe_run();
+
+		$found = Staged_Copy_Repository::find_for_live( $live_id );
+
+		$this->assertInstanceOf( \WP_Post::class, $found );
+		$this->assertSame( $staged->ID, $found->ID );
+		$this->assertTrue( Status::is_staged( $staged->ID ) );
+		$this->assertSame( $live_id, Staged_Copy_Repository::find_live_for_staged_copy( $staged->ID )->ID );
+		$this->assertNotSame( '', Drift::baseline( $staged->ID ) );
+
+		$this->assertSame( 4, (int) get_option( 'staged_edits_schema' ) );
+		$this->assertFalse( get_option( 'swpub_schema' ), 'The option under its old name should be gone.' );
+	}
+
+	/**
+	 * A publish scheduled before the rename still fires, at the time it was set for.
+	 *
+	 * WP-Cron fires an event under the hook it was scheduled with. Left under
+	 * the old one it would find nothing listening and be consumed.
+	 */
+	public function test_a_scheduled_publish_moves_to_the_hook_that_is_listened_to(): void {
+		$timestamp = time() + HOUR_IN_SECONDS;
+
+		wp_schedule_single_event( $timestamp, 'swpub_publish_scheduled', array( 123 ) );
+
+		$this->assertSame( 1, Upgrade::rename_schedules() );
+
+		$this->assertSame( $timestamp, wp_next_scheduled( Scheduled_Publish::HOOK, array( 123 ) ) );
+		$this->assertFalse( wp_next_scheduled( 'swpub_publish_scheduled', array( 123 ) ) );
+
+		$this->assertSame( 0, Upgrade::rename_schedules(), 'A second run has nothing left to move.' );
+		$this->assertSame( $timestamp, wp_next_scheduled( Scheduled_Publish::HOOK, array( 123 ) ) );
+	}
+
+	/**
+	 * A grant a site made under the old capability name still holds.
+	 */
+	public function test_a_direct_publish_grant_on_a_role_is_carried_over(): void {
+		$role = get_role( 'editor' );
+		$role->add_cap( 'swpub_publish_directly_posts' );
+
+		$this->assertSame( 1, Upgrade::rename_capabilities() );
+
+		$role = get_role( 'editor' );
+
+		$this->assertTrue( $role->has_cap( Capabilities::PUBLISH_DIRECTLY_POSTS ) );
+		$this->assertArrayNotHasKey( 'swpub_publish_directly_posts', $role->capabilities );
+
+		$role->remove_cap( Capabilities::PUBLISH_DIRECTLY_POSTS );
+	}
+
+	/**
+	 * A grant or a denial made on one user is carried over as what it was.
+	 */
+	public function test_a_direct_publish_grant_on_a_user_is_carried_over(): void {
+		$granted = self::factory()->user->create_and_get( array( 'role' => 'editor' ) );
+		$denied  = self::factory()->user->create_and_get( array( 'role' => 'editor' ) );
+
+		$granted->add_cap( 'swpub_publish_directly_pages' );
+		$denied->add_cap( 'swpub_publish_directly_posts', false );
+
+		$this->assertSame( 2, Upgrade::rename_capabilities() );
+
+		$granted = get_userdata( $granted->ID );
+		$denied  = get_userdata( $denied->ID );
+
+		$this->assertSame( true, $granted->caps['staged_edits_publish_directly_pages'] ?? null );
+		$this->assertArrayNotHasKey( 'swpub_publish_directly_pages', $granted->caps );
+		$this->assertSame( false, $denied->caps[ Capabilities::PUBLISH_DIRECTLY_POSTS ] ?? null );
+		$this->assertArrayNotHasKey( 'swpub_publish_directly_posts', $denied->caps );
 	}
 
 	/**

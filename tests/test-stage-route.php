@@ -70,7 +70,7 @@ class Test_Stage_Route extends WP_UnitTestCase {
 	 * @return \WP_REST_Response The response.
 	 */
 	private function stage( int $live_id, array $body = array() ) {
-		$request = new WP_REST_Request( 'POST', '/swpub/v1/stage/' . $live_id );
+		$request = new WP_REST_Request( 'POST', '/staged-edits/v1/stage/' . $live_id );
 		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 
 		foreach ( $body as $key => $value ) {
@@ -143,7 +143,7 @@ class Test_Stage_Route extends WP_UnitTestCase {
 		$second = $this->stage( $this->live_id, array( 'content' => 'Second pass.' ) );
 
 		$this->assertTrue( $second->is_error() );
-		$this->assertSame( 'swpub_live_locked', $second->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_live_locked', $second->as_error()->get_error_code() );
 		$this->assertSame( 409, $second->get_status() );
 		$this->assertSame( $copy_id, $second->as_error()->get_error_data()['staged_copy_id'] );
 
@@ -246,7 +246,7 @@ class Test_Stage_Route extends WP_UnitTestCase {
 		);
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_unstageable_field', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_unstageable_field', $response->as_error()->get_error_code() );
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ) );
 	}
 
@@ -316,11 +316,11 @@ class Test_Stage_Route extends WP_UnitTestCase {
 	 * The kill switch closes the route.
 	 */
 	public function test_the_kill_switch_closes_the_route(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$response = $this->stage( $this->live_id, array( 'content' => 'Disabled.' ) );
 
-		remove_filter( 'swpub_is_enabled', '__return_false' );
+		remove_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$this->assertTrue( $response->is_error() );
 		$this->assertNull( Staged_Copy_Repository::find_for_live( $this->live_id ) );

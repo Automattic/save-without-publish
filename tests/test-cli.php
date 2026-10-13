@@ -159,7 +159,7 @@ class Test_CLI extends WP_UnitTestCase {
 	 * staged copies that already exist matters most.
 	 */
 	public function test_the_listing_works_with_staging_disabled(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$row = $this->row_for( $this->staged_copy_id );
 

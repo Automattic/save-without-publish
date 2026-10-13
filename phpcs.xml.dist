@@ -30,7 +30,7 @@
 		<properties>
 			<property name="prefixes" type="array">
 				<element value="StagedEdits"/>
-				<element value="swpub"/>
+				<element value="staged_edits"/>
 			</property>
 		</properties>
 	</rule>

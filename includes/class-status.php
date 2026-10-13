@@ -32,7 +32,7 @@ final class Status {
 	 *
 	 * Stored in `wp_posts.post_status`, which is a 20-character column.
 	 */
-	public const NAME = 'swpub_staged';
+	public const NAME = 'staged_edits_staged';
 
 	/**
 	 * Registers the status.

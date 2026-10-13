@@ -63,7 +63,7 @@ class Test_Events extends WP_UnitTestCase {
 
 		$this->captured = array();
 
-		foreach ( array( 'swpub_staged_created', 'swpub_staged_edited' ) as $hook ) {
+		foreach ( array( 'staged_edits_staged_created', 'staged_edits_staged_edited' ) as $hook ) {
 			add_action(
 				$hook,
 				function ( $staged_copy_id, $live_id, $user_id ) use ( $hook ): void {
@@ -80,10 +80,10 @@ class Test_Events extends WP_UnitTestCase {
 		}
 
 		add_action(
-			'swpub_drift_overridden',
+			'staged_edits_drift_overridden',
 			function ( $staged_copy_id, $live_id, $user_id, $confirmed, $kind ): void {
 				$this->captured[] = array(
-					'hook'      => 'swpub_drift_overridden',
+					'hook'      => 'staged_edits_drift_overridden',
 					'staged_copy_id' => $staged_copy_id,
 					'live_id'   => $live_id,
 					'user_id'   => $user_id,
@@ -119,14 +119,14 @@ class Test_Events extends WP_UnitTestCase {
 	public function test_creation_fires_once_with_the_acting_user(): void {
 		$staged_copy_id = Staged_Copy_Repository::create( get_post( $this->live_id ) )->ID;
 
-		$events = $this->events( 'swpub_staged_created' );
+		$events = $this->events( 'staged_edits_staged_created' );
 
 		$this->assertCount( 1, $events );
 		$this->assertSame( $staged_copy_id, $events[0]['staged_copy_id'] );
 		$this->assertSame( $this->live_id, $events[0]['live_id'] );
 		$this->assertSame( $this->user_id, $events[0]['user_id'] );
 
-		$this->assertSame( array(), $this->events( 'swpub_staged_edited' ) );
+		$this->assertSame( array(), $this->events( 'staged_edits_staged_edited' ) );
 	}
 
 	/**
@@ -142,9 +142,9 @@ class Test_Events extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertCount( 1, $this->events( 'swpub_staged_created' ) );
+		$this->assertCount( 1, $this->events( 'staged_edits_staged_created' ) );
 
-		$edits = $this->events( 'swpub_staged_edited' );
+		$edits = $this->events( 'staged_edits_staged_edited' );
 
 		$this->assertCount( 1, $edits );
 		$this->assertSame( $staged_copy_id, $edits[0]['staged_copy_id'] );
@@ -171,7 +171,7 @@ class Test_Events extends WP_UnitTestCase {
 			)
 		);
 
-		$edits = $this->events( 'swpub_staged_edited' );
+		$edits = $this->events( 'staged_edits_staged_edited' );
 
 		$this->assertSame( $second, $edits[0]['user_id'] );
 		$this->assertNotSame( $this->user_id, $edits[0]['user_id'] );
@@ -224,7 +224,7 @@ class Test_Events extends WP_UnitTestCase {
 		);
 		Merge::apply( $clean_staged_copy );
 
-		$this->assertSame( array(), $this->events( 'swpub_drift_overridden' ) );
+		$this->assertSame( array(), $this->events( 'staged_edits_drift_overridden' ) );
 
 		// Now move the published post and merge over it.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Core overwrites post_modified_gmt on every update, so it cannot be set through the API.
@@ -239,7 +239,7 @@ class Test_Events extends WP_UnitTestCase {
 
 		Merge::apply( $staged_copy_id, $shown );
 
-		$overrides = $this->events( 'swpub_drift_overridden' );
+		$overrides = $this->events( 'staged_edits_drift_overridden' );
 
 		$this->assertCount( 1, $overrides );
 		$this->assertSame( $staged_copy_id, $overrides[0]['staged_copy_id'] );
@@ -264,7 +264,7 @@ class Test_Events extends WP_UnitTestCase {
 		$seen = null;
 
 		add_filter(
-			'swpub_pre_merge',
+			'staged_edits_pre_merge',
 			static function ( $allowed, $live_id, $incoming_staged_copy_id ) use ( &$seen ) {
 				$seen = array( $live_id, $incoming_staged_copy_id );
 

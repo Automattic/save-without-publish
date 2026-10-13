@@ -37,7 +37,7 @@ final class Transitions {
 	 * Absent means the pair is healthy. Underscore-prefixed, so it is protected
 	 * and never exposed over REST.
 	 */
-	public const STRANDED_META = '_swpub_stranded';
+	public const STRANDED_META = '_staged_edits_stranded';
 
 	/**
 	 * The live post left published status but still exists.
@@ -167,7 +167,7 @@ final class Transitions {
 	 *
 	 * The honest limit: if the process dies before shutdown, the staged copy is
 	 * left in the trash with its pointers already cleared. That surfaces as an
-	 * orphan in `wp swpub list` and is repairable, which is the right way round
+	 * orphan in `wp staged-edits list` and is repairable, which is the right way round
 	 * -- the alternative loses the editor's work instead.
 	 *
 	 * @param int $post_id The post that was trashed.
@@ -225,7 +225,7 @@ final class Transitions {
 	 * the row with a query of its own and never reaches that hook. That is the
 	 * function cron's `check_and_publish_future_post()` calls, and it is public
 	 * API a plugin may call directly, so without this a staged copy becomes an
-	 * ordinary published post at its own `swpub-staged-<id>` slug, while the
+	 * ordinary published post at its own `staged-edits-staged-<id>` slug, while the
 	 * post it stages sits untouched and both pointers still point at it.
 	 *
 	 * So this is repair rather than refusal, and the difference is honest: the
@@ -317,7 +317,7 @@ final class Transitions {
 		 * @param string $reason    Either 'unpublished' or 'deleted'.
 		 * @param int    $live_id   The live post it staged.
 		 */
-		do_action( 'swpub_staged_stranded', $staged_copy_id, $reason, $live->ID );
+		do_action( 'staged_edits_staged_stranded', $staged_copy_id, $reason, $live->ID );
 	}
 
 	/**
@@ -342,7 +342,7 @@ final class Transitions {
 		 *
 		 * @param int $staged_copy_id Staged copy post ID.
 		 */
-		do_action( 'swpub_staged_recovered', $staged_copy_id );
+		do_action( 'staged_edits_staged_recovered', $staged_copy_id );
 	}
 
 	/**

@@ -69,8 +69,8 @@ class Test_Post_List extends WP_UnitTestCase {
 	public function test_a_post_with_a_staged_copy_is_labelled(): void {
 		$states = apply_filters( 'display_post_states', array(), get_post( $this->live_id ) );
 
-		$this->assertArrayHasKey( 'swpub', $states );
-		$this->assertSame( 'Staged changes', $states['swpub'] );
+		$this->assertArrayHasKey( 'staged_edits', $states );
+		$this->assertSame( 'Staged changes', $states['staged_edits'] );
 	}
 
 	/**
@@ -106,8 +106,8 @@ class Test_Post_List extends WP_UnitTestCase {
 		// stays, because unlike every state core adds, this one is not a
 		// property of the post: the post is published, and what is staged hangs
 		// off it.
-		$this->assertSame( 'Staged changes', $states['swpub'] );
-		$this->assertSame( 'Cannot be published', $states['swpub_stranded'] );
+		$this->assertSame( 'Staged changes', $states['staged_edits'] );
+		$this->assertSame( 'Cannot be published', $states['staged_edits_stranded'] );
 	}
 
 	/**
@@ -120,9 +120,9 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$states = apply_filters( 'display_post_states', array(), get_post( $this->live_id ) );
 
-		$this->assertSame( 'Staged changes', $states['swpub'] );
-		$this->assertSame( 'Scheduled', $states['swpub_scheduled'] );
-		$this->assertArrayNotHasKey( 'swpub_schedule_stopped', $states );
+		$this->assertSame( 'Staged changes', $states['staged_edits'] );
+		$this->assertSame( 'Scheduled', $states['staged_edits_scheduled'] );
+		$this->assertArrayNotHasKey( 'staged_edits_schedule_stopped', $states );
 	}
 
 	/**
@@ -134,8 +134,8 @@ class Test_Post_List extends WP_UnitTestCase {
 			$this->staged_copy_id,
 			Scheduled_Publish::REFUSED_META,
 			array(
-				'reason'        => 'swpub_drift',
-				'code'          => 'swpub_drift',
+				'reason'        => 'staged_edits_drift',
+				'code'          => 'staged_edits_drift',
 				'message'       => '',
 				'scheduled_for' => '2026-08-13 09:00:00',
 				'attempted_at'  => '2026-08-13 09:00:05',
@@ -144,9 +144,9 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$states = apply_filters( 'display_post_states', array(), get_post( $this->live_id ) );
 
-		$this->assertSame( 'Staged changes', $states['swpub'] );
-		$this->assertSame( 'Schedule stopped', $states['swpub_schedule_stopped'] );
-		$this->assertArrayNotHasKey( 'swpub_scheduled', $states );
+		$this->assertSame( 'Staged changes', $states['staged_edits'] );
+		$this->assertSame( 'Schedule stopped', $states['staged_edits_schedule_stopped'] );
+		$this->assertArrayNotHasKey( 'staged_edits_scheduled', $states );
 	}
 
 	/**
@@ -155,19 +155,19 @@ class Test_Post_List extends WP_UnitTestCase {
 	public function test_the_row_offers_only_opening_the_staged_copy(): void {
 		$actions = apply_filters( 'post_row_actions', array(), get_post( $this->live_id ) );
 
-		$this->assertArrayHasKey( 'swpub_open', $actions );
-		$this->assertStringContainsString( 'post=' . $this->staged_copy_id, $actions['swpub_open'] );
+		$this->assertArrayHasKey( 'staged_edits_open', $actions );
+		$this->assertStringContainsString( 'post=' . $this->staged_copy_id, $actions['staged_edits_open'] );
 
 		// One word for one thing. The state beside the title and the action
 		// beneath it are the same vocabulary, so a support ticket quoting either
 		// greps straight to the source.
-		$this->assertStringContainsString( 'Edit staged changes', $actions['swpub_open'] );
+		$this->assertStringContainsString( 'Edit staged changes', $actions['staged_edits_open'] );
 
 		// Reviewing and discarding are decisions about the staged copy, offered
 		// where that copy is open. Core's row already carries four actions, and
 		// three more wrapped it onto a second line.
-		$this->assertArrayNotHasKey( 'swpub_review', $actions );
-		$this->assertArrayNotHasKey( 'swpub_discard', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_review', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_discard', $actions );
 	}
 
 	/**
@@ -178,7 +178,7 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$actions = apply_filters( 'post_row_actions', array(), get_post( $this->live_id ) );
 
-		$this->assertArrayNotHasKey( 'swpub_open', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_open', $actions );
 	}
 
 	/**
@@ -190,7 +190,7 @@ class Test_Post_List extends WP_UnitTestCase {
 		$actions = apply_filters( 'post_row_actions', array(), get_post( $other ) );
 
 		// The way in is offered; a copy that does not exist is not.
-		$this->assertArrayNotHasKey( 'swpub_open', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_open', $actions );
 	}
 
 	/**
@@ -207,8 +207,8 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$actions = Post_List::row_actions( array( 'edit' => '<a href="#">Edit</a>' ), get_post( $plain ) );
 
-		$this->assertArrayHasKey( 'swpub_stage', $actions );
-		$this->assertStringContainsString( 'Stage changes', $actions['swpub_stage'] );
+		$this->assertArrayHasKey( 'staged_edits_stage', $actions );
+		$this->assertStringContainsString( 'Stage changes', $actions['staged_edits_stage'] );
 	}
 
 	/**
@@ -217,8 +217,8 @@ class Test_Post_List extends WP_UnitTestCase {
 	public function test_a_post_with_a_staged_copy_does_not_offer_staging(): void {
 		$actions = Post_List::row_actions( array(), get_post( $this->live_id ) );
 
-		$this->assertArrayHasKey( 'swpub_open', $actions );
-		$this->assertArrayNotHasKey( 'swpub_stage', $actions );
+		$this->assertArrayHasKey( 'staged_edits_open', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_stage', $actions );
 	}
 
 	/**
@@ -236,7 +236,7 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$actions = Post_List::row_actions( array(), get_post( $plain ) );
 
-		$this->assertArrayNotHasKey( 'swpub_stage', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_stage', $actions );
 	}
 
 	/**
@@ -247,7 +247,7 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$actions = Post_List::row_actions( array(), get_post( $draft ) );
 
-		$this->assertArrayNotHasKey( 'swpub_stage', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_stage', $actions );
 	}
 
 	/**
@@ -256,8 +256,8 @@ class Test_Post_List extends WP_UnitTestCase {
 	public function test_following_the_stage_action_creates_the_copy_and_redirects(): void {
 		$plain = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$_REQUEST['swpub_post'] = (string) $plain;
-		$_REQUEST['_wpnonce']   = wp_create_nonce( 'swpub_stage_' . $plain );
+		$_REQUEST['staged_edits_post'] = (string) $plain;
+		$_REQUEST['_wpnonce']   = wp_create_nonce( 'staged_edits_stage_' . $plain );
 
 		/*
 		 * The handler ends in `exit`, which no test can survive. Throwing from
@@ -278,7 +278,7 @@ class Test_Post_List extends WP_UnitTestCase {
 		} catch ( \Exception $e ) {
 			$redirect = $e->getMessage();
 		} finally {
-			unset( $_REQUEST['swpub_post'], $_REQUEST['_wpnonce'] );
+			unset( $_REQUEST['staged_edits_post'], $_REQUEST['_wpnonce'] );
 		}
 
 		$staged_copy = Staged_Copy_Repository::find_for_live( $plain );
@@ -293,14 +293,14 @@ class Test_Post_List extends WP_UnitTestCase {
 		$plain = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$other = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$_REQUEST['swpub_post'] = (string) $plain;
-		$_REQUEST['_wpnonce']   = wp_create_nonce( 'swpub_stage_' . $other );
+		$_REQUEST['staged_edits_post'] = (string) $plain;
+		$_REQUEST['_wpnonce']   = wp_create_nonce( 'staged_edits_stage_' . $other );
 
 		try {
 			Post_List::handle_stage();
 			$this->fail( 'A mismatched nonce was accepted.' );
 		} catch ( \WPDieException $e ) {
-			unset( $_REQUEST['swpub_post'], $_REQUEST['_wpnonce'] );
+			unset( $_REQUEST['staged_edits_post'], $_REQUEST['_wpnonce'] );
 			$this->assertNull( Staged_Copy_Repository::find_for_live( $plain ) );
 		}
 	}
@@ -309,12 +309,12 @@ class Test_Post_List extends WP_UnitTestCase {
 	 * The kill switch closes the list's staging path too.
 	 */
 	public function test_the_kill_switch_closes_the_stage_action(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$plain = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$_REQUEST['swpub_post'] = (string) $plain;
-		$_REQUEST['_wpnonce']   = wp_create_nonce( 'swpub_stage_' . $plain );
+		$_REQUEST['staged_edits_post'] = (string) $plain;
+		$_REQUEST['_wpnonce']   = wp_create_nonce( 'staged_edits_stage_' . $plain );
 
 		try {
 			Post_List::handle_stage();
@@ -322,8 +322,8 @@ class Test_Post_List extends WP_UnitTestCase {
 		} catch ( \WPDieException $e ) {
 			$this->assertNull( Staged_Copy_Repository::find_for_live( $plain ) );
 		} finally {
-			unset( $_REQUEST['swpub_post'], $_REQUEST['_wpnonce'] );
-			remove_filter( 'swpub_is_enabled', '__return_false' );
+			unset( $_REQUEST['staged_edits_post'], $_REQUEST['_wpnonce'] );
+			remove_filter( 'staged_edits_is_enabled', '__return_false' );
 		}
 	}
 
@@ -333,8 +333,8 @@ class Test_Post_List extends WP_UnitTestCase {
 	public function test_the_stage_action_refuses_a_draft(): void {
 		$draft = self::factory()->post->create( array( 'post_status' => 'draft' ) );
 
-		$_REQUEST['swpub_post'] = (string) $draft;
-		$_REQUEST['_wpnonce']   = wp_create_nonce( 'swpub_stage_' . $draft );
+		$_REQUEST['staged_edits_post'] = (string) $draft;
+		$_REQUEST['_wpnonce']   = wp_create_nonce( 'staged_edits_stage_' . $draft );
 
 		try {
 			Post_List::handle_stage();
@@ -342,7 +342,7 @@ class Test_Post_List extends WP_UnitTestCase {
 		} catch ( \WPDieException $e ) {
 			$this->assertNull( Staged_Copy_Repository::find_for_live( $draft ) );
 		} finally {
-			unset( $_REQUEST['swpub_post'], $_REQUEST['_wpnonce'] );
+			unset( $_REQUEST['staged_edits_post'], $_REQUEST['_wpnonce'] );
 		}
 	}
 
@@ -354,8 +354,8 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 
-		$_REQUEST['swpub_post'] = (string) $plain;
-		$_REQUEST['_wpnonce']   = wp_create_nonce( 'swpub_stage_' . $plain );
+		$_REQUEST['staged_edits_post'] = (string) $plain;
+		$_REQUEST['_wpnonce']   = wp_create_nonce( 'staged_edits_stage_' . $plain );
 
 		try {
 			Post_List::handle_stage();
@@ -363,7 +363,7 @@ class Test_Post_List extends WP_UnitTestCase {
 		} catch ( \WPDieException $e ) {
 			$this->assertNull( Staged_Copy_Repository::find_for_live( $plain ) );
 		} finally {
-			unset( $_REQUEST['swpub_post'], $_REQUEST['_wpnonce'] );
+			unset( $_REQUEST['staged_edits_post'], $_REQUEST['_wpnonce'] );
 		}
 	}
 
@@ -373,8 +373,8 @@ class Test_Post_List extends WP_UnitTestCase {
 	public function test_the_stage_action_refuses_a_mid_merge_post(): void {
 		Merge_Marker::start( $this->live_id, $this->staged_copy_id );
 
-		$_REQUEST['swpub_post'] = (string) $this->live_id;
-		$_REQUEST['_wpnonce']   = wp_create_nonce( 'swpub_stage_' . $this->live_id );
+		$_REQUEST['staged_edits_post'] = (string) $this->live_id;
+		$_REQUEST['_wpnonce']   = wp_create_nonce( 'staged_edits_stage_' . $this->live_id );
 
 		try {
 			Post_List::handle_stage();
@@ -382,7 +382,7 @@ class Test_Post_List extends WP_UnitTestCase {
 		} catch ( \WPDieException $e ) {
 			$this->assertStringContainsString( 'already in progress', $e->getMessage() );
 		} finally {
-			unset( $_REQUEST['swpub_post'], $_REQUEST['_wpnonce'] );
+			unset( $_REQUEST['staged_edits_post'], $_REQUEST['_wpnonce'] );
 		}
 	}
 
@@ -395,8 +395,8 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$plain = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$_REQUEST['swpub_post'] = (string) $plain;
-		$_REQUEST['_wpnonce']   = wp_create_nonce( 'swpub_stage_' . $plain );
+		$_REQUEST['staged_edits_post'] = (string) $plain;
+		$_REQUEST['_wpnonce']   = wp_create_nonce( 'staged_edits_stage_' . $plain );
 
 		try {
 			Post_List::handle_stage();
@@ -405,7 +405,7 @@ class Test_Post_List extends WP_UnitTestCase {
 			$this->assertStringContainsString( 'revisions', $e->getMessage() );
 			$this->assertNull( Staged_Copy_Repository::find_for_live( $plain ) );
 		} finally {
-			unset( $_REQUEST['swpub_post'], $_REQUEST['_wpnonce'] );
+			unset( $_REQUEST['staged_edits_post'], $_REQUEST['_wpnonce'] );
 			remove_filter( 'wp_revisions_to_keep', '__return_zero' );
 		}
 	}
@@ -419,7 +419,7 @@ class Test_Post_List extends WP_UnitTestCase {
 	 */
 	public function test_an_uncovered_post_type_is_not_offered_staging(): void {
 		register_post_type(
-			'swpub_case',
+			'staged_edits_case',
 			array(
 				'public'       => true,
 				'show_in_rest' => false,
@@ -433,16 +433,16 @@ class Test_Post_List extends WP_UnitTestCase {
 
 		$plain = self::factory()->post->create(
 			array(
-				'post_type'   => 'swpub_case',
+				'post_type'   => 'staged_edits_case',
 				'post_status' => 'publish',
 			)
 		);
 
 		$actions = Post_List::row_actions( array(), get_post( $plain ) );
 
-		unregister_post_type( 'swpub_case' );
+		unregister_post_type( 'staged_edits_case' );
 
-		$this->assertArrayNotHasKey( 'swpub_stage', $actions );
+		$this->assertArrayNotHasKey( 'staged_edits_stage', $actions );
 	}
 
 	/**
@@ -464,10 +464,10 @@ class Test_Post_List extends WP_UnitTestCase {
 		$this->assertNotSame( $mine_args['_wpnonce'], $theirs_args['_wpnonce'] );
 		$this->assertSame(
 			1,
-			wp_verify_nonce( $mine_args['_wpnonce'], 'swpub_discard_' . $this->live_id )
+			wp_verify_nonce( $mine_args['_wpnonce'], 'staged_edits_discard_' . $this->live_id )
 		);
 		$this->assertFalse(
-			wp_verify_nonce( $mine_args['_wpnonce'], 'swpub_discard_' . $other )
+			wp_verify_nonce( $mine_args['_wpnonce'], 'staged_edits_discard_' . $other )
 		);
 	}
 
@@ -531,6 +531,6 @@ class Test_Post_List extends WP_UnitTestCase {
 	 */
 	public function test_the_staged_copy_survives_an_unconfirmed_discard(): void {
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
-		$this->assertStringNotContainsString( 'swpub_confirmed', Post_List::discard_url( $this->live_id ) );
+		$this->assertStringNotContainsString( 'staged_edits_confirmed', Post_List::discard_url( $this->live_id ) );
 	}
 }

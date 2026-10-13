@@ -11,22 +11,22 @@
 
 declare( strict_types = 1 );
 
-$swpub_autoload = dirname( __DIR__ ) . '/vendor/autoload.php';
+$staged_edits_autoload = dirname( __DIR__ ) . '/vendor/autoload.php';
 
-if ( ! is_readable( $swpub_autoload ) ) {
+if ( ! is_readable( $staged_edits_autoload ) ) {
 	echo "Run `composer install` before the test suite.\n";
 	exit( 1 );
 }
 
-require_once $swpub_autoload;
+require_once $staged_edits_autoload;
 
-$swpub_tests_dir = getenv( 'WP_TESTS_DIR' );
+$staged_edits_tests_dir = getenv( 'WP_TESTS_DIR' );
 
-if ( ! $swpub_tests_dir ) {
-	$swpub_tests_dir = dirname( __DIR__ ) . '/vendor/wp-phpunit/wp-phpunit';
+if ( ! $staged_edits_tests_dir ) {
+	$staged_edits_tests_dir = dirname( __DIR__ ) . '/vendor/wp-phpunit/wp-phpunit';
 }
 
-require_once $swpub_tests_dir . '/includes/functions.php';
+require_once $staged_edits_tests_dir . '/includes/functions.php';
 
 tests_add_filter(
 	'muplugins_loaded',
@@ -35,4 +35,4 @@ tests_add_filter(
 	}
 );
 
-require $swpub_tests_dir . '/includes/bootstrap.php';
+require $staged_edits_tests_dir . '/includes/bootstrap.php';

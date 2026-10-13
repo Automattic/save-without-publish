@@ -55,7 +55,7 @@ final class Admin_Surfaces {
 	 * thing. The name is older than the vocabulary; the parameter is what other
 	 * links already carry.
 	 */
-	private const ARRIVAL_ARG = 'swpub_forked';
+	private const ARRIVAL_ARG = 'staged_edits_forked';
 
 	/**
 	 * Marks a classic redirect as following a refused save (R55).
@@ -64,7 +64,7 @@ final class Admin_Surfaces {
 	 * opposite things: one means the change was staged and the editor was moved to
 	 * it, the other means nothing was written and the editor is still here.
 	 */
-	private const BLOCKED_ARG = 'swpub_blocked';
+	private const BLOCKED_ARG = 'staged_edits_blocked';
 
 	/**
 	 * Registers hooks.
@@ -315,7 +315,7 @@ final class Admin_Surfaces {
 	/**
 	 * Says that the save was refused, and where the change belongs instead.
 	 *
-	 * The classic editor's twin of the block editor's `swpub-live-locked` notice,
+	 * The classic editor's twin of the block editor's `staged-edits-live-locked` notice,
 	 * and it carries the same two facts in the same order: nothing was saved, and
 	 * the staged copy is where those fields are edited.
 	 *
@@ -371,7 +371,7 @@ final class Admin_Surfaces {
 			return $classes;
 		}
 
-		return trim( $classes . ' swpub-staged' );
+		return trim( $classes . ' staged-edits-staged' );
 	}
 
 	/**

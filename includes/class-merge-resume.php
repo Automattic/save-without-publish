@@ -175,7 +175,7 @@ final class Merge_Resume {
 				 * @param int    $staged_copy_id Staged copy post ID, already revalidated.
 				 * @param string $phase     Phase to re-enter.
 				 */
-				do_action( 'swpub_resume_merge', $decision['live_id'], $decision['staged_copy_id'], $decision['phase'] );
+				do_action( 'staged_edits_resume_merge', $decision['live_id'], $decision['staged_copy_id'], $decision['phase'] );
 				break;
 		}
 

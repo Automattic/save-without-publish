@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * The one setting is `scheduled_publish_overrides_drift`. It does not decide a
  * scheduled publish itself: it is the starting answer to the
- * `swpub_scheduled_publish_overrides_drift` filter, so a site's own filter
+ * `staged_edits_scheduled_publish_overrides_drift` filter, so a site's own filter
  * still has the last word.
  */
 final class Config {

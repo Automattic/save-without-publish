@@ -77,7 +77,7 @@ function postEndpointWrites( seen ) {
  */
 function stageRouteCalls( seen ) {
 	return seen.filter( ( request ) =>
-		/^POST .*\/swpub\/v1\/stage\/\d+/.test( request )
+		/^POST .*\/staged-edits\/v1\/stage\/\d+/.test( request )
 	);
 }
 
@@ -166,7 +166,7 @@ test.describe( 'Forking a published post', () => {
 			STAGED_TEXT.trim()
 		);
 		expect( getPostField( stagedCopyId, 'post_status' ) ).toBe(
-			'swpub_staged'
+			'staged_edits_staged'
 		);
 	} );
 
@@ -482,7 +482,7 @@ test.describe( 'When the editor protocol does not run', () => {
 		 * which is the point of the drill.
 		 */
 		await page.addInitScript( () => {
-			window.swpubTestDisableSaveSwap = true;
+			window.stagedEditsTestDisableSaveSwap = true;
 		} );
 
 		await openEditor( page, liveId );

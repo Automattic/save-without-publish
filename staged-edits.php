@@ -55,7 +55,7 @@ function is_enabled(): bool {
 	 *
 	 * @param bool $enabled Whether staging is active. Default true.
 	 */
-	return (bool) apply_filters( 'swpub_is_enabled', true );
+	return (bool) apply_filters( 'staged_edits_is_enabled', true );
 }
 
 /**
@@ -86,7 +86,7 @@ function staged_post_types(): array {
 	 *
 	 * @param string[] $types Post type names.
 	 */
-	return (array) apply_filters( 'swpub_post_types', array_values( $types ) );
+	return (array) apply_filters( 'staged_edits_post_types', array_values( $types ) );
 }
 
 /**

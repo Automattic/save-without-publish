@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The `swpub` response field, for the clients that are not the editor (R48).
+ * The `staged_edits` response field, for the clients that are not the editor (R48).
  *
  * A token client's write to a post with a staged copy already succeeds and
  * already returns 200: the guard contains the write, the live row comes back
@@ -43,10 +43,10 @@ final class Rest_Response {
 	/**
 	 * The response field's name.
 	 *
-	 * Prefixed with nothing further: `swpub` is the prefix, and this is the one
+	 * Prefixed with nothing further: `staged_edits` is the prefix, and this is the one
 	 * key the plugin adds to another controller's response shape.
 	 */
-	public const FIELD = 'swpub';
+	public const FIELD = 'staged_edits';
 
 	/**
 	 * Registers hooks.
@@ -58,7 +58,7 @@ final class Rest_Response {
 	}
 
 	/**
-	 * Adds `swpub` to the staged post types' schemas.
+	 * Adds `staged_edits` to the staged post types' schemas.
 	 *
 	 * On `rest_api_init` rather than the plugin's own early `init`, for the reason
 	 * `Fork::attach_filters()` gives: the registration is per post type and most

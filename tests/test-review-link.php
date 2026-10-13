@@ -125,7 +125,7 @@ class Test_Review_Link extends WP_UnitTestCase {
 	 * (VIPPROD-753's own default is version-dependent below WordPress 7.0).
 	 */
 	public function test_the_review_link_opens_the_editor_revisions_view(): void {
-		add_filter( 'swpub_review_surface', fn () => 'editor' );
+		add_filter( 'staged_edits_review_surface', fn () => 'editor' );
 
 		$revisions = $this->revisions_of( $this->staged_copy_id );
 		$newest    = (int) end( $revisions );
@@ -283,13 +283,13 @@ class Test_Review_Link extends WP_UnitTestCase {
 
 		$this->assertSame( $expected, Review_Link::surface() );
 
-		add_filter( 'swpub_review_surface', fn () => 'classic' );
+		add_filter( 'staged_edits_review_surface', fn () => 'classic' );
 		$this->assertSame( 'classic', Review_Link::surface() );
 
-		add_filter( 'swpub_review_surface', fn () => 'editor', 20 );
+		add_filter( 'staged_edits_review_surface', fn () => 'editor', 20 );
 		$this->assertSame( 'editor', Review_Link::surface() );
 
-		add_filter( 'swpub_review_surface', fn () => 'nonsense', 30 );
+		add_filter( 'staged_edits_review_surface', fn () => 'nonsense', 30 );
 		$this->assertSame( 'editor', Review_Link::surface(), 'An unrecognised value must fall back to the newer, more common surface rather than nothing.' );
 	}
 
@@ -297,7 +297,7 @@ class Test_Review_Link extends WP_UnitTestCase {
 	 * Forced onto the classic surface, the link names both ends directly.
 	 */
 	public function test_the_classic_surface_links_the_two_ends(): void {
-		add_filter( 'swpub_review_surface', fn () => 'classic' );
+		add_filter( 'staged_edits_review_surface', fn () => 'classic' );
 
 		$all = $this->revisions_of( $this->staged_copy_id );
 		$url = Review_Link::for_staged_copy( $this->staged_copy_id );
@@ -342,7 +342,7 @@ class Test_Review_Link extends WP_UnitTestCase {
 		// The filter is the direct-publish grant's own escape hatch for
 		// exactly this: answering per write rather than fighting a role's
 		// capabilities.
-		add_filter( 'swpub_can_publish_directly', '__return_true' );
+		add_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		wp_update_post(
 			array(
@@ -351,7 +351,7 @@ class Test_Review_Link extends WP_UnitTestCase {
 			)
 		);
 
-		remove_filter( 'swpub_can_publish_directly', '__return_true' );
+		remove_filter( 'staged_edits_can_publish_directly', '__return_true' );
 
 		$live_revisions = wp_get_post_revisions( $other_live_id, array( 'order' => 'ASC' ) );
 		$live_revision  = end( $live_revisions );
@@ -445,7 +445,7 @@ class Test_Review_Link extends WP_UnitTestCase {
 		// on the classic screen regardless, which this proves by pinning
 		// the surface `for_staged_copy()` would otherwise use for review
 		// itself.
-		add_filter( 'swpub_review_surface', fn () => 'editor' );
+		add_filter( 'staged_edits_review_surface', fn () => 'editor' );
 
 		$all = $this->revisions_of( $this->staged_copy_id );
 		$url = Review_Link::compare_as_text_url( $this->staged_copy_id );

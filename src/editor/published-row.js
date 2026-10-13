@@ -45,7 +45,7 @@ import { context } from './context';
  * markup (`PostPanelRow`) has no help-text slot to reach for, and
  * `PluginPostStatusInfo` renders whatever is passed as children directly
  * inside its own `PanelRow`, so a second element after the row's own two
- * columns is what this class (`swpub-published-row__help`) styles small and
+ * columns is what this class (`staged-edits-published-row__help`) styles small and
  * muted, the way a field's help text usually reads.
  *
  * @return {string} The sentence.
@@ -74,7 +74,7 @@ export function PublishedRow() {
 	}
 
 	return (
-		<PluginPostStatusInfo className="swpub-published-row">
+		<PluginPostStatusInfo className="staged-edits-published-row">
 			<div className="editor-post-panel__row-label">
 				{ __( 'Published post', 'staged-edits' ) }
 			</div>
@@ -98,7 +98,9 @@ export function PublishedRow() {
 					size="compact"
 				/>
 			</div>
-			<p className="swpub-published-row__help">{ movedFieldsHelp() }</p>
+			<p className="staged-edits-published-row__help">
+				{ movedFieldsHelp() }
+			</p>
 		</PluginPostStatusInfo>
 	);
 }

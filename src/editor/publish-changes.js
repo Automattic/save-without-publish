@@ -21,7 +21,7 @@
  * confirmation it collects is bound to the exact published state it named.
  *
  * Drift is found by attempting the merge, not by asking beforehand: the server
- * refuses with `swpub_drift` and this catches it. So publishing straight from
+ * refuses with `staged_edits_drift` and this catches it. So publishing straight from
  * the click gives up no protection at all.
  *
  * The click takeover is cosmetic, not load-bearing (KTD36). There is no public
@@ -30,7 +30,7 @@
  * shortcut wiring. So the selector stays, and the guarantee moves off it: if it
  * ever matches nothing, the canary discloses that, the click reaches core, the
  * server refuses it, and the middleware turns that refusal back into this modal
- * through `swpub.openPublishChanges`. One round trip slower, and never wrong.
+ * through `stagedEdits.openPublishChanges`. One round trip slower, and never wrong.
  */
 
 import {
@@ -63,7 +63,7 @@ import { mergeStagedChanges } from './merge';
 function arrivalUrl( editUrl ) {
 	const separator = editUrl.indexOf( '?' ) === -1 ? '?' : '&';
 
-	return editUrl + separator + 'swpub_published=1';
+	return editUrl + separator + 'staged_edits_published=1';
 }
 
 /**
@@ -90,13 +90,13 @@ export const PUBLISH_BUTTON =
 /**
  * A selector that deliberately matches nothing.
  */
-const NO_PUBLISH_BUTTON = '.swpub-publish-button-not-found';
+const NO_PUBLISH_BUTTON = '.staged-edits-publish-button-not-found';
 
 /**
  * The action the middleware fires when the server refused a click that got past
  * the takeover.
  */
-export const REPAIR_ACTION = 'swpub.openPublishChanges';
+export const REPAIR_ACTION = 'stagedEdits.openPublishChanges';
 
 /**
  * Namespace for this module's own hook registrations.
@@ -119,7 +119,7 @@ const NAMESPACE = 'staged-edits/publish-changes';
  * @return {string} The selector to use.
  */
 export function publishButtonSelector() {
-	return true === window.swpubTestBreakPublishSelector
+	return true === window.stagedEditsTestBreakPublishSelector
 		? NO_PUBLISH_BUTTON
 		: PUBLISH_BUTTON;
 }
@@ -181,7 +181,7 @@ export function PublishChanges() {
 				// The staged copy no longer exists, so staying here would 404.
 				window.location.assign( arrivalUrl( result.editUrl ) );
 			} catch ( error ) {
-				if ( error && error.code === 'swpub_drift' ) {
+				if ( error && error.code === 'staged_edits_drift' ) {
 					setDrift( error.data );
 				} else {
 					setDrift( null );
@@ -232,7 +232,7 @@ export function PublishChanges() {
 						'Your changes could not be saved, so nothing was published. The published post is unchanged.',
 						'staged-edits'
 					),
-					{ id: 'swpub-unsaved', type: 'snackbar' }
+					{ id: 'staged-edits-unsaved', type: 'snackbar' }
 				);
 
 				return;

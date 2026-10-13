@@ -31,7 +31,7 @@ final class Merge_Route {
 	/**
 	 * REST namespace.
 	 */
-	public const NAMESPACE_V1 = 'swpub/v1';
+	public const NAMESPACE_V1 = 'staged-edits/v1';
 
 	/**
 	 * Registers hooks.
@@ -98,7 +98,7 @@ final class Merge_Route {
 	public static function can_manage_staged( WP_REST_Request $request ) {
 		if ( ! is_enabled() ) {
 			return new WP_Error(
-				'swpub_disabled',
+				'staged_edits_disabled',
 				__( 'Staging is currently disabled.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
@@ -109,7 +109,7 @@ final class Merge_Route {
 
 		if ( ! $staged_copy instanceof WP_Post || ! Status::is_staged( $staged_copy ) ) {
 			return new WP_Error(
-				'swpub_not_staged',
+				'staged_edits_not_staged',
 				__( 'There is nothing staged to publish.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
@@ -117,7 +117,7 @@ final class Merge_Route {
 
 		if ( ! Capabilities::current_user_can_manage( $staged_copy_id ) ) {
 			return new WP_Error(
-				'swpub_forbidden',
+				'staged_edits_forbidden',
 				__( 'You are not allowed to publish these changes.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);

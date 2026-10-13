@@ -98,19 +98,19 @@ export function StageChanges() {
 							'The change was not staged. The published post is unchanged, and your edits are still here.',
 							'staged-edits'
 					  ),
-				{ id: 'swpub-stage-failed', type: 'snackbar' }
+				{ id: 'staged-edits-stage-failed', type: 'snackbar' }
 			);
 		}
 	}
 
 	return (
-		<PluginPostStatusInfo className="swpub-stage-row">
+		<PluginPostStatusInfo className="staged-edits-stage-row">
 			<div className="editor-post-panel__row-label">
 				{ __( 'Staged changes', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				<Button
-					className="swpub-stage-row__button"
+					className="staged-edits-stage-row__button"
 					onClick={ stage }
 					isBusy={ staging }
 					disabled={ staging }

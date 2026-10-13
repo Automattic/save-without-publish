@@ -62,7 +62,7 @@ final class Review_Link {
 		 *
 		 * @param string $surface `'editor'` or `'classic'`.
 		 */
-		$surface = apply_filters( 'swpub_review_surface', $default );
+		$surface = apply_filters( 'staged_edits_review_surface', $default );
 
 		return 'classic' === $surface ? 'classic' : 'editor';
 	}

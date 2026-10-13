@@ -10,7 +10,7 @@
  * editor actually would: one save, both fields dirty.
  *
  * Before VIPPROD-755's fix to `class-field-lock.php`, run against `main` @
- * cc7c417: the save below failed with a 403 (`swpub_field_locked` naming
+ * cc7c417: the save below failed with a 403 (`staged_edits_field_locked` naming
  * `meta`), core's "Updating failed" notice appeared on screen, the editor
  * still reported the post dirty, and the canvas edit was lost along with the
  * sidebar field -- one locked meta key cost the whole save. The test does
@@ -30,7 +30,7 @@ const {
 	cleanUp,
 } = require( './helpers' );
 
-const SEO_META_KEY = 'swpub_test_seo_description';
+const SEO_META_KEY = 'staged_edits_test_seo_description';
 
 const SIDEBAR_PHP = `<?php
 add_action( 'init', function () {
@@ -47,8 +47,8 @@ add_action( 'init', function () {
 
 add_action( 'enqueue_block_editor_assets', function () {
 	wp_enqueue_script(
-		'swpub-test-sidebar',
-		content_url( 'mu-plugins/swpub-test-sidebar.js' ),
+		'staged-edits-test-sidebar',
+		content_url( 'mu-plugins/staged-edits-test-sidebar.js' ),
 		array( 'wp-plugins', 'wp-editor', 'wp-components', 'wp-element', 'wp-core-data', 'wp-data' ),
 		'1.0.0',
 		true
@@ -78,7 +78,7 @@ const SIDEBAR_JS = `( function ( wp ) {
 
 		return el(
 			PluginSidebar,
-			{ name: 'swpub-test-seo', title: 'Test SEO', icon: 'admin-generic' },
+			{ name: 'staged-edits-test-seo', title: 'Test SEO', icon: 'admin-generic' },
 			el( TextControl, {
 				label: 'Description',
 				value: meta.${ SEO_META_KEY } || '',
@@ -91,7 +91,7 @@ const SIDEBAR_JS = `( function ( wp ) {
 		);
 	}
 
-	registerPlugin( 'swpub-test-sidebar', { render: SidebarPanel } );
+	registerPlugin( 'staged-edits-test-sidebar', { render: SidebarPanel } );
 } )( window.wp );
 `;
 
@@ -107,7 +107,7 @@ function installSeoSidebarFixture() {
 
 	wp( [
 		'eval',
-		`wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/swpub-test-sidebar.php', base64_decode( '${ php }' ) ); file_put_contents( WPMU_PLUGIN_DIR . '/swpub-test-sidebar.js', base64_decode( '${ js }' ) );`,
+		`wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/staged-edits-test-sidebar.php', base64_decode( '${ php }' ) ); file_put_contents( WPMU_PLUGIN_DIR . '/staged-edits-test-sidebar.js', base64_decode( '${ js }' ) );`,
 	] );
 }
 
@@ -119,7 +119,7 @@ function installSeoSidebarFixture() {
 function removeSeoSidebarFixture() {
 	wp( [
 		'eval',
-		"foreach ( array( WPMU_PLUGIN_DIR . '/swpub-test-sidebar.php', WPMU_PLUGIN_DIR . '/swpub-test-sidebar.js' ) as $file ) { if ( file_exists( $file ) ) { unlink( $file ); } }",
+		"foreach ( array( WPMU_PLUGIN_DIR . '/staged-edits-test-sidebar.php', WPMU_PLUGIN_DIR . '/staged-edits-test-sidebar.js' ) as $file ) { if ( file_exists( $file ) ) { unlink( $file ); } }",
 	] );
 }
 
@@ -194,12 +194,12 @@ test.describe( 'A sidebar plugin writing meta alongside a staged copy save', () 
 	 * save succeeds, the canvas edit persists, and the sidebar's meta key
 	 * was silently dropped -- server-side only, so the editor itself still
 	 * reports the save as clean. That the SEO field did not actually
-	 * persist is visible in `X-SWPub-Meta-Dropped` and
-	 * `swpub_meta_keys_dropped`, not in this screen; VIPPROD-755 T4 is what
+	 * persist is visible in `X-Staged-Edits-Meta-Dropped` and
+	 * `staged_edits_meta_keys_dropped`, not in this screen; VIPPROD-755 T4 is what
 	 * gives the editor its own awareness of a staged-meta set.
 	 *
 	 * Before the fix, run against `main` @ cc7c417: this test failed with a
-	 * 403 (`swpub_field_locked` naming `meta`), and the canvas edit above
+	 * 403 (`staged_edits_field_locked` naming `meta`), and the canvas edit above
 	 * was lost along with the sidebar field, with core's "Updating failed"
 	 * notice on screen and the editor still reporting the post dirty.
 	 */
@@ -214,7 +214,7 @@ test.describe( 'A sidebar plugin writing meta alongside a staged copy save', () 
 		);
 
 		expect( response.status() ).toBe( 200 );
-		expect( response.headers()[ 'x-swpub-meta-dropped' ] ).toBe(
+		expect( response.headers()[ 'x-staged-edits-meta-dropped' ] ).toBe(
 			SEO_META_KEY
 		);
 

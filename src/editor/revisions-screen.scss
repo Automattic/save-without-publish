@@ -3,7 +3,7 @@
  *
  * Every rule here is scoped twice, and both halves are load-bearing:
  *
- * - `body.swpub-staged` is the server's answer to "is this a staged copy",
+ * - `body.staged-edits-staged` is the server's answer to "is this a staged copy",
  *   printed by `Admin_Surfaces::body_class()` from the post's own status. A
  *   query argument would be a second answer to the same question, and the one a
  *   URL could be wrong about.
@@ -16,7 +16,7 @@
  * a staged copy. Core's revisions view is untouched everywhere else.
  */
 
-body.swpub-staged:has(.editor-revisions-header) {
+body.staged-edits-staged:has(.editor-revisions-header) {
 
 	/**
 	 * The timeline slider.

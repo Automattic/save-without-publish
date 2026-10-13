@@ -39,7 +39,7 @@ final class Capabilities {
 	 * role. Nothing is stored, so nothing is stranded when the plugin is
 	 * deactivated and no upgrade routine is needed to change the rule.
 	 */
-	public const PUBLISH_DIRECTLY = 'swpub_publish_directly';
+	public const PUBLISH_DIRECTLY = 'staged_edits_publish_directly';
 
 	/**
 	 * The primitive capability for the `post` type, and the prefix for the rest.
@@ -61,7 +61,7 @@ final class Capabilities {
 	 * capability, so a grant on posts is not silently a grant on pages. See
 	 * `primitive_for()` for the names the other types resolve to.
 	 */
-	public const PUBLISH_DIRECTLY_POSTS = 'swpub_publish_directly_posts';
+	public const PUBLISH_DIRECTLY_POSTS = 'staged_edits_publish_directly_posts';
 
 	/**
 	 * Meta capabilities that resolve against the live post.
@@ -150,7 +150,7 @@ final class Capabilities {
 	/**
 	 * Maps the direct-publish capability onto the plugin's own primitive.
 	 *
-	 * Whoever holds `swpub_publish_directly_posts` may write to a published post
+	 * Whoever holds `staged_edits_publish_directly_posts` may write to a published post
 	 * without staging. That is the whole rule, and no role holds it: on a site
 	 * that installs this plugin, a save to a published post stages until someone
 	 * says otherwise in so many words.
@@ -180,13 +180,13 @@ final class Capabilities {
 		 *
 		 * Three answers, not two:
 		 *
-		 * - `null`, the default, falls through to the `swpub_publish_directly_posts`
+		 * - `null`, the default, falls through to the `staged_edits_publish_directly_posts`
 		 *   capability, which no role holds. Whoever has been granted it publishes
 		 *   without staging; everyone else stages.
 		 * - `false` forces staging, whatever the user's role says, including a
 		 *   role that has been granted the capability:
 		 *
-		 *       add_filter( 'swpub_can_publish_directly', '__return_false' );
+		 *       add_filter( 'staged_edits_can_publish_directly', '__return_false' );
 		 *
 		 * - `true` grants the bypass per post, to a user who does not hold the
 		 *   capability. This is how an integration's writes keep publishing:
@@ -194,7 +194,7 @@ final class Capabilities {
 		 *   granting the capability to a role every human shares.
 		 *
 		 *       add_filter(
-		 *           'swpub_can_publish_directly',
+		 *           'staged_edits_can_publish_directly',
 		 *           function ( $decision, $post_id, $user_id ) {
 		 *               $sync = get_user_by( 'login', 'acme-sync' );
 		 *
@@ -225,14 +225,14 @@ final class Capabilities {
 		 * Migration note: this fell through to the post type's `publish_posts`
 		 * capability until the plugin grew a capability of its own, so a site
 		 * that relied on editors and authors publishing without staging grants
-		 * `swpub_publish_directly_posts` to say so.
+		 * `staged_edits_publish_directly_posts` to say so.
 		 *
 		 * @param bool|null $decision Whether the bypass is granted. Null falls through
-		 *                            to `swpub_publish_directly_posts`.
+		 *                            to `staged_edits_publish_directly_posts`.
 		 * @param int       $post_id  The published post being written to.
 		 * @param int       $user_id  The user being checked.
 		 */
-		$decision = apply_filters( 'swpub_can_publish_directly', null, $post_id, $user_id );
+		$decision = apply_filters( 'staged_edits_can_publish_directly', null, $post_id, $user_id );
 		$decision = null === $decision ? null : (bool) $decision;
 
 		// A post that does not exist, or a type that is not registered, denies.
@@ -261,9 +261,9 @@ final class Capabilities {
 	 * The direct-publish capability for a post type.
 	 *
 	 * Built from the type's own publish capability so the plural core computed
-	 * is the plural granted: `publish_posts` gives `swpub_publish_directly_posts`,
-	 * `publish_pages` gives `swpub_publish_directly_pages`, and a type declaring
-	 * `capability_type => 'brief'` gives `swpub_publish_directly_briefs`.
+	 * is the plural granted: `publish_posts` gives `staged_edits_publish_directly_posts`,
+	 * `publish_pages` gives `staged_edits_publish_directly_pages`, and a type declaring
+	 * `capability_type => 'brief'` gives `staged_edits_publish_directly_briefs`.
 	 *
 	 * A type whose publish capability was remapped to something that is not a
 	 * `publish_` name keeps that name whole, because a capability nobody can
@@ -278,7 +278,7 @@ final class Capabilities {
 			? substr( $publish, strlen( 'publish_' ) )
 			: $publish;
 
-		return 'swpub_publish_directly_' . $plural;
+		return 'staged_edits_publish_directly_' . $plural;
 	}
 
 	/**

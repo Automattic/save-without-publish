@@ -68,7 +68,7 @@ class Test_Merge_Route extends WP_UnitTestCase {
 	 * @return \WP_REST_Response The response.
 	 */
 	private function request( int $staged_copy_id, ?string $confirm = null ) {
-		$request = new WP_REST_Request( 'POST', '/swpub/v1/merge/' . $staged_copy_id );
+		$request = new WP_REST_Request( 'POST', '/staged-edits/v1/merge/' . $staged_copy_id );
 		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 
 		if ( null !== $confirm ) {
@@ -84,7 +84,7 @@ class Test_Merge_Route extends WP_UnitTestCase {
 	public function test_the_route_is_registered(): void {
 		$routes = rest_get_server()->get_routes();
 
-		$this->assertArrayHasKey( '/swpub/v1/merge/(?P<id>[\d]+)', $routes );
+		$this->assertArrayHasKey( '/staged-edits/v1/merge/(?P<id>[\d]+)', $routes );
 	}
 
 	/**
@@ -113,7 +113,7 @@ class Test_Merge_Route extends WP_UnitTestCase {
 		$response = $this->request( $this->staged_copy_id );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_forbidden', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_forbidden', $response->as_error()->get_error_code() );
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
 	}
 
@@ -137,7 +137,7 @@ class Test_Merge_Route extends WP_UnitTestCase {
 		$response = $this->request( $this->live_id );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_not_staged', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_not_staged', $response->as_error()->get_error_code() );
 		$this->assertSame( 'publish', get_post( $this->live_id )->post_status );
 	}
 
@@ -158,7 +158,7 @@ class Test_Merge_Route extends WP_UnitTestCase {
 		$response = $this->request( $this->staged_copy_id );
 		$error    = $response->as_error();
 
-		$this->assertSame( 'swpub_drift', $error->get_error_code() );
+		$this->assertSame( 'staged_edits_drift', $error->get_error_code() );
 
 		$data = $error->get_error_data();
 		$this->assertSame( '2026-08-14 09:00:00', $data['live_modified'] );
@@ -197,12 +197,12 @@ class Test_Merge_Route extends WP_UnitTestCase {
 	 * The kill switch closes the route.
 	 */
 	public function test_the_kill_switch_closes_the_route(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$response = $this->request( $this->staged_copy_id );
 
 		$this->assertTrue( $response->is_error() );
-		$this->assertSame( 'swpub_disabled', $response->as_error()->get_error_code() );
+		$this->assertSame( 'staged_edits_disabled', $response->as_error()->get_error_code() );
 		$this->assertInstanceOf( WP_Post::class, get_post( $this->staged_copy_id ) );
 	}
 }

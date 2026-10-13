@@ -142,13 +142,13 @@ function ScheduleDropdown( {
 	);
 
 	return (
-		<div className="swpub-schedule-row__content">
+		<div className="staged-edits-schedule-row__content">
 			<DateTimePicker
 				currentDate={ picked }
 				onChange={ setPicked }
 				is12Hour={ is12HourTime() }
 			/>
-			<div className="swpub-schedule-row__actions">
+			<div className="staged-edits-schedule-row__actions">
 				{ scheduled && (
 					<Button
 						variant="tertiary"
@@ -190,7 +190,7 @@ export function ScheduleRow() {
 	 * Stranded, not merely unpublished: `ctx.stranded` is true the instant
 	 * the published post leaves publish, before anything here has asked the
 	 * server. Offering the control anyway would offer a click that the
-	 * server refuses every time (`swpub_stranded`), on a fact this page
+	 * server refuses every time (`staged_edits_stranded`), on a fact this page
 	 * already knows. Not a hook, so it is safe after the calls above.
 	 */
 	if ( ! ctx.isStaged || ctx.stranded ) {
@@ -247,7 +247,7 @@ export function ScheduleRow() {
 							'The publish could not be scheduled.',
 							'staged-edits'
 					  ),
-				{ id: 'swpub-schedule-failed', type: 'snackbar' }
+				{ id: 'staged-edits-schedule-failed', type: 'snackbar' }
 			);
 		} finally {
 			setPending( false );
@@ -275,7 +275,7 @@ export function ScheduleRow() {
 							'The schedule could not be cancelled.',
 							'staged-edits'
 					  ),
-				{ id: 'swpub-unschedule-failed', type: 'snackbar' }
+				{ id: 'staged-edits-unschedule-failed', type: 'snackbar' }
 			);
 		} finally {
 			setPending( false );
@@ -287,16 +287,16 @@ export function ScheduleRow() {
 	const label = scheduledForLabel || __( 'Immediately', 'staged-edits' );
 
 	return (
-		<PluginPostStatusInfo className="swpub-schedule-row">
+		<PluginPostStatusInfo className="staged-edits-schedule-row">
 			<div className="editor-post-panel__row-label">
 				{ __( 'Publish at', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				<Dropdown
-					contentClassName="swpub-schedule-row__popover"
+					contentClassName="staged-edits-schedule-row__popover"
 					renderToggle={ ( { isOpen, onToggle } ) => (
 						<Button
-							className="swpub-schedule-row__button"
+							className="staged-edits-schedule-row__button"
 							onClick={ onToggle }
 							aria-expanded={ isOpen }
 							variant="tertiary"

@@ -48,13 +48,13 @@ export function StagedRow() {
 	}
 
 	return (
-		<PluginPostStatusInfo className="swpub-staged-row">
+		<PluginPostStatusInfo className="staged-edits-staged-row">
 			<div className="editor-post-panel__row-label">
 				{ __( 'Staged changes', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				<Button
-					className="swpub-staged-row__button"
+					className="staged-edits-staged-row__button"
 					href={ review.url }
 					onClick={ review.onClick }
 					/*

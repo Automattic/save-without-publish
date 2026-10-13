@@ -54,7 +54,7 @@ const DEGRADED = 'Some of this screen may show WordPress defaults';
  */
 function breakPublishSelector( page ) {
 	return page.addInitScript( () => {
-		window.swpubTestBreakPublishSelector = true;
+		window.stagedEditsTestBreakPublishSelector = true;
 	} );
 }
 
@@ -70,7 +70,7 @@ function breakPublishSelector( page ) {
  */
 function breakTitleSelector( page ) {
 	return page.addInitScript( () => {
-		window.swpubTestBreakTitleSelector = true;
+		window.stagedEditsTestBreakTitleSelector = true;
 	} );
 }
 
@@ -86,14 +86,14 @@ function breakTitleSelector( page ) {
  */
 function watchCanary( page ) {
 	return page.addInitScript( () => {
-		window.swpubCanaryHeard = [];
+		window.stagedEditsCanaryHeard = [];
 
 		const install = () => {
 			if ( window.wp && window.wp.hooks && window.wp.hooks.addAction ) {
 				window.wp.hooks.addAction(
-					'swpub.canary',
-					'swpub/e2e',
-					( id ) => window.swpubCanaryHeard.push( id )
+					'stagedEdits.canary',
+					'staged-edits/e2e',
+					( id ) => window.stagedEditsCanaryHeard.push( id )
 				);
 
 				return;
@@ -162,7 +162,9 @@ test.describe( 'When the editor chrome cannot attach', () => {
 		// Nothing of ours rendered, and both superseded controls are still
 		// there, visible and working.
 		await expect(
-			page.locator( '.swpub-status-row, .swpub-discard-row' )
+			page.locator(
+				'.staged-edits-status-row, .staged-edits-discard-row'
+			)
 		).toHaveCount( 0 );
 		await expect(
 			page.locator( '.editor-post-panel__row:has(.editor-post-status)' )
@@ -251,9 +253,13 @@ test.describe( 'When the editor chrome cannot attach', () => {
 		).toBeVisible( { timeout: 20_000 } );
 
 		await expect
-			.poll( () => page.evaluate( () => window.swpubCanaryHeard || [] ), {
-				timeout: 20_000,
-			} )
+			.poll(
+				() =>
+					page.evaluate( () => window.stagedEditsCanaryHeard || [] ),
+				{
+					timeout: 20_000,
+				}
+			)
 			.toContain( 'title-lock' );
 
 		// The courtesy failed -- the title is editable, which is the failure
@@ -282,7 +288,7 @@ test.describe( 'When the editor chrome cannot attach', () => {
 
 		expect(
 			seen.filter( ( request ) =>
-				/^POST .*\/swpub\/v1\/stage\/\d+/.test( request )
+				/^POST .*\/staged-edits\/v1\/stage\/\d+/.test( request )
 			)
 		).toHaveLength( 0 );
 		expect(
@@ -303,9 +309,13 @@ test.describe( 'When the editor chrome cannot attach', () => {
 		// The plugin ships no logging of its own (KTD38): the hook is how a site
 		// learns that its editors are looking at core's words.
 		await expect
-			.poll( () => page.evaluate( () => window.swpubCanaryHeard || [] ), {
-				timeout: 20_000,
-			} )
+			.poll(
+				() =>
+					page.evaluate( () => window.stagedEditsCanaryHeard || [] ),
+				{
+					timeout: 20_000,
+				}
+			)
 			.toContain( 'publish-button' );
 	} );
 } );

@@ -25,7 +25,7 @@ import apiFetch from '@wordpress/api-fetch';
  */
 export async function scheduleAt( copyId, at ) {
 	return apiFetch( {
-		path: `/swpub/v1/schedule/${ copyId }`,
+		path: `/staged-edits/v1/schedule/${ copyId }`,
 		method: 'POST',
 		data: { at },
 	} );
@@ -39,7 +39,7 @@ export async function scheduleAt( copyId, at ) {
  */
 export async function cancelSchedule( copyId ) {
 	return apiFetch( {
-		path: `/swpub/v1/schedule/${ copyId }`,
+		path: `/staged-edits/v1/schedule/${ copyId }`,
 		method: 'DELETE',
 	} );
 }

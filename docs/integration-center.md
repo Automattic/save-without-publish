@@ -13,7 +13,7 @@ Normally, saving an edit to a published post puts it in front of readers at once
 - **Publishes at a set time.** Pick a date and time in the editor's Summary panel. At that time the same **Publish changes** runs, as the person who scheduled it.
 - **Protects other people's edits.** If someone changed the published post after the change was staged, publishing asks you to look at what changed and confirm before it overwrites anything. A scheduled publish has nobody to ask, so it stops and keeps the staged copy instead.
 - **Lets you throw a change away.** Discarding a staged copy never touches the published post.
-- **Works from the command line** for sites that use WP-CLI: `wp swpub list`, `publish`, `schedule`, `unschedule`, `run-due` and `repair`.
+- **Works from the command line** for sites that use WP-CLI: `wp staged-edits list`, `publish`, `schedule`, `unschedule`, `run-due` and `repair`.
 
 By default, everyone stages. No role is allowed to skip it until a site chooses to allow that.
 

@@ -98,7 +98,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * No filter exempts a caller from this. A filter that did would be the defect
  * this class exists to close, re-entered through a named door. The remedies are
  * to publish or discard the copy, which returns the post to its first-save
- * state, or to stop staging site-wide with `swpub_is_enabled`. The readme says
+ * state, or to stop staging site-wide with `staged_edits_is_enabled`. The readme says
  * so where a site evaluating the plugin will read it, rather than where a site
  * running it will discover it.
  */
@@ -270,7 +270,7 @@ final class Write_Guard {
 	 *
 	 * The previous value is restored rather than cleared, and it is restored in a
 	 * `finally`, so neither an exception nor an early return can leave a sanction
-	 * armed across the iterations of `wp swpub repair --all` or a cron-driven
+	 * armed across the iterations of `wp staged-edits repair --all` or a cron-driven
 	 * `Merge_Resume`.
 	 *
 	 * @param int      $post_id  The live post whose write is sanctioned.
@@ -303,7 +303,7 @@ final class Write_Guard {
 	 * when what actually happened is that the staged-copy write failed. It is
 	 * accepted because this hook is the only universal abort core offers and the
 	 * path is a rare already-broken one, and because a false failure is survivable
-	 * where a silent publish is not. `swpub_staging_write_failed` carries the real
+	 * where a silent publish is not. `staged_edits_staging_write_failed` carries the real
 	 * reason; letting this hook pass a `WP_Error` through is the upstream fix.
 	 *
 	 * @param bool  $maybe_empty Whether core considers the post empty.
@@ -333,12 +333,12 @@ final class Write_Guard {
 			 * known to be wrong -- this hook is the only universal abort inside
 			 * `wp_insert_post()` and it does not carry a `WP_Error` through. Every
 			 * surface that can say something better says it before the write
-			 * reaches here: `Fork` answers REST with `swpub_live_locked` and a
+			 * reaches here: `Fork` answers REST with `staged_edits_live_locked` and a
 			 * 409, and `Admin_Surfaces` answers the classic editor and Quick Edit
 			 * on their own screens. What is left underneath is a direct
 			 * `wp_update_post()` from plugin code or WP-CLI, where a wrong error
 			 * identity is survivable and a silent overwrite of somebody's staged
-			 * work is not. `swpub_write_blocked` above carries the real reason.
+			 * work is not. `staged_edits_write_blocked` above carries the real reason.
 			 */
 			return true;
 		}
@@ -355,7 +355,7 @@ final class Write_Guard {
 			/*
 			 * Same abort mechanism as the BLOCK branch above, and the same
 			 * `empty_content` caveat: this hook cannot carry a better error
-			 * through. `swpub_write_blocked` carries the real reason, whatever
+			 * through. `staged_edits_write_blocked` carries the real reason, whatever
 			 * status this write was trying to give the copy.
 			 */
 			return true;
@@ -649,7 +649,7 @@ final class Write_Guard {
 	 * publish for a user without the capability, which is the exact defect this
 	 * guard exists to close, surviving as the default branch. The valve for an
 	 * integration that must keep publishing is a capability grant through
-	 * `swpub_can_publish_directly`, not a transport nobody enumerated.
+	 * `staged_edits_can_publish_directly`, not a transport nobody enumerated.
 	 *
 	 * @param array{decision: string, live: ?WP_Post, staged_copy: ?WP_Post, changed: array<string, string>, channel: string} $verdict The verdict so far, carrying the live post.
 	 * @return array{decision: string, live: ?WP_Post, staged_copy: ?WP_Post, changed: array<string, string>, channel: string} The completed verdict.
@@ -727,7 +727,7 @@ final class Write_Guard {
 	 * so the safety it buys is smaller than it looks.
 	 *
 	 * What it costs instead is disclosed: the seam is named, every use of it fires
-	 * `swpub_published_via_carveout`, and this filter closes it for a site that
+	 * `staged_edits_published_via_carveout`, and this filter closes it for a site that
 	 * wants those writes staged at the data layer.
 	 *
 	 * Containment is copy-scoped, so the seam reopens: discarding or merging a
@@ -743,14 +743,14 @@ final class Write_Guard {
 		 *
 		 * Return true to close the seam site-wide:
 		 *
-		 *     add_filter( 'swpub_enforce_programmatic_first_save', '__return_true' );
+		 *     add_filter( 'staged_edits_enforce_programmatic_first_save', '__return_true' );
 		 *
 		 * @since 0.1.0
 		 *
 		 * @param bool $enforce Whether to stage the write. Default false.
 		 * @param int  $live_id Published post ID being written to.
 		 */
-		return (bool) apply_filters( 'swpub_enforce_programmatic_first_save', false, $live_id );
+		return (bool) apply_filters( 'staged_edits_enforce_programmatic_first_save', false, $live_id );
 	}
 
 	/**
@@ -916,7 +916,7 @@ final class Write_Guard {
 
 		if ( (int) $result <= 0 ) {
 			return new WP_Error(
-				'swpub_staged_copy_write_failed',
+				'staged_edits_staged_copy_write_failed',
 				__( 'The change could not be written to the staged copy.', 'staged-edits' )
 			);
 		}

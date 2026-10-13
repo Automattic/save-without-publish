@@ -11,5 +11,5 @@
  * @return {Object} The context, or an inert default.
  */
 export function context() {
-	return window.swpubEditor || { isStaged: false, stagedCopyId: 0 };
+	return window.stagedEditsEditor || { isStaged: false, stagedCopyId: 0 };
 }

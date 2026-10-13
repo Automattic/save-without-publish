@@ -83,7 +83,7 @@ function scheduleRefusedSentence( ctx ) {
 	const when = ctx.scheduleRefused.scheduledForLabel;
 
 	switch ( ctx.scheduleRefused.reason ) {
-		case 'swpub_drift':
+		case 'staged_edits_drift':
 			return sprintf(
 				/* translators: %s: the date and time these changes were due to publish. */
 				__(
@@ -298,7 +298,7 @@ export function StagedNotices() {
 			: base;
 
 		createNotice( ctx.stranded ? 'warning' : 'info', content, {
-			id: 'swpub-staged',
+			id: 'staged-edits-staged',
 
 			// Only where this notice built the markup itself, above.
 			__unstableHTML: !! markup,
@@ -349,7 +349,7 @@ export function StagedNotices() {
 				'staged-edits'
 			),
 			{
-				id: 'swpub-published-arrival',
+				id: 'staged-edits-published-arrival',
 				type: 'snackbar',
 
 				/*
@@ -376,7 +376,7 @@ export function StagedNotices() {
 	useEffect( () => {
 		/*
 		 * Suppressed when a scheduled run was refused for this exact drift:
-		 * `swpub-schedule-refused` below says the more specific version of
+		 * `staged-edits-schedule-refused` below says the more specific version of
 		 * the same fact, with the time attached, and two notices about one
 		 * change on the published post is not a second warning, it is the
 		 * first one said twice.
@@ -385,7 +385,7 @@ export function StagedNotices() {
 			! ctx.isStaged ||
 			! ctx.drifted ||
 			ctx.stranded ||
-			'swpub_drift' === schedule.scheduleRefused?.reason
+			'staged_edits_drift' === schedule.scheduleRefused?.reason
 		) {
 			return;
 		}
@@ -415,7 +415,7 @@ export function StagedNotices() {
 						'staged-edits'
 				  ),
 			{
-				id: 'swpub-drift',
+				id: 'staged-edits-drift',
 				isDismissible: false,
 				actions: reviewPublishedHistory( ctx ),
 			}
@@ -430,7 +430,7 @@ export function StagedNotices() {
 		// A later successful schedule clears the refusal on the server, so
 		// the warning about it goes too, without waiting for a reload.
 		if ( ! schedule.scheduleRefused ) {
-			removeNotice( 'swpub-schedule-refused' );
+			removeNotice( 'staged-edits-schedule-refused' );
 			return;
 		}
 
@@ -443,10 +443,10 @@ export function StagedNotices() {
 		 * did.
 		 */
 		createNotice( 'warning', scheduleRefusedSentence( effectiveCtx ), {
-			id: 'swpub-schedule-refused',
+			id: 'staged-edits-schedule-refused',
 			isDismissible: false,
 			actions:
-				'swpub_drift' === schedule.scheduleRefused.reason
+				'staged_edits_drift' === schedule.scheduleRefused.reason
 					? reviewPublishedHistory( ctx )
 					: [],
 		} );

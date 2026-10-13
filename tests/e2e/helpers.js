@@ -104,7 +104,7 @@ function stagedCopyIdFor( liveId ) {
 					'meta',
 					'get',
 					String( liveId ),
-					'_swpub_staged_copy_id',
+					'_staged_edits_staged_copy_id',
 				] )
 			) || 0
 		);
@@ -326,20 +326,22 @@ function reviewControl( page ) {
  * @return {Promise<string>} `'editor'` or `'classic'`.
  */
 function reviewSurface( page ) {
-	return page.evaluate( () => window.swpubEditor?.reviewSurface || 'editor' );
+	return page.evaluate(
+		() => window.stagedEditsEditor?.reviewSurface || 'editor'
+	);
 }
 
 /**
  * Makes the signed-in administrator someone whose saves publish directly.
  *
- * No role holds `swpub_publish_directly_posts`, so on a default install every
+ * No role holds `staged_edits_publish_directly_posts`, so on a default install every
  * save to a published post stages. A test about the other path has to say so,
  * the same way a site does.
  *
  * @return {void}
  */
 function grantDirectPublish() {
-	wp( [ 'user', 'add-cap', 'admin', 'swpub_publish_directly_posts' ] );
+	wp( [ 'user', 'add-cap', 'admin', 'staged_edits_publish_directly_posts' ] );
 }
 
 /**
@@ -348,7 +350,12 @@ function grantDirectPublish() {
  * @return {void}
  */
 function revokeDirectPublish() {
-	wp( [ 'user', 'remove-cap', 'admin', 'swpub_publish_directly_posts' ] );
+	wp( [
+		'user',
+		'remove-cap',
+		'admin',
+		'staged_edits_publish_directly_posts',
+	] );
 }
 
 /**
@@ -441,7 +448,7 @@ function revisionsOf( postId ) {
 /**
  * The site-side listener that makes the backstop alarm observable.
  *
- * `swpub_staged_via_backstop` is a PHP action, and the assertion that matters is
+ * `staged_edits_staged_via_backstop` is a PHP action, and the assertion that matters is
  * that it stays silent across a whole browser flow -- which no request-scoped
  * check can see. So the flow's own site records every firing into an option, and
  * the specs read it back through WP-CLI.
@@ -453,15 +460,15 @@ function revisionsOf( postId ) {
  */
 const RECORDER = `<?php
 add_action(
-	'swpub_staged_via_backstop',
+	'staged_edits_staged_via_backstop',
 	function ( $staged_copy_id, $live_id, $user_id ) {
-		$seen   = get_option( 'swpub_e2e_backstop', array() );
+		$seen   = get_option( 'staged_edits_e2e_backstop', array() );
 		$seen[] = array(
 			'staged_copy_id' => (int) $staged_copy_id,
 			'live_id'        => (int) $live_id,
 			'user_id'        => (int) $user_id,
 		);
-		update_option( 'swpub_e2e_backstop', $seen, false );
+		update_option( 'staged_edits_e2e_backstop', $seen, false );
 	},
 	10,
 	3
@@ -478,7 +485,7 @@ function installEventRecorder() {
 
 	wp( [
 		'eval',
-		`wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/swpub-e2e-events.php', base64_decode( '${ encoded }' ) );`,
+		`wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/staged-edits-e2e-events.php', base64_decode( '${ encoded }' ) );`,
 	] );
 }
 
@@ -490,7 +497,7 @@ function installEventRecorder() {
 function backstopEvents() {
 	const raw = wp( [
 		'eval',
-		"echo wp_json_encode( array_values( (array) get_option( 'swpub_e2e_backstop', array() ) ) );",
+		"echo wp_json_encode( array_values( (array) get_option( 'staged_edits_e2e_backstop', array() ) ) );",
 	] );
 
 	try {
@@ -507,7 +514,7 @@ function backstopEvents() {
  * @return {void}
  */
 function clearBackstopEvents() {
-	wp( [ 'eval', "delete_option( 'swpub_e2e_backstop' );" ] );
+	wp( [ 'eval', "delete_option( 'staged_edits_e2e_backstop' );" ] );
 }
 
 /**
@@ -524,7 +531,7 @@ function clearBackstopEvents() {
  */
 function scheduleFor( copyId, at, user = 'admin' ) {
 	wp( [
-		'swpub',
+		'staged-edits',
 		'schedule',
 		String( copyId ),
 		`--at=${ at }`,
@@ -535,7 +542,7 @@ function scheduleFor( copyId, at, user = 'admin' ) {
 /**
  * The GMT time a staged copy is scheduled to publish at.
  *
- * Reads the meta directly rather than `wp swpub list`, so a test can compare
+ * Reads the meta directly rather than `wp staged-edits list`, so a test can compare
  * this against what the row rendered without parsing a table.
  *
  * @param {number} copyId Staged copy post ID.
@@ -548,7 +555,7 @@ function scheduledFor( copyId ) {
 			'meta',
 			'get',
 			String( copyId ),
-			'_swpub_publish_at',
+			'_staged_edits_publish_at',
 		] );
 	} catch {
 		// No meta, which is what "not scheduled" looks like from here.
@@ -562,7 +569,7 @@ function scheduledFor( copyId ) {
  * @return {void}
  */
 function runDueSchedules() {
-	wp( [ 'swpub', 'run-due' ] );
+	wp( [ 'staged-edits', 'run-due' ] );
 }
 
 /**
@@ -580,7 +587,7 @@ add_action(
 	'init',
 	function () {
 		register_taxonomy(
-			'swpub_test_topic',
+			'staged_edits_test_topic',
 			'post',
 			array(
 				'label'        => 'Topics',
@@ -605,7 +612,7 @@ function installTestTaxonomy() {
 
 	wp( [
 		'eval',
-		`wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/swpub-e2e-test-taxonomy.php', base64_decode( '${ encoded }' ) );`,
+		`wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/staged-edits-e2e-test-taxonomy.php', base64_decode( '${ encoded }' ) );`,
 	] );
 }
 
@@ -620,7 +627,7 @@ function installTestTaxonomy() {
 function removeTestTaxonomy() {
 	wp( [
 		'eval',
-		"@unlink( WPMU_PLUGIN_DIR . '/swpub-e2e-test-taxonomy.php' );",
+		"@unlink( WPMU_PLUGIN_DIR . '/staged-edits-e2e-test-taxonomy.php' );",
 	] );
 }
 

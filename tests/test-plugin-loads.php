@@ -47,11 +47,11 @@ class Test_Plugin_Loads extends WP_UnitTestCase {
 	 * The kill switch disables staging without deactivating the plugin (R32).
 	 */
 	public function test_kill_switch_filter_disables_staging(): void {
-		add_filter( 'swpub_is_enabled', '__return_false' );
+		add_filter( 'staged_edits_is_enabled', '__return_false' );
 
 		$this->assertFalse( is_enabled() );
 
-		remove_filter( 'swpub_is_enabled', '__return_false' );
+		remove_filter( 'staged_edits_is_enabled', '__return_false' );
 	}
 
 	/**

@@ -159,7 +159,7 @@ final class Drift {
 
 		if ( ! $live instanceof WP_Post ) {
 			return new WP_Error(
-				'swpub_no_live_post',
+				'staged_edits_no_live_post',
 				__( 'The published post this stages no longer exists.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
@@ -170,7 +170,7 @@ final class Drift {
 		if ( null !== $override && '' !== $override ) {
 			if ( ! self::is_token( $override ) ) {
 				return new WP_Error(
-					'swpub_bad_override',
+					'staged_edits_bad_override',
 					__( 'The confirmation did not name a valid published state.', 'staged-edits' ),
 					array( 'status' => 400 )
 				);
@@ -200,7 +200,7 @@ final class Drift {
 		}
 
 		return new WP_Error(
-			'swpub_drift',
+			'staged_edits_drift',
 			self::message( $kind ),
 			array(
 				'status'        => 409,

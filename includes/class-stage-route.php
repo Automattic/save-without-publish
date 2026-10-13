@@ -30,12 +30,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * The contract, for a client that is not the editor:
  *
- *     POST /swpub/v1/stage/{id}    { title?, content?, excerpt? }
+ *     POST /staged-edits/v1/stage/{id}    { title?, content?, excerpt? }
  *     200                          { stagedCopyId, editUrl }
  *
  * All three fields are optional, so a request carrying none of them stages the
  * post as it stands. Anything outside them is refused rather than dropped, with
- * `swpub_unstageable_field` and HTTP 400 naming the fields, because an editor
+ * `staged_edits_unstageable_field` and HTTP 400 naming the fields, because an editor
  * whose category change vanished silently would reasonably call that data loss.
  *
  * A route rather than a flag carried on the save: a flag that fails to arrive --
@@ -142,7 +142,7 @@ final class Stage_Route {
 	public static function can_stage( WP_REST_Request $request ) {
 		if ( ! is_enabled() ) {
 			return new WP_Error(
-				'swpub_disabled',
+				'staged_edits_disabled',
 				__( 'Staging is currently disabled.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
@@ -152,7 +152,7 @@ final class Stage_Route {
 
 		if ( ! $live instanceof WP_Post || 'publish' !== $live->post_status ) {
 			return new WP_Error(
-				'swpub_not_published',
+				'staged_edits_not_published',
 				__( 'There is no published post here to stage a change to.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
@@ -160,7 +160,7 @@ final class Stage_Route {
 
 		if ( ! current_user_can( 'edit_post', $live->ID ) ) {
 			return new WP_Error(
-				'swpub_forbidden',
+				'staged_edits_forbidden',
 				__( 'You are not allowed to edit this post.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
@@ -211,7 +211,7 @@ final class Stage_Route {
 
 		if ( ! $live instanceof WP_Post ) {
 			return new WP_Error(
-				'swpub_not_published',
+				'staged_edits_not_published',
 				__( 'There is no published post here to stage a change to.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
@@ -221,7 +221,7 @@ final class Stage_Route {
 
 		if ( ! empty( $refused ) ) {
 			return new WP_Error(
-				'swpub_unstageable_field',
+				'staged_edits_unstageable_field',
 				sprintf(
 					/* translators: %s: comma-separated list of field names. */
 					__( 'Only the title, content, and excerpt can be staged. Change these on the published post instead: %s.', 'staged-edits' ),
@@ -243,7 +243,7 @@ final class Stage_Route {
 
 		if ( ! Staged_Copy_Repository::pointers_agree( $live->ID, $staged_copy->ID ) ) {
 			return new WP_Error(
-				'swpub_staging_failed',
+				'staged_edits_staging_failed',
 				__( 'The change was not staged. The published post is unchanged, and your edits are still here.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);
@@ -251,7 +251,7 @@ final class Stage_Route {
 
 		if ( ! self::write_staged_content( $staged_copy->ID, $request ) ) {
 			return new WP_Error(
-				'swpub_staging_failed',
+				'staged_edits_staging_failed',
 				__( 'The change was not staged. The published post is unchanged, and your edits are still here.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);

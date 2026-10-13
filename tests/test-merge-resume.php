@@ -47,7 +47,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 		 * and take the state under test away mid-assertion. Merging itself is
 		 * covered in Test_Merge.
 		 */
-		remove_action( 'swpub_resume_merge', array( \StagedEdits\Merge::class, 'resume' ), 10 );
+		remove_action( 'staged_edits_resume_merge', array( \StagedEdits\Merge::class, 'resume' ), 10 );
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 
@@ -112,7 +112,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 		$resumed = array();
 
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function ( $live_id, $staged_copy_id, $resumed_phase ) use ( &$resumed ): void {
 				$resumed[] = array( $live_id, $staged_copy_id, $resumed_phase );
 			},
@@ -166,7 +166,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 		$attempts = 0;
 
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function () use ( &$attempts ): void {
 				++$attempts;
 			}
@@ -197,7 +197,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 		$attempts = 0;
 
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function () use ( &$attempts ): void {
 				++$attempts;
 			}
@@ -240,7 +240,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 
 		$fired = 0;
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function () use ( &$fired ): void {
 				++$fired;
 			}
@@ -270,7 +270,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 
 		$fired = 0;
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function () use ( &$fired ): void {
 				++$fired;
 			}
@@ -327,7 +327,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 
 		$fired = 0;
 		add_action(
-			'swpub_merge_completed',
+			'staged_edits_merge_completed',
 			static function () use ( &$fired ): void {
 				++$fired;
 			}
@@ -350,7 +350,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 
 		$fired = 0;
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function () use ( &$fired ): void {
 				++$fired;
 			}
@@ -376,7 +376,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 
 		$fired = 0;
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function () use ( &$fired ): void {
 				++$fired;
 			}
@@ -425,7 +425,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 
 		$fired = 0;
 		add_action(
-			'swpub_resume_merge',
+			'staged_edits_resume_merge',
 			static function () use ( &$fired ): void {
 				++$fired;
 			}
