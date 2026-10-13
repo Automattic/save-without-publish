@@ -1,8 +1,8 @@
-# Save without Publish
+# Staged Edits
 
 Updating a published story shouldn't mean gambling with what readers see.
 
-Save without Publish lets editors revise and review published content without it going live as soon as they hit save. A change to a published post is staged as a private staged copy, and stays staged until someone publishes it deliberately. The published post keeps serving, unchanged, until someone deliberately publishes the change.
+Staged Edits lets editors revise and review published content without it going live as soon as they hit save. A change to a published post is staged as a private staged copy, and stays staged until someone publishes it deliberately. The published post keeps serving, unchanged, until someone deliberately publishes the change.
 
 What it delivers is that nothing publishes without a deliberate act. It is not an approval workflow: there is no reviewer role, no queue, and no sign-off. Anyone who can edit a staged copy can publish it, and that is on purpose.
 

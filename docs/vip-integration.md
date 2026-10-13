@@ -1,6 +1,6 @@
 # VIP Integration Center
 
-Save without Publish is built to ship through the WordPress VIP Integration Center. This page is for the developers who build and test it, and for the VIP platform team who register and load it. What the plugin does for editors is in [the listing](integration-center.md), and what testers should know is in [the alpha tester page](alpha-testers.md).
+Staged Edits is built to ship through the WordPress VIP Integration Center. This page is for the developers who build and test it, and for the VIP platform team who register and load it. What the plugin does for editors is in [the listing](integration-center.md), and what testers should know is in [the alpha tester page](alpha-testers.md).
 
 The platform reads [`vip-manifest.yaml`](../vip-manifest.yaml) at the root of the repository, and nothing else, to register the plugin, render its settings form and load it. The [VIP Integrations Starter Kit](https://github.com/Automattic/vip-integrations-starter-kit) describes the format, and `@automattic/vip-integration` checks it.
 

@@ -1,8 +1,8 @@
-# Save without Publish
+# Staged Edits
 
 Change a published post without changing what readers see, until you decide.
 
-Normally, saving an edit to a published post puts it in front of readers at once. Save without Publish keeps the published post as it is and holds your edit on a private **staged copy**. The post keeps serving, unchanged, until someone publishes the change on purpose.
+Normally, saving an edit to a published post puts it in front of readers at once. Staged Edits keeps the published post as it is and holds your edit on a private **staged copy**. The post keeps serving, unchanged, until someone publishes the change on purpose.
 
 ## What it does
 

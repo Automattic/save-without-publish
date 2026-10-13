@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       Save without Publish
+ * Plugin Name:       Staged Edits
  * Plugin URI:        https://github.com/Automattic/save-without-publish
  * Description:       Edit a published post as a private staged copy. The live post keeps serving until you publish the change.
  * Version:           0.2.0-alpha.1
@@ -46,7 +46,7 @@ require_once __DIR__ . '/includes/class-events.php';
  */
 function is_enabled(): bool {
 	/**
-	 * Filters whether Save without Publish stages edits to published posts.
+	 * Filters whether Staged Edits stages edits to published posts.
 	 *
 	 * Returning false makes saves behave exactly as core does. Existing staged copies
 	 * stay registered and contained; they simply cannot be created or merged.

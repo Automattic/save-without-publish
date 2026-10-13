@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<ruleset name="Save without Publish">
+<ruleset name="Staged Edits">
 	<description>VIP coding standards are a gate on every change, not a cleanup pass (R25).</description>
 
 	<file>.</file>

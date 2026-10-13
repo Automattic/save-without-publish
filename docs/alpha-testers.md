@@ -1,6 +1,6 @@
 # Alpha testers: what to know
 
-Thank you for testing Save without Publish. It is early software, so expect rough edges, and tell us about them. This page says what the plugin does, what it deliberately does not do, and the things that will most likely surprise you.
+Thank you for testing Staged Edits. It is early software, so expect rough edges, and tell us about them. This page says what the plugin does, what it deliberately does not do, and the things that will most likely surprise you.
 
 For what the plugin is, see [the listing](integration-center.md).
 

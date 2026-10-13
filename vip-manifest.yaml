@@ -1,4 +1,4 @@
-# Handoff manifest for Save without Publish.
+# Handoff manifest for Staged Edits.
 #
 # The one file WordPress VIP reads to register and load the integration. Check
 # it with `npm run validate:integration` (see docs/vip-integration.md).
@@ -12,7 +12,7 @@ manifest_kind: vip-integration-handoff
 
 integration:
   slug: staged-edits
-  display_name: Save without Publish
+  display_name: Staged Edits
   summary: >-
     Edit a published post as a private staged copy. The published post keeps
     serving until someone publishes the change.
