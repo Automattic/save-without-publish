@@ -36,7 +36,7 @@ The checker's compatibility rule reads a literal PHP and WordPress matrix from t
 
 The platform defines one constant, a plain PHP array, before the plugin loads. All reads go through `StagedEdits\Config`.
 
-Config constant: `VIP_SAVE_WITHOUT_PUBLISH_CONFIG`
+Config constant: `VIP_STAGED_EDITS_CONFIG`
 
 Nothing is required. The plugin behaves exactly as it does without the Integration Center until a value is set, and no value can stop it loading.
 
@@ -51,7 +51,7 @@ Nothing is required. The plugin behaves exactly as it does without the Integrati
 Example valid config:
 
 ```php
-define( 'VIP_SAVE_WITHOUT_PUBLISH_CONFIG', array(
+define( 'VIP_STAGED_EDITS_CONFIG', array(
 	'scheduled_publish_overrides_drift' => 'non_content',
 ) );
 ```
@@ -59,7 +59,7 @@ define( 'VIP_SAVE_WITHOUT_PUBLISH_CONFIG', array(
 Example incomplete config (setup in progress, nothing set yet):
 
 ```php
-define( 'VIP_SAVE_WITHOUT_PUBLISH_CONFIG', array() );
+define( 'VIP_STAGED_EDITS_CONFIG', array() );
 ```
 
 With incomplete config the plugin does not fatal and shows no notice, because nothing is missing: a scheduled publish stops on drift, as `never` does. The same is true when the constant is not defined at all, when it is not an array, and when the setting holds anything that is not one of the three values above (including the right word in the wrong case, or with spaces around it). [`tests/fixtures/`](../tests/fixtures/README.md) holds one file for each of these states.

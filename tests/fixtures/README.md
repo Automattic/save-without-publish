@@ -1,6 +1,6 @@
 # Config fixtures
 
-Each file returns what `VIP_SAVE_WITHOUT_PUBLISH_CONFIG` can hold, one per state the plugin has to
+Each file returns what `VIP_STAGED_EDITS_CONFIG` can hold, one per state the plugin has to
 survive. `tests/test-config.php` loads them through `Config::from_raw()`.
 
 | File | State | Policy in force |

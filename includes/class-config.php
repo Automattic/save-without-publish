@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Reads `VIP_SAVE_WITHOUT_PUBLISH_CONFIG`, the one constant the platform sets.
+ * Reads `VIP_STAGED_EDITS_CONFIG`, the one constant the platform sets.
  *
  * Every read of the constant goes through here, and nothing here is required:
  * an undefined constant, a value that is not an array, and a setting that is
@@ -32,7 +32,7 @@ final class Config {
 	/**
 	 * The constant VIP defines before the plugin loads: a plain array.
 	 */
-	public const CONSTANT_NAME = 'VIP_SAVE_WITHOUT_PUBLISH_CONFIG';
+	public const CONSTANT_NAME = 'VIP_STAGED_EDITS_CONFIG';
 
 	/**
 	 * Keys the plugin cannot work without. None: every setting is optional.
