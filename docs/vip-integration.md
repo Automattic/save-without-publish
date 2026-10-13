@@ -73,7 +73,7 @@ The constant is read when a scheduled publish meets drift, so it only has to be 
 ## Handing off to the platform team
 
 - **Registration:** `vip-manifest.yaml`. Its `release.plugin_version` must equal the plugin header's `Version`, the `VERSION` constant and `package.json`. `tests/test-manifest.php` fails if any of them disagree, and the release workflow refuses a tag that does not match the manifest.
-- **What to install:** the zip a `v*` tag builds (`.github/workflows/release.yml`), not the repository. The zip holds `save-without-publish.php`, `includes/`, `build/`, `README.md` and `LICENSE`. It does not contain `vip-manifest.yaml`, so the platform reads that from the repository at the same tag.
+- **What to install:** the zip a `v*` tag builds (`.github/workflows/release.yml`), not the repository. The zip holds `staged-edits.php`, `includes/`, `build/`, `README.md` and `LICENSE`. It does not contain `vip-manifest.yaml`, so the platform reads that from the repository at the same tag.
 - **Is-loaded check:** the platform's loader needs a constant the entry file defines, and the manifest has no field for it. Use `SaveWithoutPublish\PLUGIN_FILE`, which the entry file already defines: `defined( 'SaveWithoutPublish\PLUGIN_FILE' )`. The Starter Kit's own pattern is an early `return` guarded by a `VIP_*_LOADED` constant, which this plugin does not use. Its entry file declares functions, and PHP declares those before an early `return` can run, so a second copy would fatal anyway. Moving them would change how the plugin starts.
 - **Namespace:** `SaveWithoutPublish`, not `Automattic\SaveWithoutPublish`. The manifest declares the real one.
 - **Telemetry:** none. The plugin records no events, so the manifest has no telemetry section.

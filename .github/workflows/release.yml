@@ -20,7 +20,7 @@ jobs:
 
       - name: Check the tag matches the plugin header version
         run: |
-          header="$(sed -n 's/^ \* Version: *//p' save-without-publish.php | tr -d '[:space:]')"
+          header="$(sed -n 's/^ \* Version: *//p' staged-edits.php | tr -d '[:space:]')"
           tag="${GITHUB_REF_NAME#v}"
           if [ "$header" != "$tag" ]; then
             echo "Tag $GITHUB_REF_NAME says $tag, plugin header says $header." >&2
@@ -50,7 +50,7 @@ jobs:
       - name: Assemble the plugin directory
         run: |
           mkdir -p dist/save-without-publish
-          cp -R save-without-publish.php includes build README.md LICENSE dist/save-without-publish/
+          cp -R staged-edits.php includes build README.md LICENSE dist/save-without-publish/
 
       - name: Zip
         run: cd dist && zip -rq "../save-without-publish-${GITHUB_REF_NAME}.zip" save-without-publish

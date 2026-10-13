@@ -31,7 +31,7 @@ require_once $swpub_tests_dir . '/includes/functions.php';
 tests_add_filter(
 	'muplugins_loaded',
 	static function (): void {
-		require dirname( __DIR__ ) . '/save-without-publish.php';
+		require dirname( __DIR__ ) . '/staged-edits.php';
 	}
 );
 

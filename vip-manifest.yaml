@@ -27,7 +27,7 @@ documentation:
 runtime:
   wordpress_plugin:
     folder: save-without-publish
-    entry_file: save-without-publish.php
+    entry_file: staged-edits.php
     php_namespace: SaveWithoutPublish
     scope: site
 
