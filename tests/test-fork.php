@@ -2,16 +2,16 @@
 /**
  * Fork tests for U4 (R1, R2, R4, R5, R6, R19, R21).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
+use StagedEdits\Capabilities;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use WP_Post;
 use WP_REST_Request;
 use WP_UnitTestCase;

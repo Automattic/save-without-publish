@@ -130,7 +130,7 @@ function createStagedCopyFor( liveId ) {
 	return Number(
 		wp( [
 			'eval',
-			`$staged_copy = \\SaveWithoutPublish\\Staged_Copy_Repository::establish( get_post( ${ liveId } ) ); if ( is_wp_error( $staged_copy ) ) { \\WP_CLI::error( $staged_copy->get_error_message() ); } echo $staged_copy->ID;`,
+			`$staged_copy = \\StagedEdits\\Staged_Copy_Repository::establish( get_post( ${ liveId } ) ); if ( is_wp_error( $staged_copy ) ) { \\WP_CLI::error( $staged_copy->get_error_message() ); } echo $staged_copy->ID;`,
 		] )
 	);
 }

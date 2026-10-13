@@ -7,14 +7,14 @@
  * is deliberately plain: the manifest is flat enough that a YAML parser would
  * be a dependency for four lookups.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Config;
+use StagedEdits\Config;
 use WP_UnitTestCase;
 
 /**
@@ -74,7 +74,7 @@ class Test_Manifest extends WP_UnitTestCase {
 		$package = json_decode( $this->read( 'package.json' ), true );
 
 		$this->assertIsArray( $package );
-		$this->assertSame( $header[1], \SaveWithoutPublish\VERSION, 'Header and VERSION constant.' );
+		$this->assertSame( $header[1], \StagedEdits\VERSION, 'Header and VERSION constant.' );
 		$this->assertSame( $header[1], $package['version'], 'Header and package.json.' );
 		$this->assertSame( $header[1], $this->scalar( 'plugin_version' ), 'Header and manifest release.plugin_version.' );
 	}

@@ -2,17 +2,17 @@
 /**
  * Merge marker and resume tests for U13 (R16, R33).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Merge_Resume;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Merge_Resume;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use WP_UnitTestCase;
 
 /**
@@ -47,7 +47,7 @@ class Test_Merge_Resume extends WP_UnitTestCase {
 		 * and take the state under test away mid-assertion. Merging itself is
 		 * covered in Test_Merge.
 		 */
-		remove_action( 'swpub_resume_merge', array( \SaveWithoutPublish\Merge::class, 'resume' ), 10 );
+		remove_action( 'swpub_resume_merge', array( \StagedEdits\Merge::class, 'resume' ), 10 );
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 

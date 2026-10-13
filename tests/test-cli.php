@@ -2,18 +2,18 @@
 /**
  * Incident CLI tests for U14 (R34).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\CLI;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Merge_Resume;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Transitions;
+use StagedEdits\CLI;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Merge_Resume;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Transitions;
 use WP_Post;
 use WP_UnitTestCase;
 

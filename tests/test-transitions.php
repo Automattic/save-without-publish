@@ -2,18 +2,18 @@
 /**
  * Live-post transition tests for U10 (R17, R21, R22, R31).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Merge;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
-use SaveWithoutPublish\Transitions;
+use StagedEdits\Drift;
+use StagedEdits\Merge;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
+use StagedEdits\Transitions;
 use WP_Post;
 use WP_REST_Request;
 use WP_UnitTestCase;

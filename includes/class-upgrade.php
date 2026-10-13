@@ -2,12 +2,12 @@
 /**
  * Stored state carried across a rename.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 

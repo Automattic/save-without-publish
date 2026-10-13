@@ -2,12 +2,12 @@
 /**
  * The admin surfaces that are not the block editor, saying what the data layer did.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 use WP_Screen;

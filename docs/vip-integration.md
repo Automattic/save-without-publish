@@ -34,7 +34,7 @@ The checker's compatibility rule reads a literal PHP and WordPress matrix from t
 
 ## Runtime config
 
-The platform defines one constant, a plain PHP array, before the plugin loads. All reads go through `SaveWithoutPublish\Config`.
+The platform defines one constant, a plain PHP array, before the plugin loads. All reads go through `StagedEdits\Config`.
 
 Config constant: `VIP_SAVE_WITHOUT_PUBLISH_CONFIG`
 
@@ -74,8 +74,8 @@ The constant is read when a scheduled publish meets drift, so it only has to be 
 
 - **Registration:** `vip-manifest.yaml`. Its `release.plugin_version` must equal the plugin header's `Version`, the `VERSION` constant and `package.json`. `tests/test-manifest.php` fails if any of them disagree, and the release workflow refuses a tag that does not match the manifest.
 - **What to install:** the zip a `v*` tag builds (`.github/workflows/release.yml`), not the repository. The zip holds `staged-edits.php`, `includes/`, `build/`, `README.md` and `LICENSE`. It does not contain `vip-manifest.yaml`, so the platform reads that from the repository at the same tag.
-- **Is-loaded check:** the platform's loader needs a constant the entry file defines, and the manifest has no field for it. Use `SaveWithoutPublish\PLUGIN_FILE`, which the entry file already defines: `defined( 'SaveWithoutPublish\PLUGIN_FILE' )`. The Starter Kit's own pattern is an early `return` guarded by a `VIP_*_LOADED` constant, which this plugin does not use. Its entry file declares functions, and PHP declares those before an early `return` can run, so a second copy would fatal anyway. Moving them would change how the plugin starts.
-- **Namespace:** `SaveWithoutPublish`, not `Automattic\SaveWithoutPublish`. The manifest declares the real one.
+- **Is-loaded check:** the platform's loader needs a constant the entry file defines, and the manifest has no field for it. Use `StagedEdits\PLUGIN_FILE`, which the entry file already defines: `defined( 'StagedEdits\PLUGIN_FILE' )`. The Starter Kit's own pattern is an early `return` guarded by a `VIP_*_LOADED` constant, which this plugin does not use. Its entry file declares functions, and PHP declares those before an early `return` can run, so a second copy would fatal anyway. Moving them would change how the plugin starts.
+- **Namespace:** `StagedEdits`, not `Automattic\StagedEdits`. The manifest declares the real one.
 - **Telemetry:** none. The plugin records no events, so the manifest has no telemetry section.
 - **Compatibility:** WordPress 6.8 and later, PHP 8.2 and later. CI runs PHP 8.2 to 8.5 against WordPress 6.9 and the latest release on every push, and trunk and 6.8 weekly.
 - **Scope:** per site. All of the plugin's state is post and post meta.

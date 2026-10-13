@@ -2,15 +2,15 @@
 /**
  * Schedule route tests for VIPPROD-1247.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Scheduled_Publish;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Scheduled_Publish;
+use StagedEdits\Staged_Copy_Repository;
 use WP_REST_Request;
 use WP_UnitTestCase;
 

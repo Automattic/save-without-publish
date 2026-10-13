@@ -2,15 +2,15 @@
 /**
  * Drift tests for U6 (R12, R13).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Drift;
+use StagedEdits\Staged_Copy_Repository;
 use WP_UnitTestCase;
 
 /**

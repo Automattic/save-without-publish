@@ -2,19 +2,19 @@
 /**
  * Merge tests for U7 (R8, R9, R10, R11, R30, R31).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Merge;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
+use StagedEdits\Capabilities;
+use StagedEdits\Drift;
+use StagedEdits\Merge;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use WP_Post;
 use WP_UnitTestCase;
 
@@ -592,7 +592,7 @@ class Test_Merge extends WP_UnitTestCase {
 		$marker['attempted_at'] = time() - ( Merge_Marker::COOLDOWN + 1 );
 		update_post_meta( $this->live_id, Merge_Marker::META, $marker );
 
-		return \SaveWithoutPublish\Merge_Resume::run( $this->live_id );
+		return \StagedEdits\Merge_Resume::run( $this->live_id );
 	}
 
 	/**
@@ -627,7 +627,7 @@ class Test_Merge extends WP_UnitTestCase {
 
 		$decision = $this->resume();
 
-		$this->assertSame( \SaveWithoutPublish\Merge_Resume::ACTION_RESUME, $decision['action'] );
+		$this->assertSame( \StagedEdits\Merge_Resume::ACTION_RESUME, $decision['action'] );
 		$this->assert_merge_completed();
 	}
 

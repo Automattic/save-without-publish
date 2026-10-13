@@ -2,20 +2,20 @@
 /**
  * Scheduled publish tests for VIPPROD-1247.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Config;
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Scheduled_Publish;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
-use SaveWithoutPublish\Transitions;
+use StagedEdits\Config;
+use StagedEdits\Drift;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Scheduled_Publish;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
+use StagedEdits\Transitions;
 use WP_Error;
 use WP_Post;
 use WP_UnitTestCase;
@@ -1092,7 +1092,7 @@ class Test_Scheduled_Publish extends WP_UnitTestCase {
 		$at = gmdate( 'Y-m-d\TH:i:s\Z', time() + HOUR_IN_SECONDS );
 		Scheduled_Publish::schedule( $this->staged_copy_id, $at, $this->scheduler_id );
 
-		\SaveWithoutPublish\Merge::apply( $this->staged_copy_id );
+		\StagedEdits\Merge::apply( $this->staged_copy_id );
 
 		$this->assertFalse( wp_next_scheduled( Scheduled_Publish::HOOK, array( $this->staged_copy_id ) ) );
 	}

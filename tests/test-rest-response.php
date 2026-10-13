@@ -2,16 +2,16 @@
 /**
  * The machine-client REST response for U4 (R48, R50).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
 use ReflectionProperty;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Write_Guard;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Write_Guard;
 use WP_Post;
 use WP_REST_Request;
 use WP_UnitTestCase;

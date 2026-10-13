@@ -2,12 +2,12 @@
 /**
  * Containment of writes to a published post, and the policy for the first one.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;

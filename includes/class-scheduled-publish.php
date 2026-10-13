@@ -2,12 +2,12 @@
 /**
  * Publishing a staged copy at a set time.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;

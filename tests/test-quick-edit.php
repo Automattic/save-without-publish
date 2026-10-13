@@ -2,19 +2,19 @@
 /**
  * Quick Edit refusal and Classic Editor arrival tests for U3 (R44, R50).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
 use Exception;
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Admin_Surfaces;
-use SaveWithoutPublish\Post_List;
-use SaveWithoutPublish\Review_Link;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Capabilities;
+use StagedEdits\Admin_Surfaces;
+use StagedEdits\Post_List;
+use StagedEdits\Review_Link;
+use StagedEdits\Staged_Copy_Repository;
 use WP_Post;
 use WP_UnitTestCase;
 

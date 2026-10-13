@@ -2,12 +2,12 @@
 /**
  * Server-side enforcement of the staged field set.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;

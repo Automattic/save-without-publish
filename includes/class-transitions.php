@@ -2,12 +2,12 @@
 /**
  * What happens to a staged copy when its live post changes underneath it.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 

@@ -2,14 +2,14 @@
 /**
  * Classic editor meta box removal tests for VIPPROD-1228.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Staged_Copy_Repository;
 use WP_UnitTestCase;
 
 /**

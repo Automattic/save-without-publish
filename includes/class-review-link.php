@@ -2,12 +2,12 @@
 /**
  * The route to the review surface.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 use WP_REST_Request;

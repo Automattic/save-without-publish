@@ -6,7 +6,7 @@
  * this plugin's code, so the suite runs against a real WordPress rather than
  * mocks (see the plan's Verification Contract).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );

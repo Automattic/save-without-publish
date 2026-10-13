@@ -2,17 +2,17 @@
 /**
  * Stored-state upgrade tests.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Baseline_Revision;
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Upgrade;
+use StagedEdits\Baseline_Revision;
+use StagedEdits\Drift;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Upgrade;
 use WP_UnitTestCase;
 
 /**

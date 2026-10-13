@@ -2,18 +2,18 @@
 /**
  * Post list and discard tests for U9 (R14, R15, R16, R28).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Post_List;
-use SaveWithoutPublish\Scheduled_Publish;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Capabilities;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Post_List;
+use StagedEdits\Scheduled_Publish;
+use StagedEdits\Staged_Copy_Repository;
 use WP_Post;
 use WP_UnitTestCase;
 

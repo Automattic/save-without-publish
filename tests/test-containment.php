@@ -6,14 +6,14 @@
  * that registering the status as internal makes WordPress itself exclude staged copies
  * everywhere, so a mocked assertion that a filter ran would prove nothing.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Status;
+use StagedEdits\Status;
 use WP_REST_Request;
 use WP_UnitTestCase;
 

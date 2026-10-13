@@ -2,12 +2,12 @@
 /**
  * Staged state in the posts list, and the discard action.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 use WP_Query;

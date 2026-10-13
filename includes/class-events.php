@@ -2,12 +2,12 @@
 /**
  * The plugin's public event surface.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;
@@ -537,7 +537,7 @@ final class Events {
 	 * only react to published content -- search indexing, social posting, cache
 	 * warming, newsletters -- can exclude them with this:
 	 *
-	 *     if ( function_exists( 'SaveWithoutPublish\is_staged' ) && SaveWithoutPublish\is_staged( $post ) ) {
+	 *     if ( function_exists( 'StagedEdits\is_staged' ) && StagedEdits\is_staged( $post ) ) {
 	 *         return;
 	 *     }
 	 *

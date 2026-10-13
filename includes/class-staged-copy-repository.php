@@ -2,12 +2,12 @@
 /**
  * Staged copy creation, lookup, and linking.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Error;
 use WP_Post;

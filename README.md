@@ -412,7 +412,7 @@ A staged copy is a real post row, so `save_post`, `wp_after_insert_post`, and `t
 
 ```php
 add_action( 'save_post', function ( $post_id, $post ) {
-    if ( function_exists( 'SaveWithoutPublish\is_staged' ) && SaveWithoutPublish\is_staged( $post ) ) {
+    if ( function_exists( 'StagedEdits\is_staged' ) && StagedEdits\is_staged( $post ) ) {
         return;
     }
 

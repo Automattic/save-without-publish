@@ -2,16 +2,16 @@
 /**
  * Review surface tests (R23).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Baseline_Revision;
-use SaveWithoutPublish\Review_Link;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Baseline_Revision;
+use StagedEdits\Review_Link;
+use StagedEdits\Staged_Copy_Repository;
 use WP_REST_Request;
 use WP_UnitTestCase;
 

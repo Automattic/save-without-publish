@@ -2,12 +2,12 @@
 /**
  * WP-CLI commands for finding and repairing staged state.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_CLI;
 use WP_Post;

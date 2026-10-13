@@ -2,16 +2,16 @@
 /**
  * Deliberate staging route tests for U3 (R37, R38).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use WP_Post;
 use WP_REST_Request;
 use WP_UnitTestCase;

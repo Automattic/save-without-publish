@@ -2,21 +2,21 @@
 /**
  * Event surface tests for U11 (R27, R35).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Merge;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Capabilities;
+use StagedEdits\Drift;
+use StagedEdits\Merge;
+use StagedEdits\Staged_Copy_Repository;
 use WP_Post;
 use WP_UnitTestCase;
 
-use function SaveWithoutPublish\is_staged;
+use function StagedEdits\is_staged;
 
 /**
  * Proves an integrator can subscribe without the plugin doing the work for them.
@@ -305,7 +305,7 @@ class Test_Events extends WP_UnitTestCase {
 	 * once something else has happened to autoload its class.
 	 */
 	public function test_the_predicate_is_reachable_by_name(): void {
-		$this->assertTrue( function_exists( 'SaveWithoutPublish\is_staged' ) );
+		$this->assertTrue( function_exists( 'StagedEdits\is_staged' ) );
 	}
 
 	/**

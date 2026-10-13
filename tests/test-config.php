@@ -2,14 +2,14 @@
 /**
  * Runtime config tests (VIPPROD-1352).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Config;
+use StagedEdits\Config;
 use WP_UnitTestCase;
 
 /**

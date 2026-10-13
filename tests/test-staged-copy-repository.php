@@ -2,15 +2,15 @@
 /**
  * Staged copy repository tests for U3 (R3, R24, R29).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
 use WP_Post;
 use WP_UnitTestCase;
 

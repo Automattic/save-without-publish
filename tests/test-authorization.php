@@ -2,15 +2,15 @@
 /**
  * Authorization tests for U12 (R28).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Capabilities;
+use StagedEdits\Staged_Copy_Repository;
 use WP_REST_Request;
 use WP_UnitTestCase;
 

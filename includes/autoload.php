@@ -2,15 +2,15 @@
 /**
  * Class autoloader.
  *
- * Maps `SaveWithoutPublish\Some_Class` to `includes/class-some-class.php`, the
+ * Maps `StagedEdits\Some_Class` to `includes/class-some-class.php`, the
  * file-naming convention WordPress coding standards expect.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

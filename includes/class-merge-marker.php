@@ -2,12 +2,12 @@
 /**
  * The merge marker: what a merge was doing when it stopped.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_Post;
 

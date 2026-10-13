@@ -2,12 +2,12 @@
 /**
  * What a REST response says about a write the data layer staged.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 use WP_REST_Request;
 

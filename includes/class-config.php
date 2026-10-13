@@ -2,12 +2,12 @@
 /**
  * The runtime config VIP defines for this integration.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

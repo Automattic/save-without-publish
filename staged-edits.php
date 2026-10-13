@@ -11,12 +11,12 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       save-without-publish
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish;
+namespace StagedEdits;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

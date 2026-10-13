@@ -2,16 +2,16 @@
 /**
  * Media reparenting tests for U8 (R20).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Media;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Staged_Copy_Repository;
+use StagedEdits\Media;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Staged_Copy_Repository;
 use WP_Post;
 use WP_UnitTestCase;
 

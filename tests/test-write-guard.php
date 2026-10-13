@@ -2,20 +2,20 @@
 /**
  * Write guard tests for U1 (R41, R42, R43, R47, R50).
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
 
-namespace SaveWithoutPublish\Tests;
+namespace StagedEdits\Tests;
 
-use SaveWithoutPublish\Capabilities;
-use SaveWithoutPublish\Drift;
-use SaveWithoutPublish\Merge;
-use SaveWithoutPublish\Merge_Marker;
-use SaveWithoutPublish\Staged_Copy_Repository;
-use SaveWithoutPublish\Status;
-use SaveWithoutPublish\Write_Guard;
+use StagedEdits\Capabilities;
+use StagedEdits\Drift;
+use StagedEdits\Merge;
+use StagedEdits\Merge_Marker;
+use StagedEdits\Staged_Copy_Repository;
+use StagedEdits\Status;
+use StagedEdits\Write_Guard;
 use WP_Error;
 use WP_Post;
 use WP_REST_Request;
@@ -882,7 +882,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 
 		$this->assertSame( $staged_copy->ID, Write_Guard::write_blocked_for( $this->live_id ) );
 
-		$location = \SaveWithoutPublish\Admin_Surfaces::report_refused_save(
+		$location = \StagedEdits\Admin_Surfaces::report_refused_save(
 			'post.php?post=' . $this->live_id . '&action=edit&message=1',
 			$this->live_id
 		);
@@ -906,7 +906,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$this->assertSame( 0, Write_Guard::write_blocked_for( $this->live_id ) );
 		$this->assertSame( 'summer-collection', $this->stored( $this->live_id, 'post_name' ) );
 
-		$location = \SaveWithoutPublish\Admin_Surfaces::report_refused_save( 'post.php?message=1', $this->live_id );
+		$location = \StagedEdits\Admin_Surfaces::report_refused_save( 'post.php?message=1', $this->live_id );
 
 		$this->assertSame( 'post.php?message=1', $location );
 	}
@@ -1135,7 +1135,7 @@ class Test_Write_Guard extends WP_UnitTestCase {
 		$copy_id = self::factory()->post->create(
 			array(
 				'post_type'   => 'swpub_norev',
-				'post_status' => \SaveWithoutPublish\Status::NAME,
+				'post_status' => \StagedEdits\Status::NAME,
 			)
 		);
 

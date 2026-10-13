@@ -2,7 +2,7 @@
 /**
  * A config with the setting set: scheduled publishes proceed past any drift.
  *
- * @package SaveWithoutPublish
+ * @package StagedEdits
  */
 
 declare( strict_types = 1 );
