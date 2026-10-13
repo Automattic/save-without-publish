@@ -65,7 +65,7 @@ final class Merge_Route {
 						'type'        => 'string',
 						'required'    => false,
 						'pattern'     => '^[0-9a-f]{64}$',
-						'description' => __( 'The published state token the editor was shown, when confirming past a change.', 'save-without-publish' ),
+						'description' => __( 'The published state token the editor was shown, when confirming past a change.', 'staged-edits' ),
 					),
 				),
 			)
@@ -99,7 +99,7 @@ final class Merge_Route {
 		if ( ! is_enabled() ) {
 			return new WP_Error(
 				'swpub_disabled',
-				__( 'Staging is currently disabled.', 'save-without-publish' ),
+				__( 'Staging is currently disabled.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -110,7 +110,7 @@ final class Merge_Route {
 		if ( ! $staged_copy instanceof WP_Post || ! Status::is_staged( $staged_copy ) ) {
 			return new WP_Error(
 				'swpub_not_staged',
-				__( 'There is nothing staged to publish.', 'save-without-publish' ),
+				__( 'There is nothing staged to publish.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -118,7 +118,7 @@ final class Merge_Route {
 		if ( ! Capabilities::current_user_can_manage( $staged_copy_id ) ) {
 			return new WP_Error(
 				'swpub_forbidden',
-				__( 'You are not allowed to publish these changes.', 'save-without-publish' ),
+				__( 'You are not allowed to publish these changes.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}

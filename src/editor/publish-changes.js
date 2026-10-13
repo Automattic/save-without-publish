@@ -101,7 +101,7 @@ export const REPAIR_ACTION = 'swpub.openPublishChanges';
 /**
  * Namespace for this module's own hook registrations.
  */
-const NAMESPACE = 'save-without-publish/publish-changes';
+const NAMESPACE = 'staged-edits/publish-changes';
 
 /**
  * The publish control's selector, or a broken one under test.
@@ -130,7 +130,7 @@ export function publishButtonSelector() {
  * @return {string} The label.
  */
 export function publishLabel() {
-	return __( 'Publish changes', 'save-without-publish' );
+	return __( 'Publish changes', 'staged-edits' );
 }
 
 /**
@@ -189,7 +189,7 @@ export function PublishChanges() {
 						( error && error.message ) ||
 							__(
 								'Could not publish these changes.',
-								'save-without-publish'
+								'staged-edits'
 							),
 						{ type: 'snackbar' }
 					);
@@ -230,7 +230,7 @@ export function PublishChanges() {
 				createWarningNotice(
 					__(
 						'Your changes could not be saved, so nothing was published. The published post is unchanged.',
-						'save-without-publish'
+						'staged-edits'
 					),
 					{ id: 'swpub-unsaved', type: 'snackbar' }
 				);
@@ -317,32 +317,32 @@ export function PublishChanges() {
 
 	return (
 		<Modal
-			title={ __( 'The published post changed', 'save-without-publish' ) }
+			title={ __( 'The published post changed', 'staged-edits' ) }
 			onRequestClose={ close }
 		>
 			<Notice status="warning" isDismissible={ false }>
 				{ 'other' === drift.drift_kind
 					? __(
 							'The published post was updated after these edits were staged, but its title, content, and excerpt are unchanged. Publishing will not overwrite that update.',
-							'save-without-publish'
+							'staged-edits'
 					  )
 					: __(
 							'The published post changed while these edits were staged. Review that change before continuing: publishing now will overwrite it.',
-							'save-without-publish'
+							'staged-edits'
 					  ) }
 			</Notice>
 
 			{ !! drift.history_url && (
 				<p>
 					<ExternalLink href={ drift.history_url }>
-						{ __( 'Review the change', 'save-without-publish' ) }
+						{ __( 'Review the change', 'staged-edits' ) }
 					</ExternalLink>
 				</p>
 			) }
 
 			<Flex justify="flex-end">
 				<Button variant="tertiary" onClick={ close }>
-					{ __( 'Cancel', 'save-without-publish' ) }
+					{ __( 'Cancel', 'staged-edits' ) }
 				</Button>
 				<Button
 					variant="primary"
@@ -359,7 +359,7 @@ export function PublishChanges() {
 					 */
 					onClick={ () => merge( drift.live_state ) }
 				>
-					{ __( 'Overwrite and publish', 'save-without-publish' ) }
+					{ __( 'Overwrite and publish', 'staged-edits' ) }
 				</Button>
 			</Flex>
 		</Modal>

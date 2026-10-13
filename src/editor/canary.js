@@ -81,7 +81,7 @@ function reportDegraded( id ) {
 	notices.createWarningNotice(
 		__(
 			'Some of this screen may show WordPress defaults; your changes still stage safely.',
-			'save-without-publish'
+			'staged-edits'
 		),
 		{
 			id: NOTICE_ID,

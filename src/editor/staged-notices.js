@@ -30,7 +30,7 @@ const stagedFormat = () =>
 	/* translators: %s: the words "the published post as it is now". */
 	__(
 		'You are staging edits to a published post. Until you publish them, readers still see %s.',
-		'save-without-publish'
+		'staged-edits'
 	);
 
 /**
@@ -39,7 +39,7 @@ const stagedFormat = () =>
  * @return {string} The words.
  */
 const publishedPhrase = () =>
-	__( 'the published post as it is now', 'save-without-publish' );
+	__( 'the published post as it is now', 'staged-edits' );
 
 /**
  * Says when this staged copy is due to publish itself, if it is (VIPPROD-1247).
@@ -61,10 +61,7 @@ function scheduledSentence( ctx ) {
 
 	return sprintf(
 		/* translators: %s: the date and time these changes are due to publish. */
-		__(
-			'These changes are scheduled to publish on %s.',
-			'save-without-publish'
-		),
+		__( 'These changes are scheduled to publish on %s.', 'staged-edits' ),
 		ctx.scheduledForLabel
 	);
 }
@@ -91,7 +88,7 @@ function scheduleRefusedSentence( ctx ) {
 				/* translators: %s: the date and time these changes were due to publish. */
 				__(
 					'These changes were due to publish on %s. The published post changed first, so they were not published and nothing was overwritten.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				when
 			);
@@ -101,7 +98,7 @@ function scheduleRefusedSentence( ctx ) {
 				/* translators: %s: the date and time these changes were due to publish. */
 				__(
 					'These changes were due to publish on %s, but the person who scheduled them can no longer publish this post.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				when
 			);
@@ -113,7 +110,7 @@ function scheduleRefusedSentence( ctx ) {
 				/* translators: %s: the date and time these changes were due to publish. */
 				__(
 					'These changes were due to publish on %s. The published post is no longer available to publish to.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				when
 			);
@@ -123,7 +120,7 @@ function scheduleRefusedSentence( ctx ) {
 				/* translators: %s: the date and time these changes were due to publish. */
 				__(
 					'These changes were due to publish on %s. Staging was switched off at the time, so they were not published.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				when
 			);
@@ -133,7 +130,7 @@ function scheduleRefusedSentence( ctx ) {
 				/* translators: %s: the date and time these changes were due to publish. */
 				__(
 					'These changes were due to publish on %s, but a publish that did not finish is still in the way.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				when
 			);
@@ -143,7 +140,7 @@ function scheduleRefusedSentence( ctx ) {
 				/* translators: %s: the date and time these changes were due to publish. */
 				__(
 					'These changes were due to publish on %s and were not published.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				when
 			);
@@ -175,9 +172,9 @@ export function statusSentence( ctx ) {
 					/* translators: %s: the words "the published post". */
 					__(
 						'Your edit was staged instead of updating %s. It keeps serving what it serves now until you publish these changes.',
-						'save-without-publish'
+						'staged-edits'
 					),
-					__( 'the published post', 'save-without-publish' )
+					__( 'the published post', 'staged-edits' )
 			  )
 			: sprintf( stagedFormat(), publishedPhrase() );
 	}
@@ -188,19 +185,19 @@ export function statusSentence( ctx ) {
 					/* translators: %s: title of the deleted published post. */
 					__(
 						'The published post these changes were staged against ("%s") was deleted. The changes are kept here, but there is nothing to publish them to.',
-						'save-without-publish'
+						'staged-edits'
 					),
 					ctx.strandedTitle
 			  )
 			: __(
 					'The published post these changes were staged against was deleted. The changes are kept here, but there is nothing to publish them to.',
-					'save-without-publish'
+					'staged-edits'
 			  );
 	}
 
 	return __(
 		'The post these changes were staged against is no longer published. They are kept here, and can be published once it is published again.',
-		'save-without-publish'
+		'staged-edits'
 	);
 }
 
@@ -349,7 +346,7 @@ export function StagedNotices() {
 			'success',
 			__(
 				'Your staged changes are published. The post kept its URL, date, and comments.',
-				'save-without-publish'
+				'staged-edits'
 			),
 			{
 				id: 'swpub-published-arrival',
@@ -367,7 +364,7 @@ export function StagedNotices() {
 					? [
 							toRead(
 								ctx.viewLabel ||
-									__( 'View Post', 'save-without-publish' ),
+									__( 'View Post', 'staged-edits' ),
 								ctx.liveView
 							),
 					  ]
@@ -411,11 +408,11 @@ export function StagedNotices() {
 			'other' === ctx.driftKind
 				? __(
 						'The published post was updated after these edits were staged. Its title, content, and excerpt are unchanged.',
-						'save-without-publish'
+						'staged-edits'
 				  )
 				: __(
 						'Someone changed the published post after these edits were staged. Publishing these changes will overwrite that change.',
-						'save-without-publish'
+						'staged-edits'
 				  ),
 			{
 				id: 'swpub-drift',

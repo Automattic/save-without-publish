@@ -81,23 +81,23 @@ const ARRIVAL_KEY = 'swpub-staged-arrival';
  * @return {Object} Parameter name to label.
  */
 const fieldLabels = () => ( {
-	author: __( 'The author', 'save-without-publish' ),
-	categories: __( 'Categories', 'save-without-publish' ),
-	comment_status: __( 'Comments', 'save-without-publish' ),
-	date: __( 'The publish date', 'save-without-publish' ),
-	date_gmt: __( 'The publish date', 'save-without-publish' ),
-	featured_media: __( 'The featured image', 'save-without-publish' ),
-	format: __( 'The post format', 'save-without-publish' ),
-	menu_order: __( 'The order', 'save-without-publish' ),
-	meta: __( 'Custom fields', 'save-without-publish' ),
-	parent: __( 'The parent', 'save-without-publish' ),
-	password: __( 'The password', 'save-without-publish' ),
-	ping_status: __( 'Pingbacks', 'save-without-publish' ),
-	slug: __( 'The slug', 'save-without-publish' ),
-	status: __( 'The status', 'save-without-publish' ),
-	sticky: __( 'Sticky', 'save-without-publish' ),
-	tags: __( 'Tags', 'save-without-publish' ),
-	template: __( 'The template', 'save-without-publish' ),
+	author: __( 'The author', 'staged-edits' ),
+	categories: __( 'Categories', 'staged-edits' ),
+	comment_status: __( 'Comments', 'staged-edits' ),
+	date: __( 'The publish date', 'staged-edits' ),
+	date_gmt: __( 'The publish date', 'staged-edits' ),
+	featured_media: __( 'The featured image', 'staged-edits' ),
+	format: __( 'The post format', 'staged-edits' ),
+	menu_order: __( 'The order', 'staged-edits' ),
+	meta: __( 'Custom fields', 'staged-edits' ),
+	parent: __( 'The parent', 'staged-edits' ),
+	password: __( 'The password', 'staged-edits' ),
+	ping_status: __( 'Pingbacks', 'staged-edits' ),
+	slug: __( 'The slug', 'staged-edits' ),
+	status: __( 'The status', 'staged-edits' ),
+	sticky: __( 'Sticky', 'staged-edits' ),
+	tags: __( 'Tags', 'staged-edits' ),
+	template: __( 'The template', 'staged-edits' ),
 } );
 
 /**
@@ -270,7 +270,7 @@ function refuseLocked( ctx ) {
 		data.dispatch( 'core/notices' ).createErrorNotice(
 			__(
 				'Not saved. This post already has staged changes, and they are the only place its title, content, and excerpt can be edited.',
-				'save-without-publish'
+				'staged-edits'
 			),
 			{
 				id: 'swpub-live-locked',
@@ -378,7 +378,7 @@ function refuse( refused ) {
 				/* translators: %s: the names of the fields that were changed, as a list. */
 				__(
 					'%s cannot be staged. Undo that change to save, or change it on the published post after your text change is staged.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				named.join( ', ' )
 			),
@@ -387,10 +387,7 @@ function refuse( refused ) {
 				isDismissible: true,
 				actions: [
 					{
-						label: __(
-							'Undo those changes',
-							'save-without-publish'
-						),
+						label: __( 'Undo those changes', 'staged-edits' ),
 						onClick: () => undoRefused( refused ),
 					},
 				],
@@ -503,7 +500,7 @@ function announceArrival() {
 	data.dispatch( 'core/notices' ).createSuccessNotice(
 		__(
 			'Your change was staged. The published post is unchanged.',
-			'save-without-publish'
+			'staged-edits'
 		),
 		{ id: 'swpub-staged-arrival', type: 'snackbar' }
 	);

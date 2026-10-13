@@ -53,7 +53,7 @@ import { context } from './context';
 function movedFieldsHelp() {
 	return __(
 		'Slug, publish date, author, categories, tags, featured image, and discussion are set on the published post.',
-		'save-without-publish'
+		'staged-edits'
 	);
 }
 
@@ -76,7 +76,7 @@ export function PublishedRow() {
 	return (
 		<PluginPostStatusInfo className="swpub-published-row">
 			<div className="editor-post-panel__row-label">
-				{ __( 'Published post', 'save-without-publish' ) }
+				{ __( 'Published post', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				<Button
@@ -89,10 +89,10 @@ export function PublishedRow() {
 					 * `.editor-post-panel__row-control .components-button`, and
 					 * a bare link sits 12px to their left.
 					 */
-					text={ __( 'Edit', 'save-without-publish' ) }
+					text={ __( 'Edit', 'staged-edits' ) }
 					aria-label={ __(
 						'Edit the published post',
-						'save-without-publish'
+						'staged-edits'
 					) }
 					variant="tertiary"
 					size="compact"

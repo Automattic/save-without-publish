@@ -277,7 +277,7 @@ final class Fork {
 
 		return new WP_Error(
 			'swpub_staged',
-			__( 'Your edit was staged instead of updating the published post. Opening the staged copy.', 'save-without-publish' ),
+			__( 'Your edit was staged instead of updating the published post. Opening the staged copy.', 'staged-edits' ),
 			array(
 				'status'    => 409,
 				'staged_copy_id' => $staged_copy->ID,
@@ -442,7 +442,7 @@ final class Fork {
 	private static function staging_failed(): WP_Error {
 		return new WP_Error(
 			'swpub_staging_failed',
-			__( 'Your change was not saved. The published post is unchanged, and your edits are still in the editor -- copy them somewhere safe and try again.', 'save-without-publish' ),
+			__( 'Your change was not saved. The published post is unchanged, and your edits are still in the editor -- copy them somewhere safe and try again.', 'staged-edits' ),
 			array( 'status' => 500 )
 		);
 	}

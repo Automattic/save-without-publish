@@ -8,7 +8,7 @@
 	convertWarningsToExceptions="true"
 	>
 	<testsuites>
-		<testsuite name="save-without-publish">
+		<testsuite name="staged-edits">
 			<directory suffix=".php">./tests/</directory>
 			<exclude>./tests/bootstrap.php</exclude>
 			<exclude>./tests/fixtures</exclude>

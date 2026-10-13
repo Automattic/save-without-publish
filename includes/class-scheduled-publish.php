@@ -127,7 +127,7 @@ final class Scheduled_Publish {
 		if ( ! is_enabled() ) {
 			return new WP_Error(
 				'swpub_disabled',
-				__( 'Staging is currently disabled.', 'save-without-publish' ),
+				__( 'Staging is currently disabled.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -137,7 +137,7 @@ final class Scheduled_Publish {
 		if ( ! $copy instanceof WP_Post || ! Status::is_staged( $copy ) ) {
 			return new WP_Error(
 				'swpub_not_staged',
-				__( 'There is nothing staged to publish.', 'save-without-publish' ),
+				__( 'There is nothing staged to publish.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -145,7 +145,7 @@ final class Scheduled_Publish {
 		if ( $user_id <= 0 || ! user_can( $user_id, 'edit_post', $copy_id ) ) {
 			return new WP_Error(
 				'swpub_forbidden',
-				__( 'You are not allowed to publish these changes.', 'save-without-publish' ),
+				__( 'You are not allowed to publish these changes.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -155,7 +155,7 @@ final class Scheduled_Publish {
 		if ( ! $live instanceof WP_Post ) {
 			return new WP_Error(
 				'swpub_no_live_post',
-				__( 'The published post this stages no longer exists.', 'save-without-publish' ),
+				__( 'The published post this stages no longer exists.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -163,7 +163,7 @@ final class Scheduled_Publish {
 		if ( 'publish' !== $live->post_status ) {
 			return new WP_Error(
 				'swpub_not_published',
-				__( 'The published post is no longer published, so there is nothing to update.', 'save-without-publish' ),
+				__( 'The published post is no longer published, so there is nothing to update.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -171,7 +171,7 @@ final class Scheduled_Publish {
 		if ( null !== Transitions::stranding( $copy_id ) ) {
 			return new WP_Error(
 				'swpub_stranded',
-				__( 'These changes cannot be published right now.', 'save-without-publish' ),
+				__( 'These changes cannot be published right now.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -179,7 +179,7 @@ final class Scheduled_Publish {
 		if ( null !== Merge_Marker::get( $live->ID ) ) {
 			return new WP_Error(
 				'swpub_merge_in_progress',
-				__( 'These changes are already being published.', 'save-without-publish' ),
+				__( 'These changes are already being published.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -189,7 +189,7 @@ final class Scheduled_Publish {
 		if ( null === $parsed ) {
 			return new WP_Error(
 				'swpub_bad_time',
-				__( 'That is not a date WordPress can schedule.', 'save-without-publish' ),
+				__( 'That is not a date WordPress can schedule.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -200,7 +200,7 @@ final class Scheduled_Publish {
 		if ( false === $timestamp || $timestamp < time() - self::GRACE ) {
 			return new WP_Error(
 				'swpub_time_past',
-				__( 'That time has already passed.', 'save-without-publish' ),
+				__( 'That time has already passed.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -219,7 +219,7 @@ final class Scheduled_Publish {
 
 			return new WP_Error(
 				'swpub_cron_failed',
-				__( 'The publish could not be scheduled.', 'save-without-publish' ),
+				__( 'The publish could not be scheduled.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);
 		}

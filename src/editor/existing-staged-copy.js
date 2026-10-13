@@ -76,13 +76,13 @@ function who( ctx ) {
 				/* translators: %s: display name of the editor who staged the change. */
 				__(
 					'This post has staged changes by %s, waiting to be published.',
-					'save-without-publish'
+					'staged-edits'
 				),
 				ctx.stagedBy
 		  )
 		: __(
 				'This post has staged changes waiting to be published.',
-				'save-without-publish'
+				'staged-edits'
 		  );
 }
 
@@ -103,10 +103,7 @@ function scheduled( ctx ) {
 
 	return sprintf(
 		/* translators: %s: the date and time the staged changes are due to publish. */
-		__(
-			'Those changes are scheduled to publish on %s.',
-			'save-without-publish'
-		),
+		__( 'Those changes are scheduled to publish on %s.', 'staged-edits' ),
 		ctx.scheduledForLabel
 	);
 }
@@ -477,7 +474,7 @@ export function ExistingStagedCopyNotice() {
 				scheduled( ctx ),
 				__(
 					'The title, content, and excerpt are locked here until those changes are published or discarded. Everything else cannot be staged and saves straight to the published post: a change to the slug, publish date, author, categories, tags, or featured image goes live at once.',
-					'save-without-publish'
+					'staged-edits'
 				),
 			]
 				.filter( Boolean )

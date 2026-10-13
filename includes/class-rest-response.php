@@ -136,25 +136,25 @@ final class Rest_Response {
 	 */
 	private static function schema(): array {
 		return array(
-			'description' => __( 'What this request staged for this post, or null when it staged nothing. A write whose staged fields were contained reports success here rather than as an error.', 'save-without-publish' ),
+			'description' => __( 'What this request staged for this post, or null when it staged nothing. A write whose staged fields were contained reports success here rather than as an error.', 'staged-edits' ),
 			'type'        => array( 'object', 'null' ),
 			'context'     => array( 'view', 'edit' ),
 			'readonly'    => true,
 			'properties'  => array(
 				'staged'         => array(
-					'description' => __( 'Whether this request staged its change instead of applying it to the published post.', 'save-without-publish' ),
+					'description' => __( 'Whether this request staged its change instead of applying it to the published post.', 'staged-edits' ),
 					'type'        => 'boolean',
 					'context'     => array( 'view', 'edit' ),
 					'readonly'    => true,
 				),
 				'staged_copy_id' => array(
-					'description' => __( 'ID of the staged copy the change was written to.', 'save-without-publish' ),
+					'description' => __( 'ID of the staged copy the change was written to.', 'staged-edits' ),
 					'type'        => 'integer',
 					'context'     => array( 'view', 'edit' ),
 					'readonly'    => true,
 				),
 				'edit_url'       => array(
-					'description' => __( 'Edit screen for the staged copy. Empty when the acting user cannot edit it.', 'save-without-publish' ),
+					'description' => __( 'Edit screen for the staged copy. Empty when the acting user cannot edit it.', 'staged-edits' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit' ),
 					'readonly'    => true,

@@ -47,7 +47,7 @@ export function DiscardStaged() {
 				isDestructive
 				variant="secondary"
 				__next40pxDefaultSize
-				text={ __( 'Discard staged changes', 'save-without-publish' ) }
+				text={ __( 'Discard staged changes', 'staged-edits' ) }
 			/>
 		</PluginPostStatusInfo>
 	);

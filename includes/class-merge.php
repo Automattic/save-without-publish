@@ -76,7 +76,7 @@ final class Merge {
 		if ( ! $staged_copy instanceof WP_Post || ! Status::is_staged( $staged_copy ) ) {
 			return new WP_Error(
 				'swpub_not_staged',
-				__( 'There is nothing staged to publish.', 'save-without-publish' ),
+				__( 'There is nothing staged to publish.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -84,7 +84,7 @@ final class Merge {
 		if ( ! Capabilities::current_user_can_manage( $staged_copy_id ) ) {
 			return new WP_Error(
 				'swpub_forbidden',
-				__( 'You are not allowed to publish these changes.', 'save-without-publish' ),
+				__( 'You are not allowed to publish these changes.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -94,7 +94,7 @@ final class Merge {
 		if ( ! $live instanceof WP_Post ) {
 			return new WP_Error(
 				'swpub_no_live_post',
-				__( 'The published post this stages no longer exists.', 'save-without-publish' ),
+				__( 'The published post this stages no longer exists.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -102,7 +102,7 @@ final class Merge {
 		if ( 'publish' !== $live->post_status ) {
 			return new WP_Error(
 				'swpub_not_published',
-				__( 'The published post is no longer published, so there is nothing to update.', 'save-without-publish' ),
+				__( 'The published post is no longer published, so there is nothing to update.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -110,7 +110,7 @@ final class Merge {
 		if ( ! self::claim( $live->ID ) ) {
 			return new WP_Error(
 				'swpub_merge_in_progress',
-				__( 'These changes are already being published.', 'save-without-publish' ),
+				__( 'These changes are already being published.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -145,7 +145,7 @@ final class Merge {
 			if ( true !== $allowed ) {
 				return new WP_Error(
 					'swpub_merge_vetoed',
-					__( 'Publishing these changes was blocked.', 'save-without-publish' ),
+					__( 'Publishing these changes was blocked.', 'staged-edits' ),
 					array( 'status' => 409 )
 				);
 			}
@@ -191,7 +191,7 @@ final class Merge {
 	 */
 	public static function resume( int $live_id, int $staged_copy_id, string $phase ) {
 		if ( ! self::claim( $live_id ) ) {
-			return new WP_Error( 'swpub_merge_in_progress', __( 'These changes are already being published.', 'save-without-publish' ) );
+			return new WP_Error( 'swpub_merge_in_progress', __( 'These changes are already being published.', 'staged-edits' ) );
 		}
 
 		try {
@@ -230,7 +230,7 @@ final class Merge {
 		$from = array_search( $phase, Merge_Marker::PHASES, true );
 
 		if ( false === $from ) {
-			return new WP_Error( 'swpub_unknown_phase', __( 'Cannot resume from an unrecognised state.', 'save-without-publish' ) );
+			return new WP_Error( 'swpub_unknown_phase', __( 'Cannot resume from an unrecognised state.', 'staged-edits' ) );
 		}
 
 		$reached = static function ( string $candidate ) use ( $from ): bool {
@@ -406,13 +406,13 @@ final class Merge {
 		$staged_copy = get_post( $staged_copy_id );
 
 		if ( ! $staged_copy instanceof WP_Post ) {
-			return new WP_Error( 'swpub_staged_copy_missing', __( 'The staged copy is no longer available.', 'save-without-publish' ) );
+			return new WP_Error( 'swpub_staged_copy_missing', __( 'The staged copy is no longer available.', 'staged-edits' ) );
 		}
 
 		$live = get_post( $live_id );
 
 		if ( ! $live instanceof WP_Post ) {
-			return new WP_Error( 'swpub_no_live_post', __( 'The published post no longer exists.', 'save-without-publish' ) );
+			return new WP_Error( 'swpub_no_live_post', __( 'The published post no longer exists.', 'staged-edits' ) );
 		}
 
 		$fields = array( 'ID' => $live_id );

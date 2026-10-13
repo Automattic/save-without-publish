@@ -61,7 +61,7 @@ final class Editor_Assets {
 			true
 		);
 
-		wp_set_script_translations( self::HANDLE, 'save-without-publish' );
+		wp_set_script_translations( self::HANDLE, 'staged-edits' );
 
 		/*
 		 * The Summary panel rows are rendered with core's own row classes, so

@@ -155,7 +155,7 @@ function ScheduleDropdown( {
 						isDestructive
 						disabled={ pending }
 						onClick={ onClear }
-						text={ __( 'Clear', 'save-without-publish' ) }
+						text={ __( 'Clear', 'staged-edits' ) }
 					/>
 				) }
 				<Button
@@ -165,8 +165,8 @@ function ScheduleDropdown( {
 					onClick={ () => onSchedule( picked ) }
 					text={
 						scheduled
-							? __( 'Change', 'save-without-publish' )
-							: __( 'Schedule', 'save-without-publish' )
+							? __( 'Change', 'staged-edits' )
+							: __( 'Schedule', 'staged-edits' )
 					}
 				/>
 			</div>
@@ -245,7 +245,7 @@ export function ScheduleRow() {
 					? error.message
 					: __(
 							'The publish could not be scheduled.',
-							'save-without-publish'
+							'staged-edits'
 					  ),
 				{ id: 'swpub-schedule-failed', type: 'snackbar' }
 			);
@@ -273,7 +273,7 @@ export function ScheduleRow() {
 					? error.message
 					: __(
 							'The schedule could not be cancelled.',
-							'save-without-publish'
+							'staged-edits'
 					  ),
 				{ id: 'swpub-unschedule-failed', type: 'snackbar' }
 			);
@@ -284,13 +284,12 @@ export function ScheduleRow() {
 
 	// The truth about what happens on the next Publish changes, not a
 	// placeholder for a control nobody has used yet.
-	const label =
-		scheduledForLabel || __( 'Immediately', 'save-without-publish' );
+	const label = scheduledForLabel || __( 'Immediately', 'staged-edits' );
 
 	return (
 		<PluginPostStatusInfo className="swpub-schedule-row">
 			<div className="editor-post-panel__row-label">
-				{ __( 'Publish at', 'save-without-publish' ) }
+				{ __( 'Publish at', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				<Dropdown

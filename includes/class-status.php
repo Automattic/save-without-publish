@@ -47,7 +47,7 @@ final class Status {
 		register_post_status(
 			self::NAME,
 			array(
-				'label'                     => _x( 'Staged', 'post status', 'save-without-publish' ),
+				'label'                     => _x( 'Staged', 'post status', 'staged-edits' ),
 
 				/*
 				 * Every flag is set explicitly rather than left to core's

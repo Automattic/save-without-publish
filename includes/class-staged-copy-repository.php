@@ -189,7 +189,7 @@ final class Staged_Copy_Repository {
 		if ( ! in_array( $live->post_type, staged_post_types(), true ) ) {
 			return new WP_Error(
 				'swpub_type_not_staged',
-				__( 'This post type does not stage changes.', 'save-without-publish' ),
+				__( 'This post type does not stage changes.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -197,7 +197,7 @@ final class Staged_Copy_Repository {
 		if ( 'publish' !== $live->post_status ) {
 			return new WP_Error(
 				'swpub_not_published',
-				__( 'There is no published post here to stage a change to.', 'save-without-publish' ),
+				__( 'There is no published post here to stage a change to.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -205,7 +205,7 @@ final class Staged_Copy_Repository {
 		if ( ! post_type_supports( $live->post_type, 'revisions' ) || ! wp_revisions_enabled( $live ) ) {
 			return new WP_Error(
 				'swpub_no_revisions',
-				__( 'This post type does not keep revisions, so a staged change could not be reviewed or rolled back.', 'save-without-publish' ),
+				__( 'This post type does not keep revisions, so a staged change could not be reviewed or rolled back.', 'staged-edits' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -215,7 +215,7 @@ final class Staged_Copy_Repository {
 		if ( null !== Merge_Marker::get( $live->ID ) ) {
 			return new WP_Error(
 				'swpub_merge_in_progress',
-				__( 'A publish is already in progress for this post. Try again once it finishes.', 'save-without-publish' ),
+				__( 'A publish is already in progress for this post. Try again once it finishes.', 'staged-edits' ),
 				array( 'status' => 409 )
 			);
 		}
@@ -267,7 +267,7 @@ final class Staged_Copy_Repository {
 
 			return new WP_Error(
 				'swpub_baseline_failed',
-				__( 'The change was not saved. The published post is unchanged, and your edits are still here.', 'save-without-publish' ),
+				__( 'The change was not saved. The published post is unchanged, and your edits are still here.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);
 		}
@@ -390,7 +390,7 @@ final class Staged_Copy_Repository {
 
 			return $winner instanceof WP_Post ? $winner : new WP_Error(
 				'swpub_fork_race_unresolved',
-				__( 'Could not establish a staged copy of this post.', 'save-without-publish' )
+				__( 'Could not establish a staged copy of this post.', 'staged-edits' )
 			);
 		}
 
@@ -399,7 +399,7 @@ final class Staged_Copy_Repository {
 		if ( ! $staged_copy instanceof WP_Post ) {
 			return new WP_Error(
 				'swpub_staged_copy_missing',
-				__( 'Could not establish a staged copy of this post.', 'save-without-publish' )
+				__( 'Could not establish a staged copy of this post.', 'staged-edits' )
 			);
 		}
 
@@ -476,7 +476,7 @@ final class Staged_Copy_Repository {
 			'swpub_live_locked',
 			__(
 				'This post has staged changes waiting to be published. Publish or discard them before editing the published post.',
-				'save-without-publish'
+				'staged-edits'
 			),
 			array(
 				'status'         => 409,

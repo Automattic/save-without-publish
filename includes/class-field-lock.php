@@ -197,7 +197,7 @@ final class Field_Lock {
 				'swpub_field_locked',
 				sprintf(
 					/* translators: %s: the name of the field the editor tried to change. */
-					__( 'Only the title, content, and excerpt can be staged. Change %s on the published post instead.', 'save-without-publish' ),
+					__( 'Only the title, content, and excerpt can be staged. Change %s on the published post instead.', 'staged-edits' ),
 					$attempted
 				),
 				array(

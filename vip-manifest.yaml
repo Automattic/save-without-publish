@@ -11,7 +11,7 @@ manifest_version: 1
 manifest_kind: vip-integration-handoff
 
 integration:
-  slug: save-without-publish
+  slug: staged-edits
   display_name: Save without Publish
   summary: >-
     Edit a published post as a private staged copy. The published post keeps
@@ -26,7 +26,7 @@ documentation:
 
 runtime:
   wordpress_plugin:
-    folder: save-without-publish
+    folder: staged-edits
     entry_file: staged-edits.php
     php_namespace: StagedEdits
     scope: site

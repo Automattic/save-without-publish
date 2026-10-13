@@ -139,10 +139,10 @@ final class Post_List {
 		 * it. So the noun stays: a row reading "Staged" claims the post is the
 		 * staged thing, which is the opposite of what is true.
 		 */
-		$states['swpub'] = _x( 'Staged changes', 'post status', 'save-without-publish' );
+		$states['swpub'] = _x( 'Staged changes', 'post status', 'staged-edits' );
 
 		if ( 'publish' !== $post->post_status ) {
-			$states['swpub_stranded'] = _x( 'Cannot be published', 'post status', 'save-without-publish' );
+			$states['swpub_stranded'] = _x( 'Cannot be published', 'post status', 'staged-edits' );
 		}
 
 		/*
@@ -160,12 +160,12 @@ final class Post_List {
 
 		if ( $staged_copy instanceof WP_Post ) {
 			if ( null !== Scheduled_Publish::scheduled( $staged_copy->ID ) ) {
-				$states['swpub_scheduled'] = _x( 'Scheduled', 'post status', 'save-without-publish' );
+				$states['swpub_scheduled'] = _x( 'Scheduled', 'post status', 'staged-edits' );
 			} elseif ( null !== Scheduled_Publish::refusal( $staged_copy->ID ) ) {
 				// "Stopped" rather than "refused" or "failed": from this list,
 				// the fact worth saying is that it is not going to happen on
 				// its own any more, not that something went wrong.
-				$states['swpub_schedule_stopped'] = _x( 'Schedule stopped', 'post status', 'save-without-publish' );
+				$states['swpub_schedule_stopped'] = _x( 'Schedule stopped', 'post status', 'staged-edits' );
 			}
 		}
 
@@ -202,7 +202,7 @@ final class Post_List {
 				$actions[ self::STAGE_ACTION ] = sprintf(
 					'<a href="%s">%s</a>',
 					esc_url( self::stage_url( $post->ID ) ),
-					esc_html__( 'Stage changes', 'save-without-publish' )
+					esc_html__( 'Stage changes', 'staged-edits' )
 				);
 			}
 
@@ -225,7 +225,7 @@ final class Post_List {
 		$actions['swpub_open'] = sprintf(
 			'<a href="%s">%s</a>',
 			esc_url( (string) get_edit_post_link( $staged_copy->ID ) ),
-			esc_html__( 'Edit staged changes', 'save-without-publish' )
+			esc_html__( 'Edit staged changes', 'staged-edits' )
 		);
 
 		return $actions;
@@ -272,7 +272,7 @@ final class Post_List {
 			|| ! $live instanceof WP_Post
 			|| ! current_user_can( 'edit_post', $live->ID )
 		) {
-			wp_die( esc_html__( 'There is no published post here to stage a change to.', 'save-without-publish' ) );
+			wp_die( esc_html__( 'There is no published post here to stage a change to.', 'staged-edits' ) );
 		}
 
 		// The same preconditions the REST route enforces, so a stale or
@@ -330,7 +330,7 @@ final class Post_List {
 
 		if ( ! $staged_copy instanceof WP_Post || ! Capabilities::current_user_can_manage( $staged_copy->ID ) ) {
 			wp_die(
-				esc_html__( 'You are not allowed to discard these staged changes.', 'save-without-publish' ),
+				esc_html__( 'You are not allowed to discard these staged changes.', 'staged-edits' ),
 				'',
 				array( 'response' => 403 )
 			);
@@ -385,23 +385,23 @@ final class Post_List {
 	private static function confirm( int $live_id, WP_Post $staged_copy ): void {
 		$message = sprintf(
 			'<h1>%s</h1><p>%s</p><p><a class="button button-primary" href="%s">%s</a> <a class="button" href="%s">%s</a></p>',
-			esc_html__( 'Discard staged changes?', 'save-without-publish' ),
+			esc_html__( 'Discard staged changes?', 'staged-edits' ),
 			esc_html(
 				sprintf(
 					/* translators: %s: post title. */
-					__( 'The staged changes to "%s" will be permanently deleted. They cannot be restored, and the published post keeps serving what it serves now.', 'save-without-publish' ),
+					__( 'The staged changes to "%s" will be permanently deleted. They cannot be restored, and the published post keeps serving what it serves now.', 'staged-edits' ),
 					get_the_title( $live_id )
 				)
 			),
 			esc_url( add_query_arg( 'swpub_confirmed', '1', self::discard_url( $live_id ) ) ),
-			esc_html__( 'Discard permanently', 'save-without-publish' ),
+			esc_html__( 'Discard permanently', 'staged-edits' ),
 			esc_url( (string) get_edit_post_link( $staged_copy->ID, 'raw' ) ),
-			esc_html__( 'Keep editing', 'save-without-publish' )
+			esc_html__( 'Keep editing', 'staged-edits' )
 		);
 
 		wp_die(
 			wp_kses_post( $message ),
-			esc_html__( 'Discard staged changes?', 'save-without-publish' ),
+			esc_html__( 'Discard staged changes?', 'staged-edits' ),
 			array( 'response' => 200 )
 		);
 	}
@@ -419,7 +419,7 @@ final class Post_List {
 
 		printf(
 			'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-			esc_html__( 'The staged changes were discarded. The published post is unchanged.', 'save-without-publish' )
+			esc_html__( 'The staged changes were discarded. The published post is unchanged.', 'staged-edits' )
 		);
 	}
 

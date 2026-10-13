@@ -175,9 +175,7 @@ export function reviewStaged( ctx, url ) {
 		return [];
 	}
 
-	return [
-		toRead( __( 'Review staged changes', 'save-without-publish' ), target ),
-	];
+	return [ toRead( __( 'Review staged changes', 'staged-edits' ), target ) ];
 }
 
 /**
@@ -204,7 +202,7 @@ export function compareAsText( ctx ) {
 
 	return [
 		toReadInNotice(
-			__( 'Compare as text', 'save-without-publish' ),
+			__( 'Compare as text', 'staged-edits' ),
 			ctx.compareTextUrl
 		),
 	];
@@ -223,7 +221,7 @@ export function editStaged( ctx ) {
 
 	return [
 		toOpen(
-			__( 'Edit staged changes', 'save-without-publish' ),
+			__( 'Edit staged changes', 'staged-edits' ),
 			ctx.stagedCopyEdit
 		),
 	];
@@ -242,10 +240,7 @@ export function reviewPublishedHistory( ctx ) {
 
 	return [
 		toReadInNotice(
-			__(
-				'Review what changed on the published post',
-				'save-without-publish'
-			),
+			__( 'Review what changed on the published post', 'staged-edits' ),
 			ctx.historyUrl
 		),
 	];

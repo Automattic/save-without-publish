@@ -55,8 +55,7 @@ const TRASH_BUTTON = '.editor-post-trash';
  *
  * @return {string} The label.
  */
-const discardLabel = () =>
-	__( 'Discard staged changes', 'save-without-publish' );
+const discardLabel = () => __( 'Discard staged changes', 'staged-edits' );
 
 /**
  * Core's strings renamed through translation.
@@ -73,10 +72,10 @@ const discardLabel = () =>
  * draft of a new post.
  */
 const RENAMED = {
-	'Save draft': () => __( 'Save changes', 'save-without-publish' ),
+	'Save draft': () => __( 'Save changes', 'staged-edits' ),
 	'Move to trash': discardLabel,
-	'Draft saved.': () => __( 'Changes staged.', 'save-without-publish' ),
-	'View Preview': () => __( 'Preview changes', 'save-without-publish' ),
+	'Draft saved.': () => __( 'Changes staged.', 'staged-edits' ),
+	'View Preview': () => __( 'Preview changes', 'staged-edits' ),
 };
 
 /**
@@ -87,7 +86,7 @@ const RENAMED = {
 function relabelDocumentControls() {
 	addFilter(
 		'i18n.gettext_default',
-		'save-without-publish/renamed-controls',
+		'staged-edits/renamed-controls',
 		( translation, text ) => {
 			if ( ! Object.hasOwn( RENAMED, text ) ) {
 				return translation;
@@ -246,7 +245,7 @@ function verifyTrashLabel() {
  */
 function primaryLabel( ctx, dirty ) {
 	if ( ctx.stagedCopyId ) {
-		return __( 'Save', 'save-without-publish' );
+		return __( 'Save', 'staged-edits' );
 	}
 
 	if ( ctx.canPublishDirectly ) {
@@ -259,8 +258,8 @@ function primaryLabel( ctx, dirty ) {
 		! dirty.some( ( field ) => STAGED_FIELDS.includes( field ) );
 
 	return staysOnPublished
-		? __( 'Save', 'save-without-publish' )
-		: __( 'Stage changes', 'save-without-publish' );
+		? __( 'Save', 'staged-edits' )
+		: __( 'Stage changes', 'staged-edits' );
 }
 
 /**

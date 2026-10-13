@@ -112,17 +112,17 @@ final class Stage_Route {
 					'title'   => array(
 						'type'        => 'string',
 						'required'    => false,
-						'description' => __( 'The title the editor is holding, unsaved.', 'save-without-publish' ),
+						'description' => __( 'The title the editor is holding, unsaved.', 'staged-edits' ),
 					),
 					'content' => array(
 						'type'        => 'string',
 						'required'    => false,
-						'description' => __( 'The content the editor is holding, unsaved.', 'save-without-publish' ),
+						'description' => __( 'The content the editor is holding, unsaved.', 'staged-edits' ),
 					),
 					'excerpt' => array(
 						'type'        => 'string',
 						'required'    => false,
-						'description' => __( 'The excerpt the editor is holding, unsaved.', 'save-without-publish' ),
+						'description' => __( 'The excerpt the editor is holding, unsaved.', 'staged-edits' ),
 					),
 				),
 			)
@@ -143,7 +143,7 @@ final class Stage_Route {
 		if ( ! is_enabled() ) {
 			return new WP_Error(
 				'swpub_disabled',
-				__( 'Staging is currently disabled.', 'save-without-publish' ),
+				__( 'Staging is currently disabled.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -153,7 +153,7 @@ final class Stage_Route {
 		if ( ! $live instanceof WP_Post || 'publish' !== $live->post_status ) {
 			return new WP_Error(
 				'swpub_not_published',
-				__( 'There is no published post here to stage a change to.', 'save-without-publish' ),
+				__( 'There is no published post here to stage a change to.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -161,7 +161,7 @@ final class Stage_Route {
 		if ( ! current_user_can( 'edit_post', $live->ID ) ) {
 			return new WP_Error(
 				'swpub_forbidden',
-				__( 'You are not allowed to edit this post.', 'save-without-publish' ),
+				__( 'You are not allowed to edit this post.', 'staged-edits' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -212,7 +212,7 @@ final class Stage_Route {
 		if ( ! $live instanceof WP_Post ) {
 			return new WP_Error(
 				'swpub_not_published',
-				__( 'There is no published post here to stage a change to.', 'save-without-publish' ),
+				__( 'There is no published post here to stage a change to.', 'staged-edits' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -224,7 +224,7 @@ final class Stage_Route {
 				'swpub_unstageable_field',
 				sprintf(
 					/* translators: %s: comma-separated list of field names. */
-					__( 'Only the title, content, and excerpt can be staged. Change these on the published post instead: %s.', 'save-without-publish' ),
+					__( 'Only the title, content, and excerpt can be staged. Change these on the published post instead: %s.', 'staged-edits' ),
 					implode( ', ', $refused )
 				),
 				array( 'status' => 400 )
@@ -244,7 +244,7 @@ final class Stage_Route {
 		if ( ! Staged_Copy_Repository::pointers_agree( $live->ID, $staged_copy->ID ) ) {
 			return new WP_Error(
 				'swpub_staging_failed',
-				__( 'The change was not staged. The published post is unchanged, and your edits are still here.', 'save-without-publish' ),
+				__( 'The change was not staged. The published post is unchanged, and your edits are still here.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);
 		}
@@ -252,7 +252,7 @@ final class Stage_Route {
 		if ( ! self::write_staged_content( $staged_copy->ID, $request ) ) {
 			return new WP_Error(
 				'swpub_staging_failed',
-				__( 'The change was not staged. The published post is unchanged, and your edits are still here.', 'save-without-publish' ),
+				__( 'The change was not staged. The published post is unchanged, and your edits are still here.', 'staged-edits' ),
 				array( 'status' => 500 )
 			);
 		}

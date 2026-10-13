@@ -917,7 +917,7 @@ final class Write_Guard {
 		if ( (int) $result <= 0 ) {
 			return new WP_Error(
 				'swpub_staged_copy_write_failed',
-				__( 'The change could not be written to the staged copy.', 'save-without-publish' )
+				__( 'The change could not be written to the staged copy.', 'staged-edits' )
 			);
 		}
 

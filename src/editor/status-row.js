@@ -53,13 +53,13 @@ export function StagedStatusRow() {
 		return null;
 	}
 
-	const label = __( 'Staged', 'save-without-publish' );
+	const label = __( 'Staged', 'staged-edits' );
 	const [ review ] = reviewStaged( ctx, reviewUrl );
 
 	return (
 		<PluginPostStatusInfo className="swpub-status-row">
 			<div className="editor-post-panel__row-label">
-				{ __( 'Status', 'save-without-publish' ) }
+				{ __( 'Status', 'staged-edits' ) }
 			</div>
 			<div className="editor-post-panel__row-control">
 				{ review ? (
@@ -77,10 +77,7 @@ export function StagedStatusRow() {
 						 */
 						aria-label={ sprintf(
 							/* translators: %s: the post's status, always "Staged" here. */
-							__(
-								'%s: review staged changes',
-								'save-without-publish'
-							),
+							__( '%s: review staged changes', 'staged-edits' ),
 							label
 						) }
 						variant="tertiary"
